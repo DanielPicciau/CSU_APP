@@ -353,7 +353,7 @@ def onboarding_gender(request):
             return redirect("accounts:onboarding_diagnosis")
         
         if action == "back":
-            return redirect("accounts:onboarding_age")
+            return redirect("accounts:onboarding_welcome")
         
         form = OnboardingGenderForm(request.POST)
         if form.is_valid():
