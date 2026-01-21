@@ -3,6 +3,7 @@
  * ================================
  * A calm, guided onboarding experience
  * One question per screen, clear progress
+ * Full dark mode support
  */
 
 /* ==========================================================================
@@ -12,9 +13,10 @@
 .onboarding-body {
   min-height: 100vh;
   min-height: -webkit-fill-available;
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--color-primary-50) 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   display: flex;
   flex-direction: column;
+  color: var(--text-primary);
 }
 
 .onboarding-container {
@@ -77,7 +79,7 @@
 .onboarding-progress__bar {
   width: 100%;
   height: 4px;
-  background-color: var(--color-neutral-200);
+  background-color: var(--border-default);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
@@ -146,8 +148,8 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  background-color: var(--color-primary-100);
-  color: var(--color-primary-600);
+  background-color: var(--bg-brand-subtle);
+  color: var(--text-brand);
   border-radius: var(--radius-xl);
   flex-shrink: 0;
 }
@@ -160,7 +162,7 @@
   color: var(--text-tertiary);
   text-align: left;
   padding: var(--space-4);
-  background-color: var(--color-neutral-100);
+  background-color: var(--bg-secondary);
   border-radius: var(--radius-xl);
   line-height: var(--leading-relaxed);
 }
@@ -1070,37 +1072,86 @@
 
 [data-theme="dark"] .onboarding-summary-item,
 [data-theme="dark"] .onboarding-privacy-info,
-[data-theme="dark"] .onboarding-time-picker {
+[data-theme="dark"] .onboarding-time-picker,
+[data-theme="dark"] .onboarding-privacy-card,
+[data-theme="dark"] .onboarding-reminder-settings,
+[data-theme="dark"] .onboarding-profile-card {
   background-color: var(--color-neutral-800);
   border-color: var(--color-neutral-700);
 }
 
-[data-theme="dark"] .onboarding-empty {
+[data-theme="dark"] .onboarding-empty,
+[data-theme="dark"] .onboarding-profile-empty {
   background-color: var(--color-neutral-800);
   border-color: var(--color-neutral-600);
 }
 
-[data-theme="dark"] .onboarding-privacy-point__icon--yes {
+[data-theme="dark"] .onboarding-privacy-point__icon--yes,
+[data-theme="dark"] .onboarding-privacy-item--positive .onboarding-privacy-item__icon {
   background-color: rgba(34, 197, 94, 0.2);
 }
 
-[data-theme="dark"] .onboarding-privacy-point__icon--no {
+[data-theme="dark"] .onboarding-privacy-point__icon--no,
+[data-theme="dark"] .onboarding-privacy-item--negative .onboarding-privacy-item__icon {
   background-color: var(--color-neutral-700);
 }
 
-[data-theme="dark"] .onboarding-checkbox__checkmark {
+[data-theme="dark"] .onboarding-checkbox__checkmark,
+[data-theme="dark"] .onboarding-consent-checkbox__box {
   background-color: var(--color-neutral-800);
   border-color: var(--color-neutral-500);
 }
 
-[data-theme="dark"] .onboarding-time-picker__input {
+[data-theme="dark"] .onboarding-time-picker__input,
+[data-theme="dark"] .onboarding-reminder-setting__input,
+[data-theme="dark"] .onboarding-reminder-setting__select {
   background-color: var(--color-neutral-900);
-  border-color: var(--color-primary-700);
+  border-color: var(--color-neutral-600);
+  color: var(--text-primary);
 }
 
-[data-theme="dark"] .onboarding-complete__reminder-note {
+[data-theme="dark"] .onboarding-complete__reminder-note,
+[data-theme="dark"] .onboarding-complete__reminder-pill {
   background-color: rgba(37, 99, 235, 0.2);
   color: var(--color-primary-300);
+}
+
+[data-theme="dark"] .onboarding-option__card {
+  background-color: var(--color-neutral-800);
+  border-color: var(--color-neutral-600);
+}
+
+[data-theme="dark"] .onboarding-option__input:checked + .onboarding-option__card {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-color: var(--color-primary-500);
+}
+
+[data-theme="dark"] .onboarding-quickstart {
+  background-color: var(--color-neutral-800);
+  border-color: var(--color-neutral-700);
+}
+
+[data-theme="dark"] .onboarding-quickstart__number {
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-300);
+}
+
+[data-theme="dark"] .form-input--onboarding,
+[data-theme="dark"] .form-input {
+  background-color: var(--color-neutral-800);
+  border-color: var(--color-neutral-600);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-input--onboarding:focus,
+[data-theme="dark"] .form-input:focus {
+  border-color: var(--color-primary-500);
+  background-color: var(--color-neutral-900);
+}
+
+[data-theme="dark"] .onboarding-security-note {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: var(--color-success-400);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1112,4 +1163,530 @@
   [data-theme="system"] .onboarding-checkbox-card__content {
     background-color: var(--surface-primary);
   }
+  
+  [data-theme="system"] .onboarding-option__card {
+    background-color: var(--color-neutral-800);
+    border-color: var(--color-neutral-600);
+  }
+  
+  [data-theme="system"] .form-input--onboarding,
+  [data-theme="system"] .form-input {
+    background-color: var(--color-neutral-800);
+    border-color: var(--color-neutral-600);
+    color: var(--text-primary);
+  }
+  
+  [data-theme="system"] .onboarding-privacy-card,
+  [data-theme="system"] .onboarding-reminder-settings,
+  [data-theme="system"] .onboarding-profile-card,
+  [data-theme="system"] .onboarding-quickstart {
+    background-color: var(--color-neutral-800);
+    border-color: var(--color-neutral-700);
+  }
+}
+
+/* ==========================================================================
+   NEW ACCOUNT FORM STYLES
+   ========================================================================== */
+
+.onboarding-form__section {
+  margin-bottom: var(--space-5);
+}
+
+.onboarding-form__row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.onboarding-form__field--half {
+  flex: 1;
+}
+
+.onboarding-form__divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: var(--space-6) 0;
+}
+
+/* ==========================================================================
+   IMPROVED GENDER OPTIONS
+   ========================================================================== */
+
+.onboarding-options--gender {
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.onboarding-option__card--compact {
+  min-height: 80px;
+  padding: var(--space-4);
+}
+
+/* ==========================================================================
+   IMPROVED MEDICATION FIELDS
+   ========================================================================== */
+
+.onboarding-medication-fields {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.onboarding-medication-fields--stacked {
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.onboarding-medication-field {
+  flex: 1;
+}
+
+.onboarding-dose-input {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.onboarding-dose-input .form-input--onboarding:first-child {
+  flex: 2;
+}
+
+.onboarding-dose-input .form-input--onboarding:last-child {
+  flex: 1;
+  min-width: 80px;
+}
+
+.onboarding-field-hint {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   PROFILE CARD (SUMMARY PAGE)
+   ========================================================================== */
+
+.onboarding-profile-card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  margin: var(--space-6) 0;
+}
+
+.onboarding-profile-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.onboarding-profile-item:last-child {
+  border-bottom: none;
+}
+
+.onboarding-profile-item__icon {
+  font-size: var(--text-xl);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+}
+
+.onboarding-profile-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.onboarding-profile-item__label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--font-medium);
+}
+
+.onboarding-profile-item__value {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.onboarding-profile-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-5);
+  background: var(--surface-primary);
+  border: 2px dashed var(--border-default);
+  border-radius: var(--radius-2xl);
+  margin: var(--space-6) 0;
+}
+
+.onboarding-profile-empty__icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.onboarding-profile-empty__text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.onboarding-security-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-success-600);
+  background: var(--color-success-50);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-4);
+}
+
+/* ==========================================================================
+   PRIVACY PAGE REDESIGN
+   ========================================================================== */
+
+.onboarding-privacy-card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  margin: var(--space-6) 0;
+}
+
+.onboarding-privacy-card__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-4);
+}
+
+.onboarding-privacy-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.onboarding-privacy-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.onboarding-privacy-item__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.onboarding-privacy-item--positive .onboarding-privacy-item__icon {
+  background-color: var(--color-success-100);
+  color: var(--color-success-600);
+}
+
+.onboarding-privacy-item--negative .onboarding-privacy-item__icon {
+  background-color: var(--color-neutral-100);
+  color: var(--color-neutral-500);
+}
+
+.onboarding-privacy-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.onboarding-privacy-item__content strong {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.onboarding-privacy-item__content span {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.onboarding-privacy-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-2) 0;
+}
+
+/* Privacy Consent Checkboxes */
+.onboarding-consent-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+}
+
+.onboarding-consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.onboarding-consent-checkbox__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.onboarding-consent-checkbox__box {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  margin-top: 2px;
+}
+
+.onboarding-consent-checkbox__box svg {
+  opacity: 0;
+  color: white;
+  transform: scale(0.5);
+  transition: all 0.15s ease;
+}
+
+.onboarding-consent-checkbox__input:checked + .onboarding-consent-checkbox__box {
+  background: var(--interactive-primary);
+  border-color: var(--interactive-primary);
+}
+
+.onboarding-consent-checkbox__input:checked + .onboarding-consent-checkbox__box svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.onboarding-consent-checkbox__input:focus-visible + .onboarding-consent-checkbox__box {
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.onboarding-consent-checkbox__label {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-relaxed);
+}
+
+.onboarding-consent-checkbox__label a {
+  color: var(--text-brand);
+  text-decoration: underline;
+}
+
+.onboarding-consent-checkbox__badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  margin-left: var(--space-2);
+  font-weight: var(--font-medium);
+}
+
+.onboarding-consent-checkbox__badge--required {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+}
+
+.onboarding-consent-checkbox__badge--optional {
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+}
+
+/* ==========================================================================
+   REMINDERS PAGE - SETTINGS PANEL
+   ========================================================================== */
+
+.onboarding-reminder-settings {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-brand);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  margin: var(--space-6) 0;
+  animation: fadeIn 0.3s ease;
+}
+
+.onboarding-reminder-setting {
+  margin-bottom: var(--space-5);
+}
+
+.onboarding-reminder-setting:last-child {
+  margin-bottom: 0;
+}
+
+.onboarding-reminder-setting__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.onboarding-reminder-setting__label svg {
+  color: var(--text-tertiary);
+}
+
+.onboarding-reminder-setting__input,
+.onboarding-reminder-setting__select {
+  width: 100%;
+  font-size: var(--text-lg);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
+  transition: all 0.15s ease;
+}
+
+.onboarding-reminder-setting__input:focus,
+.onboarding-reminder-setting__select:focus {
+  outline: none;
+  border-color: var(--border-brand);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.onboarding-reminder-setting__hint {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   COMPLETE PAGE - REDESIGN
+   ========================================================================== */
+
+.onboarding-success-badge {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto var(--space-6);
+}
+
+.onboarding-success-badge__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-success-400), var(--color-success-600));
+  animation: pulseRing 2s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.onboarding-success-badge__icon {
+  position: absolute;
+  inset: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-success-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: checkPop 0.5s ease-out 0.2s both;
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.onboarding-complete__reminder-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary-50);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  color: var(--color-primary-700);
+  margin-top: var(--space-4);
+}
+
+.onboarding-quickstart {
+  text-align: left;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  margin: var(--space-8) 0 var(--space-4);
+}
+
+.onboarding-quickstart__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-4);
+}
+
+.onboarding-quickstart__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.onboarding-quickstart__item {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.onboarding-quickstart__number {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--bg-brand-subtle);
+  color: var(--text-brand);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.onboarding-quickstart__content h3 {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.onboarding-quickstart__content p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
 }

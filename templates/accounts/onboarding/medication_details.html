@@ -4,12 +4,14 @@
 
 {% block content %}
 <div class="onboarding-step">
+    <div class="onboarding-step__emoji">💊</div>
+    
     <h1 class="onboarding-step__title">
-        A few more details
+        Tell us about your treatment
     </h1>
     
     <p class="onboarding-step__subtitle">
-        This helps us show treatment context on your symptom charts. Everything here is optional.
+        This helps us show treatment context on your charts. Everything here is optional.
     </p>
     
     <form method="post" class="onboarding-form" id="medication-details-form">
@@ -21,25 +23,27 @@
         <div class="onboarding-details-section">
             <div class="onboarding-details-section__header">
                 <span class="onboarding-details-section__icon">💊</span>
-                <h2 class="onboarding-details-section__title">Antihistamine details</h2>
+                <h2 class="onboarding-details-section__title">Antihistamine</h2>
             </div>
             
             <p class="onboarding-details-section__note">
-                If you take the same dose daily, you can enter it here. Otherwise, leave blank.
+                Enter your typical daily dose, or leave blank if it varies.
             </p>
             
-            <div class="onboarding-inline-fields">
-                <div class="onboarding-inline-field">
-                    <label class="onboarding-inline-label">Dose</label>
-                    <div class="onboarding-inline-inputs">
+            <div class="onboarding-medication-fields">
+                <div class="onboarding-medication-field">
+                    <label class="onboarding-label">Dose amount</label>
+                    <div class="onboarding-dose-input">
                         {{ ah_form.dose_amount }}
                         {{ ah_form.dose_unit }}
                     </div>
+                    <p class="onboarding-field-hint">Example: 180 mg</p>
                 </div>
                 
-                <div class="onboarding-inline-field">
-                    <label class="onboarding-inline-label">Times per day</label>
+                <div class="onboarding-medication-field">
+                    <label class="onboarding-label">Frequency</label>
                     {{ ah_form.frequency_per_day }}
+                    <p class="onboarding-field-hint">Times per day (e.g., 1 or 2)</p>
                 </div>
             </div>
         </div>
@@ -54,17 +58,19 @@
             </div>
             
             <p class="onboarding-details-section__note">
-                We'll use this for trend visualization only—to help you see patterns relative to your treatment cycle.
+                We'll use this to help you see patterns relative to your treatment cycle.
             </p>
             
-            <div class="onboarding-form__field">
-                <label class="onboarding-label">When was your last injection?</label>
-                {{ inj_form.last_injection_date }}
-            </div>
-            
-            <div class="onboarding-form__field">
-                <label class="onboarding-label">How often do you usually receive it?</label>
-                {{ inj_form.injection_frequency }}
+            <div class="onboarding-medication-fields onboarding-medication-fields--stacked">
+                <div class="onboarding-medication-field">
+                    <label class="onboarding-label">Last injection date</label>
+                    {{ inj_form.last_injection_date }}
+                </div>
+                
+                <div class="onboarding-medication-field">
+                    <label class="onboarding-label">Injection frequency</label>
+                    {{ inj_form.injection_frequency }}
+                </div>
             </div>
         </div>
         {% endif %}
@@ -74,7 +80,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
-        Your medication data is stored securely and never shared. We don't provide dosing advice.
+        Your medication data is stored securely. We don't provide dosing advice.
     </p>
 </div>
 {% endblock %}

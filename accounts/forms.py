@@ -198,17 +198,48 @@ class DeleteAccountForm(forms.Form):
 # =============================================================================
 
 class OnboardingAccountForm(forms.Form):
-    """Lightweight account creation for onboarding (email/password only)."""
+    """Account creation with personal details for onboarding."""
+    
+    first_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            "class": "form-input form-input--onboarding",
+            "placeholder": "First name",
+            "autocomplete": "given-name",
+            "autofocus": True,
+        }),
+        label="First name",
+    )
+    
+    last_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            "class": "form-input form-input--onboarding",
+            "placeholder": "Last name",
+            "autocomplete": "family-name",
+        }),
+        label="Last name",
+    )
+    
+    date_of_birth = forms.DateField(
+        widget=forms.DateInput(attrs={
+            "class": "form-input form-input--onboarding",
+            "type": "date",
+            "max": "",  # Will be set by JavaScript to today's date
+        }),
+        label="Date of birth",
+        help_text="Used to keep your profile accurate over time.",
+    )
     
     email = forms.EmailField(
         widget=forms.EmailInput(attrs={
             "class": "form-input form-input--onboarding",
             "placeholder": "your@email.com",
             "autocomplete": "email",
-            "autofocus": True,
         }),
-        label="Your email",
+        label="Email",
     )
+    
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
             "class": "form-input form-input--onboarding",
@@ -216,7 +247,7 @@ class OnboardingAccountForm(forms.Form):
             "autocomplete": "new-password",
         }),
         label="Password",
-        help_text="Must be at least 12 characters with uppercase, lowercase, number, and special character.",
+        help_text="At least 12 characters with uppercase, lowercase, number, and special character.",
     )
 
     def clean_email(self):
@@ -238,10 +269,23 @@ class OnboardingAccountForm(forms.Form):
             except ValidationError as e:
                 raise forms.ValidationError(e.messages)
         return password
+    
+    def clean_date_of_birth(self):
+        """Validate date of birth is reasonable."""
+        from datetime import date
+        dob = self.cleaned_data.get("date_of_birth")
+        if dob:
+            today = date.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age < 13:
+                raise forms.ValidationError("You must be at least 13 years old to use this app.")
+            if age > 120:
+                raise forms.ValidationError("Please enter a valid date of birth.")
+        return dob
 
 
 class OnboardingNameForm(forms.Form):
-    """Step: What's your name?"""
+    """Step: What's your name? (Legacy - now collected in account step)"""
     
     display_name = forms.CharField(
         max_length=100,
@@ -443,6 +487,18 @@ class OnboardingReminderForm(forms.Form):
         ("no", "No thanks, I'll remember"),
     ]
     
+    # Common US timezone choices (most common first)
+    TIMEZONE_CHOICES = [
+        ("America/New_York", "Eastern Time (ET)"),
+        ("America/Chicago", "Central Time (CT)"),
+        ("America/Denver", "Mountain Time (MT)"),
+        ("America/Los_Angeles", "Pacific Time (PT)"),
+        ("America/Anchorage", "Alaska Time (AKT)"),
+        ("Pacific/Honolulu", "Hawaii Time (HT)"),
+        ("America/Phoenix", "Arizona (no DST)"),
+        ("America/Puerto_Rico", "Atlantic Time (AST)"),
+    ]
+    
     enable_reminders = forms.ChoiceField(
         choices=REMINDER_CHOICES,
         required=False,
@@ -460,4 +516,14 @@ class OnboardingReminderForm(forms.Form):
         }),
         label="What time works best?",
         initial="20:00",
+    )
+    
+    timezone = forms.ChoiceField(
+        choices=TIMEZONE_CHOICES,
+        required=False,
+        initial="America/New_York",
+        widget=forms.Select(attrs={
+            "class": "form-input form-input--onboarding",
+        }),
+        label="Your timezone",
     )

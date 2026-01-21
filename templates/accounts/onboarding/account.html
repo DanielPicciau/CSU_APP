@@ -5,11 +5,11 @@
 {% block content %}
 <div class="onboarding-step">
     <h1 class="onboarding-step__title">
-        Let's create your account
+        Let's set up your account
     </h1>
     
     <p class="onboarding-step__subtitle">
-        We'll use this to keep your data safe and synced.
+        We'll use this info to personalize your experience and keep your data secure.
     </p>
     
     <form method="post" class="onboarding-form" id="account-form">
@@ -23,24 +23,70 @@
         </div>
         {% endif %}
         
-        <div class="onboarding-form__field">
-            <label for="id_email" class="onboarding-label">Email</label>
-            {{ form.email }}
-            {% if form.email.errors %}
-            <p class="onboarding-field-error">{{ form.email.errors.0 }}</p>
-            {% endif %}
+        <!-- Name Section -->
+        <div class="onboarding-form__section">
+            <div class="onboarding-form__row">
+                <div class="onboarding-form__field onboarding-form__field--half">
+                    <label for="id_first_name" class="onboarding-label">First name</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                    <p class="onboarding-field-error">{{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="onboarding-form__field onboarding-form__field--half">
+                    <label for="id_last_name" class="onboarding-label">Last name</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                    <p class="onboarding-field-error">{{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="onboarding-form__field">
+                <label for="id_date_of_birth" class="onboarding-label">Date of birth</label>
+                {{ form.date_of_birth }}
+                {% if form.date_of_birth.errors %}
+                <p class="onboarding-field-error">{{ form.date_of_birth.errors.0 }}</p>
+                {% endif %}
+                <p class="onboarding-hint">Your age updates automatically—no need to change it later.</p>
+            </div>
         </div>
         
-        <div class="onboarding-form__field">
-            <label for="id_password" class="onboarding-label">Password</label>
-            {{ form.password }}
-            {% if form.password.errors %}
-            <p class="onboarding-field-error">{{ form.password.errors.0 }}</p>
-            {% endif %}
-            <p class="onboarding-hint">At least 8 characters</p>
+        <div class="onboarding-form__divider"></div>
+        
+        <!-- Account Section -->
+        <div class="onboarding-form__section">
+            <div class="onboarding-form__field">
+                <label for="id_email" class="onboarding-label">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <p class="onboarding-field-error">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="onboarding-form__field">
+                <label for="id_password" class="onboarding-label">Password</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                <p class="onboarding-field-error">{{ form.password.errors.0 }}</p>
+                {% endif %}
+                <p class="onboarding-hint">At least 12 characters with mixed case, numbers, and symbols</p>
+            </div>
         </div>
     </form>
 </div>
+
+<script>
+// Set max date to today for DOB field
+document.addEventListener('DOMContentLoaded', function() {
+    const dobField = document.getElementById('id_date_of_birth');
+    if (dobField) {
+        const today = new Date().toISOString().split('T')[0];
+        dobField.setAttribute('max', today);
+    }
+});
+</script>
 {% endblock %}
 
 {% block navigation %}

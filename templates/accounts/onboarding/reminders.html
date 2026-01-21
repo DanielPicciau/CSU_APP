@@ -4,12 +4,14 @@
 
 {% block content %}
 <div class="onboarding-step">
+    <div class="onboarding-step__emoji">🔔</div>
+    
     <h1 class="onboarding-step__title">
-        Would you like daily reminders?
+        Daily reminders
     </h1>
     
     <p class="onboarding-step__subtitle">
-        A gentle nudge helps build consistency. Most people find it takes just 30 seconds to log.
+        A gentle nudge helps build consistency. Logging takes about 30 seconds.
     </p>
     
     <form method="post" class="onboarding-form" id="reminders-form">
@@ -21,7 +23,7 @@
                 <input type="radio" name="enable_reminders" value="yes" 
                        {% if form.enable_reminders.value == 'yes' %}checked{% endif %}
                        class="onboarding-option__input"
-                       onchange="toggleReminderTime(true)">
+                       onchange="toggleReminderSettings(true)">
                 <span class="onboarding-option__card onboarding-option__card--detailed">
                     <span class="onboarding-option__icon">🔔</span>
                     <span class="onboarding-option__label">Yes, remind me daily</span>
@@ -33,28 +35,47 @@
                 <input type="radio" name="enable_reminders" value="no"
                        {% if form.enable_reminders.value == 'no' %}checked{% endif %}
                        class="onboarding-option__input"
-                       onchange="toggleReminderTime(false)">
+                       onchange="toggleReminderSettings(false)">
                 <span class="onboarding-option__card onboarding-option__card--detailed">
                     <span class="onboarding-option__icon">🔕</span>
                     <span class="onboarding-option__label">No thanks</span>
-                    <span class="onboarding-option__description">I'll log on my own</span>
+                    <span class="onboarding-option__description">I'll remember on my own</span>
                 </span>
             </label>
         </div>
         
-        <!-- Time Picker (shown when reminders enabled) -->
-        <div class="onboarding-time-picker" id="time-picker" style="{% if form.enable_reminders.value != 'yes' %}display: none;{% endif %}">
-            <label class="onboarding-time-picker__label">
-                What time works best for you?
-            </label>
-            <div class="onboarding-time-picker__input-wrapper">
+        <!-- Settings Panel (shown when reminders enabled) -->
+        <div class="onboarding-reminder-settings" id="reminder-settings" style="{% if form.enable_reminders.value != 'yes' %}display: none;{% endif %}">
+            <div class="onboarding-reminder-setting">
+                <label class="onboarding-reminder-setting__label">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Reminder time
+                </label>
                 <input type="time" name="reminder_time" 
                        value="{{ form.reminder_time.value|default:'20:00' }}"
-                       class="onboarding-time-picker__input">
+                       class="onboarding-reminder-setting__input">
+                <p class="onboarding-reminder-setting__hint">Evening works well for reflecting on your day</p>
             </div>
-            <p class="onboarding-time-picker__hint">
-                Tip: Evening works well for reflecting on your day
-            </p>
+            
+            <div class="onboarding-reminder-setting">
+                <label class="onboarding-reminder-setting__label">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    Your timezone
+                </label>
+                <select name="timezone" class="onboarding-reminder-setting__select">
+                    {% for tz_value, tz_label in form.fields.timezone.choices %}
+                    <option value="{{ tz_value }}" {% if form.timezone.value == tz_value %}selected{% endif %}>{{ tz_label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="onboarding-reminder-setting__hint">Reminders are sent at your local time</p>
+            </div>
         </div>
         
         <p class="onboarding-reassurance">
@@ -63,16 +84,16 @@
                 <path d="M12 16v-4"/>
                 <path d="M12 8h.01"/>
             </svg>
-            You can change this anytime in Settings.
+            You can change these settings anytime.
         </p>
     </form>
 </div>
 
 <script>
-function toggleReminderTime(show) {
-    const picker = document.getElementById('time-picker');
-    if (picker) {
-        picker.style.display = show ? 'block' : 'none';
+function toggleReminderSettings(show) {
+    const settings = document.getElementById('reminder-settings');
+    if (settings) {
+        settings.style.display = show ? 'block' : 'none';
     }
 }
 

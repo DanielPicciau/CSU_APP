@@ -134,10 +134,16 @@ class Profile(models.Model):
     )
     
     # Onboarding fields
+    date_of_birth = models.DateField(
+        null=True,
+        blank=True,
+        help_text="User's date of birth",
+    )
+    
     age = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="User's age (optional)",
+        help_text="User's age (calculated from DOB)",
     )
     
     gender = models.CharField(

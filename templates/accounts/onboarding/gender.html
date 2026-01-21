@@ -4,25 +4,27 @@
 
 {% block content %}
 <div class="onboarding-step">
+    <div class="onboarding-step__emoji">🧑</div>
+    
     <h1 class="onboarding-step__title">
-        How do you describe your gender?
+        How do you identify?
     </h1>
     
     <p class="onboarding-step__subtitle">
-        This is optional and helps us understand our users better.
+        This helps us understand our users. Completely optional.
     </p>
     
     <form method="post" class="onboarding-form" id="gender-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="next" id="form-action">
         
-        <div class="onboarding-options">
+        <div class="onboarding-options onboarding-options--gender">
             {% for option in gender_options %}
             <label class="onboarding-option">
                 <input type="radio" name="gender" value="{{ option.value }}" 
                        {% if form.gender.value == option.value %}checked{% endif %}
                        class="onboarding-option__input">
-                <span class="onboarding-option__card">
+                <span class="onboarding-option__card onboarding-option__card--compact">
                     {% if option.icon %}
                     <span class="onboarding-option__emoji">{{ option.icon }}</span>
                     {% endif %}

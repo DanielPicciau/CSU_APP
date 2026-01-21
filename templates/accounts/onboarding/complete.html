@@ -5,70 +5,57 @@
 {% block content %}
 <div class="onboarding-complete">
     <!-- Success Animation -->
-    <div class="onboarding-complete__checkmark">
-        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <circle cx="40" cy="40" r="38" stroke="#22C55E" stroke-width="4" fill="#F0FDF4"/>
-            <path class="checkmark-path" d="M24 40L35 51L56 30" stroke="#22C55E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        </svg>
+    <div class="onboarding-success-badge">
+        <div class="onboarding-success-badge__ring"></div>
+        <div class="onboarding-success-badge__icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
     </div>
     
     <h1 class="onboarding-complete__title">
-        You're all set{% if display_name %}, {{ display_name }}{% endif %}!
+        You're ready{% if display_name %}, {{ display_name }}{% endif %}!
     </h1>
     
     <p class="onboarding-complete__subtitle">
-        Your tracker is ready. Let's start by logging how you're feeling today.
+        Your personal CSU tracker is set up. Start logging to discover your patterns.
     </p>
     
     {% if reminders_enabled %}
-    <div class="onboarding-complete__reminder-note">
+    <div class="onboarding-complete__reminder-pill">
         <span class="onboarding-complete__reminder-icon">🔔</span>
-        <span>You'll get a daily reminder at <strong>{{ reminder_time|time:"g:i A" }}</strong></span>
+        <span>Daily reminder at <strong>{{ reminder_time|time:"g:i A" }}</strong></span>
     </div>
     {% endif %}
     
-    <!-- What's Next -->
-    <div class="onboarding-complete__next">
-        <h2 class="onboarding-complete__section-title">What you can do</h2>
+    <!-- Quick Start Guide -->
+    <div class="onboarding-quickstart">
+        <h2 class="onboarding-quickstart__title">Get started</h2>
         
-        <div class="onboarding-next-item">
-            <div class="onboarding-next-item__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
+        <div class="onboarding-quickstart__items">
+            <div class="onboarding-quickstart__item">
+                <div class="onboarding-quickstart__number">1</div>
+                <div class="onboarding-quickstart__content">
+                    <h3>Log your first entry</h3>
+                    <p>Rate today's itching and hives on a simple scale</p>
+                </div>
             </div>
-            <div class="onboarding-next-item__content">
-                <h3>Log your symptoms</h3>
-                <p>Track itching and hives daily with a simple scale</p>
+            
+            <div class="onboarding-quickstart__item">
+                <div class="onboarding-quickstart__number">2</div>
+                <div class="onboarding-quickstart__content">
+                    <h3>Track daily</h3>
+                    <p>Even just 30 seconds a day builds valuable data</p>
+                </div>
             </div>
-        </div>
-        
-        <div class="onboarding-next-item">
-            <div class="onboarding-next-item__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 8v4l3 3"/>
-                    <circle cx="12" cy="12" r="9"/>
-                </svg>
-            </div>
-            <div class="onboarding-next-item__content">
-                <h3>See your history</h3>
-                <p>Look back at patterns over weeks and months</p>
-            </div>
-        </div>
-        
-        <div class="onboarding-next-item">
-            <div class="onboarding-next-item__icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-            </div>
-            <div class="onboarding-next-item__content">
-                <h3>Share with your doctor</h3>
-                <p>Export your data for your next appointment</p>
+            
+            <div class="onboarding-quickstart__item">
+                <div class="onboarding-quickstart__number">3</div>
+                <div class="onboarding-quickstart__content">
+                    <h3>Discover patterns</h3>
+                    <p>After a week, you'll start seeing trends</p>
+                </div>
             </div>
         </div>
     </div>
@@ -77,10 +64,14 @@
 
 {% block navigation %}
 <a href="{% url 'tracking:log_entry' %}" class="btn btn--primary btn--lg btn--full">
-    Log Today's Entry
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Log my first entry
 </a>
 
 <a href="{% url 'home' %}" class="btn btn--ghost btn--full">
-    Go to Dashboard
+    Take me to the dashboard
 </a>
 {% endblock %}

@@ -279,10 +279,10 @@ from core.security import rate_limit
 
 
 def onboarding_account(request):
-    """Step 2: Account creation (email/password) with rate limiting."""
+    """Step 2: Account creation with personal details and rate limiting."""
     if request.user.is_authenticated:
-        # Already logged in, skip to next step
-        return redirect("accounts:onboarding_name")
+        # Already logged in, skip to gender step (we now skip name/age since collected here)
+        return redirect("accounts:onboarding_gender")
     
     # Rate limit account creation to prevent abuse
     from django.core.cache import cache
@@ -300,11 +300,25 @@ def onboarding_account(request):
         
         form = OnboardingAccountForm(request.POST)
         if form.is_valid():
-            # Create user implicitly in the background
+            # Create user with first/last name
             user = User.objects.create_user(
                 email=form.cleaned_data["email"],
                 password=form.cleaned_data["password"],
+                first_name=form.cleaned_data["first_name"],
+                last_name=form.cleaned_data["last_name"],
             )
+            
+            # Save DOB and calculate age to profile
+            dob = form.cleaned_data["date_of_birth"]
+            if dob:
+                from datetime import date
+                today = date.today()
+                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                user.profile.age = age
+                user.profile.date_of_birth = dob
+            
+            # Use first name as display name
+            user.profile.display_name = form.cleaned_data["first_name"]
             user.profile.onboarding_step = 2
             user.profile.save()
             
@@ -314,7 +328,8 @@ def onboarding_account(request):
             # Log them in immediately
             login(request, user)
             
-            return redirect("accounts:onboarding_name")
+            # Skip name and age steps, go directly to gender
+            return redirect("accounts:onboarding_gender")
     else:
         form = OnboardingAccountForm()
     
@@ -707,14 +722,28 @@ def onboarding_summary(request):
     # Build summary data
     summary_items = []
     
-    if profile.display_name:
+    # Full name from User model
+    full_name = f"{request.user.first_name} {request.user.last_name}".strip()
+    if full_name:
         summary_items.append({
             "label": "Name",
-            "value": profile.display_name,
+            "value": full_name,
             "icon": "👤",
         })
     
-    if profile.age:
+    # DOB and age from profile
+    if profile.date_of_birth:
+        from datetime import date
+        dob_str = profile.date_of_birth.strftime("%B %d, %Y")
+        # Calculate current age
+        today = date.today()
+        age = today.year - profile.date_of_birth.year - ((today.month, today.day) < (profile.date_of_birth.month, profile.date_of_birth.day))
+        summary_items.append({
+            "label": "Date of Birth",
+            "value": f"{dob_str} ({age} years old)",
+            "icon": "🎂",
+        })
+    elif profile.age:
         summary_items.append({
             "label": "Age",
             "value": f"{profile.age} years old",
@@ -815,7 +844,7 @@ def onboarding_privacy(request):
 
 @login_required
 def onboarding_reminders(request):
-    """Step 12: Optional reminder setup."""
+    """Step 12: Optional reminder setup with timezone."""
     profile = request.user.profile
     
     # Import here to avoid circular imports
@@ -845,6 +874,11 @@ def onboarding_reminders(request):
                 if reminder_time:
                     reminder_prefs.time_of_day = reminder_time
             
+            # Save timezone preference
+            timezone_choice = form.cleaned_data.get("timezone")
+            if timezone_choice:
+                profile.default_timezone = timezone_choice
+            
             reminder_prefs.save()
             profile.onboarding_step = 12
             profile.save()
@@ -853,6 +887,7 @@ def onboarding_reminders(request):
         form = OnboardingReminderForm(initial={
             "enable_reminders": "yes" if reminder_prefs.enabled else "no",
             "reminder_time": reminder_prefs.time_of_day,
+            "timezone": profile.default_timezone or "America/New_York",
         })
     
     context = get_onboarding_context(11)
