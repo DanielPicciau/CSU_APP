@@ -404,6 +404,11 @@
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
             </a>
+            <button type="button" class="btn btn--ghost btn--sm delete-entry-btn" data-entry-id="{{ day_data.entry.id }}" data-date="{{ day_data.date|date:'M j, Y' }}" aria-label="Delete entry" style="color: var(--color-error-600);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+            </button>
         </div>
         {% else %}
         <!-- Missing Day Row -->
@@ -513,6 +518,29 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal" id="delete-modal" role="dialog" aria-labelledby="delete-modal-title" aria-modal="true">
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__content">
+        <div class="modal__header">
+            <h3 class="modal__title" id="delete-modal-title">Delete Entry?</h3>
+            <button class="modal__close" data-modal-close aria-label="Close">×</button>
+        </div>
+        <div class="modal__body">
+            <p class="text-secondary">
+                Are you sure you want to delete your entry for <strong id="delete-date-text"></strong>? This action cannot be undone.
+            </p>
+        </div>
+        <div class="modal__footer">
+            <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+            <form id="delete-form" method="post" action="" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--primary" style="background: var(--color-error-600);">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -530,6 +558,31 @@ document.addEventListener('DOMContentLoaded', function() {
             if ('vibrate' in navigator) {
                 navigator.vibrate(10);
             }
+        });
+    });
+    
+    // Delete button handling
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteForm = document.getElementById('delete-form');
+    const deleteDateText = document.getElementById('delete-date-text');
+    
+    document.querySelectorAll('.delete-entry-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const entryId = this.dataset.entryId;
+            const date = this.dataset.date;
+            
+            deleteDateText.textContent = date;
+            deleteForm.action = `/tracking/entry/${entryId}/delete/`;
+            deleteModal.classList.add('modal--open');
+        });
+    });
+    
+    // Close modal handlers
+    deleteModal.querySelectorAll('[data-modal-close]').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => {
+            deleteModal.classList.remove('modal--open');
         });
     });
 });
