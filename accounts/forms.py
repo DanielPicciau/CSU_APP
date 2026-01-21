@@ -487,16 +487,21 @@ class OnboardingReminderForm(forms.Form):
         ("no", "No thanks, I'll remember"),
     ]
     
-    # Common US timezone choices (most common first)
+    # Timezone choices - UK first (default), then common ones
     TIMEZONE_CHOICES = [
-        ("America/New_York", "Eastern Time (ET)"),
-        ("America/Chicago", "Central Time (CT)"),
-        ("America/Denver", "Mountain Time (MT)"),
-        ("America/Los_Angeles", "Pacific Time (PT)"),
-        ("America/Anchorage", "Alaska Time (AKT)"),
-        ("Pacific/Honolulu", "Hawaii Time (HT)"),
-        ("America/Phoenix", "Arizona (no DST)"),
-        ("America/Puerto_Rico", "Atlantic Time (AST)"),
+        ("Europe/London", "UK (GMT/BST)"),
+        ("Europe/Dublin", "Ireland (GMT/IST)"),
+        ("Europe/Paris", "Central Europe (CET/CEST)"),
+        ("Europe/Berlin", "Germany (CET/CEST)"),
+        ("America/New_York", "US Eastern (ET)"),
+        ("America/Chicago", "US Central (CT)"),
+        ("America/Denver", "US Mountain (MT)"),
+        ("America/Los_Angeles", "US Pacific (PT)"),
+        ("America/Anchorage", "Alaska (AKT)"),
+        ("Pacific/Honolulu", "Hawaii (HT)"),
+        ("Australia/Sydney", "Sydney (AEST/AEDT)"),
+        ("Asia/Tokyo", "Japan (JST)"),
+        ("Asia/Singapore", "Singapore (SGT)"),
     ]
     
     enable_reminders = forms.ChoiceField(
@@ -521,7 +526,7 @@ class OnboardingReminderForm(forms.Form):
     timezone = forms.ChoiceField(
         choices=TIMEZONE_CHOICES,
         required=False,
-        initial="America/New_York",
+        initial="Europe/London",
         widget=forms.Select(attrs={
             "class": "form-input form-input--onboarding",
         }),
