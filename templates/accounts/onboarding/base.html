@@ -1,11 +1,10 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en" data-theme="system">
+<html lang="en" data-theme="system" style="background-color: #171717; min-height: 100%;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171717">
     
     <!-- iOS PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,6 +22,28 @@
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     <link rel="stylesheet" href="{% static 'css/onboarding.css' %}">
     
+    <!-- Fix iOS safe area background -->
+    <style>
+        html, body {
+            background-color: #171717 !important;
+            min-height: 100%;
+            min-height: -webkit-fill-available;
+        }
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            body::after {
+                content: '';
+                display: block;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: env(safe-area-inset-bottom);
+                background-color: #171717;
+                z-index: 9999;
+            }
+        }
+    </style>
+    
     <script>
         // Apply theme immediately to prevent flash
         (function() {
@@ -31,7 +52,7 @@
         })();
     </script>
 </head>
-<body class="onboarding-body">
+<body class="onboarding-body" style="background-color: #171717;">
     <div class="onboarding-container">
         <!-- Progress Indicator -->
         {% if current_step > 1 %}

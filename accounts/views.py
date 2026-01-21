@@ -431,7 +431,7 @@ def onboarding_gender(request):
         {"value": "male", "label": "Male", "icon": "👨"},
         {"value": "female", "label": "Female", "icon": "👩"},
         {"value": "non_binary", "label": "Non-binary", "icon": "🧑"},
-        {"value": "prefer_not_to_say", "label": "Prefer not to say", "icon": ""},
+        {"value": "prefer_not_to_say", "label": "Prefer not to say", "icon": "🔒"},
     ]
     return render(request, "accounts/onboarding/gender.html", context)
 
