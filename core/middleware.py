@@ -74,6 +74,12 @@ class RateLimitMiddleware(MiddlewareMixin):
             if request.path.startswith(excluded):
                 return None
         
+        # Also skip if cron token is present in query string
+        if 'token=' in request.META.get('QUERY_STRING', ''):
+            cron_secret = getattr(settings, 'CRON_WEBHOOK_SECRET', '')
+            if cron_secret and cron_secret in request.META.get('QUERY_STRING', ''):
+                return None
+        
         # Determine rate limit for this path
         max_requests, window = self.LIMITS['default']
         for path_prefix, limits in self.LIMITS.items():
