@@ -217,53 +217,57 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDebugInfo();
 });
 
-async function updateDebugInfo() {
+function updateDebugInfo() {
     const debugEl = document.getElementById('debug-info');
+    if (!debugEl) return;
+    
     const info = [];
     
-    // Check standalone mode (PWA)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-        || window.navigator.standalone === true;
-    info.push(`PWA Mode: ${isStandalone ? '✅ YES' : '❌ NO (must open from Home Screen)'}`);
-    
-    // Check Service Worker support
-    const hasSW = 'serviceWorker' in navigator;
-    info.push(`Service Worker: ${hasSW ? '✅ Supported' : '❌ Not supported'}`);
-    
-    // Check Push API
-    const hasPush = 'PushManager' in window;
-    info.push(`Push API: ${hasPush ? '✅ Supported' : '❌ Not supported'}`);
-    
-    // Check Notification API
-    const hasNotif = 'Notification' in window;
-    info.push(`Notification API: ${hasNotif ? '✅ Supported' : '❌ Not supported'}`);
-    
-    // Check permission
-    if (hasNotif) {
-        info.push(`Permission: ${Notification.permission}`);
-    }
-    
-    // Check SW registration
-    if (hasSW) {
-        try {
-            const reg = await navigator.serviceWorker.getRegistration();
-            info.push(`SW Registered: ${reg ? '✅ YES' : '❌ NO'}`);
-            if (reg) {
-                info.push(`SW Scope: ${reg.scope}`);
-            }
-        } catch (e) {
-            info.push(`SW Error: ${e.message}`);
+    try {
+        // Check standalone mode (PWA)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+            || window.navigator.standalone === true;
+        info.push('PWA Mode: ' + (isStandalone ? '✅ YES' : '❌ NO (must open from Home Screen)'));
+        
+        // Check Service Worker support
+        const hasSW = 'serviceWorker' in navigator;
+        info.push('Service Worker: ' + (hasSW ? '✅ Supported' : '❌ Not supported'));
+        
+        // Check Push API
+        const hasPush = 'PushManager' in window;
+        info.push('Push API: ' + (hasPush ? '✅ Supported' : '❌ Not supported'));
+        
+        // Check Notification API
+        const hasNotif = 'Notification' in window;
+        info.push('Notification API: ' + (hasNotif ? '✅ Supported' : '❌ Not supported'));
+        
+        // Check permission
+        if (hasNotif) {
+            info.push('Permission: ' + Notification.permission);
         }
+        
+        // VAPID key
+        info.push('VAPID Key: ' + (VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.substring(0, 20) + '...' : '❌ MISSING'));
+        
+        // iOS version detection
+        const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        info.push('iOS Device: ' + (iOS ? 'YES' : 'NO'));
+        
+        // Check SW registration async
+        if (hasSW) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+                const swInfo = 'SW Registered: ' + (reg ? '✅ YES (scope: ' + reg.scope + ')' : '❌ NO');
+                debugEl.innerHTML += '<p>' + swInfo + '</p>';
+            }).catch(e => {
+                debugEl.innerHTML += '<p>SW Error: ' + e.message + '</p>';
+            });
+        }
+        
+    } catch (e) {
+        info.push('Error: ' + e.message);
     }
     
-    // VAPID key
-    info.push(`VAPID Key: ${VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.substring(0, 20) + '...' : '❌ MISSING'}`);
-    
-    // iOS version detection
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    info.push(`iOS Device: ${iOS ? 'YES' : 'NO'}`);
-    
-    debugEl.innerHTML = info.map(i => `<p>${i}</p>`).join('');
+    debugEl.innerHTML = info.map(i => '<p>' + i + '</p>').join('');
 }
 </script>
 {% endblock %}
