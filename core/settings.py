@@ -93,6 +93,12 @@ DATABASES = {
     "default": env.db("DATABASE_URL", default="postgres://csu_user:csu_password@localhost:5432/csu_tracker")
 }
 
+# SQLite-specific settings for better concurrency
+# This prevents "database is locked" errors on PythonAnywhere
+if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
+    DATABASES["default"].setdefault("OPTIONS", {})
+    DATABASES["default"]["OPTIONS"]["timeout"] = 30  # Wait up to 30 seconds for locks
+
 # Custom User Model
 AUTH_USER_MODEL = "accounts.User"
 
