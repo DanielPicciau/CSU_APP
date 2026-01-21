@@ -456,11 +456,11 @@ SECURITY_HEADERS = {
     'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
     
     # Content Security Policy
-    # Note: 'unsafe-inline' for styles is kept as Tailwind requires it
-    # For scripts, we allow specific CDN sources but remove unsafe-eval
+    # Note: 'unsafe-inline' is required for inline scripts and styles in templates
+    # For better security, consider implementing nonce-based CSP in the future
     'Content-Security-Policy': (
         "default-src 'self'; "
-        "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: https:; "
         "font-src 'self' data:; "
