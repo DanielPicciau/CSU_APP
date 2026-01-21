@@ -76,5 +76,31 @@ known-first-party = ["accounts", "tracking", "notifications", "core"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "core.settings"
-python_files = ["test_*.py", "*_test.py"]
-addopts = "-v --tb=short"
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow",
+    "security: marks tests as security-related",
+]
+
+[tool.coverage.run]
+source = ["accounts", "tracking", "notifications", "core"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "manage.py",
+    "conftest.py",
+]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+fail_under = 50
+show_missing = true

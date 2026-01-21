@@ -58,6 +58,11 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Security middleware
+    "core.middleware.SecurityHeadersMiddleware",
+    "core.middleware.RateLimitMiddleware",
+    "core.middleware.RequestValidationMiddleware",
+    "core.middleware.AuditMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -89,12 +94,14 @@ DATABASES = {
 # Custom User Model
 AUTH_USER_MODEL = "accounts.User"
 
-# Password validation
+# Password validation - Medical-grade requirements
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "core.validators.MedicalGradePasswordValidator"},
+    {"NAME": "core.validators.NoPersonalInfoValidator"},
 ]
 
 # Internationalization
@@ -112,7 +119,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Django REST Framework
+# Django REST Framework - Secure configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
@@ -121,16 +128,35 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/minute",
+        "user": "100/minute",
+    },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 30,
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ] if not DEBUG else [
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
 }
 
-# JWT Settings
+# JWT Settings - Secure configuration
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Shorter for security
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # Shorter for security
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
 }
 
 # CORS Settings
@@ -184,3 +210,98 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # Session settings for PWA
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 SESSION_COOKIE_SAMESITE = "Lax"
+
+# =============================================================================
+# SECURITY SETTINGS - Medical Grade
+# =============================================================================
+
+# HTTPS/SSL Settings (enforced in production)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# Cookie Security
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+
+# X-Frame-Options
+X_FRAME_OPTIONS = 'DENY'
+
+# Content Type Sniffing
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# XSS Filter
+SECURE_BROWSER_XSS_FILTER = True
+
+# Referrer Policy
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# =============================================================================
+# LOGGING CONFIGURATION - Audit Compliance
+# =============================================================================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'audit': {
+            'format': '[AUDIT] {asctime} {message}',
+            'style': '{',
+        },
+        'security': {
+            'format': '[SECURITY] {asctime} {levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'audit_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'audit.log',
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 10,
+            'formatter': 'audit',
+        },
+        'security_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 10,
+            'formatter': 'security',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'audit': {
+            'handlers': ['console', 'audit_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['console', 'security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
+
+# Create logs directory if it doesn't exist
+import os
+import sys
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# Testing flag
+TESTING = 'test' in sys.argv or 'pytest' in sys.modules
