@@ -1,79 +1,169 @@
 """
 Management command to send scheduled reminder notifications.
+
 Run this via PythonAnywhere Scheduled Tasks every hour.
+This command properly handles user timezones and prevents duplicate sends.
 """
 
+from datetime import datetime, time
+
+import pytz
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from datetime import timedelta
 
-from notifications.models import ReminderPreferences, PushSubscription
+from notifications.models import ReminderPreferences, ReminderLog, PushSubscription
 from notifications.push import send_push_notification
-from tracking.models import Entry
+from tracking.models import DailyEntry
 
 
 class Command(BaseCommand):
     help = 'Send reminder notifications to users who have not logged today'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show what would be sent without actually sending',
+        )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Ignore already-sent reminders (for testing)',
+        )
+
     def handle(self, *args, **options):
-        now = timezone.now()
-        current_hour = now.hour
-        current_minute = now.minute
-        today = now.date()
+        dry_run = options.get('dry_run', False)
+        force = options.get('force', False)
         
-        self.stdout.write(f"Running reminder check at {now}")
+        utc_now = timezone.now()
+        self.stdout.write(f"Running reminder check at {utc_now.isoformat()}")
         
-        # Find users with reminders enabled for this hour
-        # Allow 30 min window (e.g., if task runs at :00 or :30)
+        if dry_run:
+            self.stdout.write(self.style.WARNING("DRY RUN - no notifications will be sent"))
+        
+        # Get all users with reminders enabled who have active push subscriptions
         reminders = ReminderPreferences.objects.filter(
             enabled=True,
-            time_of_day__hour=current_hour,
-        )
+        ).select_related('user').prefetch_related('user__push_subscriptions')
         
         sent_count = 0
         skip_count = 0
+        error_count = 0
         
-        for reminder in reminders:
-            user = reminder.user
+        for pref in reminders:
+            user = pref.user
+            user_email = user.email
             
-            # Check if user already logged today
-            has_logged_today = Entry.objects.filter(
-                user=user,
-                date=today
-            ).exists()
-            
-            if has_logged_today:
-                self.stdout.write(f"  Skipping {user.username} - already logged today")
-                skip_count += 1
-                continue
-            
-            # Get user's active push subscriptions
-            subscriptions = PushSubscription.objects.filter(
-                user=user,
-                is_active=True
-            )
-            
-            if not subscriptions.exists():
-                self.stdout.write(f"  Skipping {user.username} - no active subscriptions")
-                skip_count += 1
-                continue
-            
-            # Send notification to all user's devices
-            for subscription in subscriptions:
+            try:
+                # Get current time in user's timezone
                 try:
-                    send_push_notification(
-                        subscription=subscription,
-                        title="CSU Tracker Reminder",
-                        body="Don't forget to log your CSU score today!",
-                        url="/"
-                    )
-                    sent_count += 1
-                    self.stdout.write(f"  Sent reminder to {user.username}")
-                except Exception as e:
+                    user_tz = pytz.timezone(pref.timezone)
+                except pytz.UnknownTimeZoneError:
+                    user_tz = pytz.timezone('UTC')
                     self.stdout.write(
-                        self.style.ERROR(f"  Failed to send to {user.username}: {e}")
+                        self.style.WARNING(f"  Unknown timezone '{pref.timezone}' for {user_email}, using UTC")
                     )
+                
+                user_now = utc_now.astimezone(user_tz)
+                user_today = user_now.date()
+                
+                # Build the reminder datetime for today in user's timezone
+                reminder_datetime = user_tz.localize(
+                    datetime.combine(user_today, pref.time_of_day)
+                )
+                
+                # Calculate how long ago the reminder time was
+                time_since_reminder = user_now - reminder_datetime
+                
+                # Check if reminder time has passed today, but within the last hour
+                # (since this task runs hourly, we catch reminders from the past hour)
+                if time_since_reminder.total_seconds() < 0:
+                    # Reminder time hasn't passed yet today
+                    continue
+                
+                if time_since_reminder.total_seconds() > 3600:
+                    # Reminder time was more than an hour ago - missed window
+                    # (will be caught by next day or was already sent)
+                    continue
+                
+                self.stdout.write(
+                    f"  Checking {user_email} (tz={pref.timezone}, local={user_now.strftime('%H:%M')}, "
+                    f"reminder={pref.time_of_day.strftime('%H:%M')}, passed {int(time_since_reminder.total_seconds() // 60)}m ago)"
+                )
+                
+                # Check if already reminded today (unless --force)
+                if not force and ReminderLog.objects.filter(user=user, date=user_today).exists():
+                    self.stdout.write(f"    Already reminded today, skipping")
+                    skip_count += 1
+                    continue
+                
+                # Check if user already logged today
+                if DailyEntry.objects.filter(user=user, date=user_today).exists():
+                    self.stdout.write(f"    Already logged today, skipping")
+                    skip_count += 1
+                    continue
+                
+                # Get user's active push subscriptions
+                subscriptions = PushSubscription.objects.filter(
+                    user=user,
+                    is_active=True
+                )
+                
+                if not subscriptions.exists():
+                    self.stdout.write(f"    No active subscriptions, skipping")
+                    skip_count += 1
+                    continue
+                
+                if dry_run:
+                    self.stdout.write(f"    Would send to {subscriptions.count()} device(s)")
+                    sent_count += 1
+                    continue
+                
+                # Send notification to all user's devices
+                success_count = 0
+                for subscription in subscriptions:
+                    try:
+                        result = send_push_notification(
+                            subscription=subscription,
+                            title="CSU Tracker Reminder",
+                            body="Time to log your CSU score for today!",
+                            url="/tracking/today/",
+                            tag=f"reminder-{user_today.isoformat()}"
+                        )
+                        if result:
+                            success_count += 1
+                    except Exception as e:
+                        self.stdout.write(
+                            self.style.ERROR(f"    Push failed: {e}")
+                        )
+                
+                # Log the reminder to prevent duplicates
+                ReminderLog.objects.create(
+                    user=user,
+                    date=user_today,
+                    success=success_count > 0,
+                    subscriptions_notified=success_count
+                )
+                
+                if success_count > 0:
+                    sent_count += 1
+                    self.stdout.write(
+                        self.style.SUCCESS(f"    Sent to {success_count} device(s)")
+                    )
+                else:
+                    error_count += 1
+                    self.stdout.write(
+                        self.style.ERROR(f"    Failed to send to any device")
+                    )
+                    
+            except Exception as e:
+                error_count += 1
+                self.stdout.write(
+                    self.style.ERROR(f"  Error processing {user_email}: {e}")
+                )
+                continue
         
+        self.stdout.write("")
         self.stdout.write(
-            self.style.SUCCESS(f"Done! Sent: {sent_count}, Skipped: {skip_count}")
+            self.style.SUCCESS(f"Done! Sent: {sent_count}, Skipped: {skip_count}, Errors: {error_count}")
         )
