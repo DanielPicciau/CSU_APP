@@ -1559,6 +1559,8 @@
 .onboarding-reminder-setting__input,
 .onboarding-reminder-setting__select {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   font-size: var(--text-lg);
   font-weight: var(--font-medium);
   color: var(--text-primary);
@@ -1567,6 +1569,8 @@
   border-radius: var(--radius-lg);
   background: var(--surface-primary);
   transition: all 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .onboarding-reminder-setting__input:focus,
