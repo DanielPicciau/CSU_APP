@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const date = this.dataset.date;
             
             deleteDateText.textContent = date;
-            deleteForm.action = `/tracking/entry/${entryId}/delete/`;
+            deleteForm.action = `/tracking/entry/delete/${entryId}/`;
             deleteModal.classList.add('modal--open');
         });
     });
