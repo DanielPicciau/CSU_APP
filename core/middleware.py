@@ -61,6 +61,7 @@ class RateLimitMiddleware(MiddlewareMixin):
         '/favicon.ico',
         '/manifest.json',
         '/sw.js',
+        '/notifications/cron/',  # External cron service
     ]
     
     def process_request(self, request: HttpRequest) -> HttpResponse | None:
