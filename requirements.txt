@@ -20,8 +20,7 @@ coverage==7.13.1
 cron_descriptor==2.0.6
 cryptography==46.0.3
 cssselect2==0.8.0
-# Editable install with no version control (csu-tracker==0.1.0)
--e /Users/admin/Downloads/CSU_APP
+-e git+https://github.com/DanielPicciau/CSU_APP.git@e8c059917d5717bfc747c7645d02fca311fe8b9c#egg=csu_tracker
 decorator==5.2.1
 defusedxml==0.7.1
 dj-database-url==3.1.0
@@ -64,6 +63,7 @@ pytest-cov==7.0.0
 pytest-django==4.11.1
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.1
 pytz==2025.2
 pywebpush==2.2.0
 redis==6.4.0
