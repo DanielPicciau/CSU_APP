@@ -13,4 +13,5 @@ urlpatterns = [
     path("unsubscribe/", api_views.PushSubscriptionDeleteView.as_view(), name="unsubscribe"),
     path("preferences/", api_views.ReminderPreferencesView.as_view(), name="preferences"),
     path("test/", api_views.TestNotificationView.as_view(), name="test"),
+    path("debug/", api_views.DebugNotificationView.as_view(), name="debug"),
 ]
