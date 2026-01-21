@@ -354,6 +354,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (permission === 'granted') {
             enabled.style.display = 'block';
             testCard.style.display = 'block';
+            // Auto-subscribe if permission granted but no subscription saved
+            ensureSubscription();
         } else if (permission === 'denied') {
             denied.style.display = 'block';
             testCard.style.display = 'none';
@@ -361,6 +363,41 @@ document.addEventListener('DOMContentLoaded', function() {
             // 'default' - can request
             prompt.style.display = 'block';
             testCard.style.display = 'none';
+        }
+    }
+    
+    // Ensure push subscription exists and is saved to server
+    async function ensureSubscription() {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            
+            if (!subscription) {
+                console.log('No subscription found, creating new one...');
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+            }
+            
+            // Always send to server (in case it wasn't saved before)
+            console.log('Sending subscription to server...');
+            const response = await fetch('/api/notifications/subscribe/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(subscription.toJSON())
+            });
+            
+            if (response.ok) {
+                console.log('Subscription saved successfully');
+            } else {
+                console.error('Failed to save subscription:', await response.text());
+            }
+        } catch (error) {
+            console.error('Subscription error:', error);
         }
     }
     
