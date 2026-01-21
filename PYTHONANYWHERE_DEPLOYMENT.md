@@ -80,11 +80,12 @@ ALLOWED_HOSTS=csu-webflareuk.pythonanywhere.com,www.csu-webflareuk.pythonanywher
 # Database (SQLite for PythonAnywhere free tier)
 DATABASE_URL=sqlite:////home/WebFlareUK/CSU_APP/db.sqlite3
 
-# Redis - NOT AVAILABLE on free PythonAnywhere
-# Leave these but notifications will run synchronously
-REDIS_URL=redis://localhost:6379/0
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
+# Redis Cloud Configuration
+# Get these from your Redis Cloud dashboard (cloud.redis.io)
+# Format: redis://default:<PASSWORD>@<HOST>:<PORT>
+REDIS_URL=redis://default:YOUR_PASSWORD@YOUR_HOST:YOUR_PORT
+CELERY_BROKER_URL=redis://default:YOUR_PASSWORD@YOUR_HOST:YOUR_PORT
+CELERY_RESULT_BACKEND=redis://default:YOUR_PASSWORD@YOUR_HOST:YOUR_PORT
 
 # Web Push VAPID Keys (KEEP THESE - they're already generated)
 VAPID_PRIVATE_KEY=RuODY2Iwc8WGs3EiioNVvJvUrrTrujlWZSbdnw4dw30
