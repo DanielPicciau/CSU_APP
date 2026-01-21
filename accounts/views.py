@@ -32,11 +32,13 @@ from .forms import (
 
 from .models import COMMON_MEDICATIONS, UserMedication
 
+from core.security import AccountLockout, get_client_ip
+
 User = get_user_model()
 
 
 class CustomLoginView(LoginView):
-    """Custom login view with styled form."""
+    """Custom login view with styled form and account lockout protection."""
 
     template_name = "accounts/login.html"
     authentication_form = CustomAuthenticationForm
@@ -44,6 +46,53 @@ class CustomLoginView(LoginView):
 
     def get_success_url(self):
         return reverse_lazy("home")
+    
+    def get_lockout_identifier(self, request):
+        """Get identifier for lockout tracking (IP + attempted email)."""
+        ip = get_client_ip(request)
+        email = request.POST.get('username', '')
+        return f"{ip}:{email.lower()}"
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Check for account lockout before processing."""
+        if request.method == 'POST':
+            identifier = self.get_lockout_identifier(request)
+            if AccountLockout.is_locked(identifier):
+                remaining = AccountLockout.get_lockout_remaining(identifier)
+                minutes = remaining // 60 + 1
+                messages.error(
+                    request,
+                    f"Too many failed login attempts. Please try again in {minutes} minute(s)."
+                )
+                return redirect('accounts:login')
+        return super().dispatch(request, *args, **kwargs)
+    
+    def form_valid(self, form):
+        """Reset lockout on successful login."""
+        identifier = self.get_lockout_identifier(self.request)
+        AccountLockout.reset_attempts(identifier)
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        """Track failed login attempt."""
+        identifier = self.get_lockout_identifier(self.request)
+        attempts, is_locked = AccountLockout.record_failed_attempt(identifier)
+        
+        if is_locked:
+            remaining = AccountLockout.get_lockout_remaining(identifier)
+            minutes = remaining // 60 + 1
+            messages.error(
+                self.request,
+                f"Too many failed login attempts. Account is locked for {minutes} minute(s)."
+            )
+        elif attempts >= 3:
+            remaining_attempts = AccountLockout.MAX_FAILED_ATTEMPTS - attempts
+            messages.warning(
+                self.request,
+                f"{remaining_attempts} login attempt(s) remaining before temporary lockout."
+            )
+        
+        return super().form_invalid(form)
 
 
 class CustomLogoutView(LogoutView):

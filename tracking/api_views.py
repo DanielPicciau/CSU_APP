@@ -119,7 +119,10 @@ class AdherenceMetricsView(APIView):
 
     def get(self, request):
         """Get adherence stats for specified period."""
-        days = int(request.query_params.get("days", 7))
+        try:
+            days = max(1, min(365, int(request.query_params.get("days", 7))))
+        except (ValueError, TypeError):
+            days = 7
         today = get_user_today(request.user)
         start_date = today - timedelta(days=days - 1)
         
@@ -156,7 +159,10 @@ class WeeklyStatsView(APIView):
 
     def get(self, request):
         """Get UAS7 scores for recent weeks."""
-        weeks = int(request.query_params.get("weeks", 4))
+        try:
+            weeks = max(1, min(52, int(request.query_params.get("weeks", 4))))
+        except (ValueError, TypeError):
+            weeks = 4
         today = get_user_today(request.user)
         
         results = []

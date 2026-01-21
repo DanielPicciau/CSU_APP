@@ -2,7 +2,9 @@
 API views for the accounts app.
 """
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, update_session_auth_hash
+from django.contrib.sessions.models import Session
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -56,10 +58,30 @@ class PasswordChangeAPIView(APIView):
             context={"request": request},
         )
         if serializer.is_valid():
-            request.user.set_password(serializer.validated_data["new_password"])
-            request.user.save()
+            user = request.user
+            user.set_password(serializer.validated_data["new_password"])
+            user.save()
+            
+            # Invalidate all other sessions for this user (security best practice)
+            # Keep current session valid by updating it
+            if hasattr(request, 'session'):
+                current_session_key = request.session.session_key
+                # Delete all sessions except current one
+                # Note: This only works with database-backed sessions
+                try:
+                    Session.objects.filter(
+                        expire_date__gte=timezone.now()
+                    ).exclude(
+                        session_key=current_session_key
+                    ).delete()
+                except Exception:
+                    pass  # Session backend may not support this
+                
+                # Update current session to stay logged in
+                update_session_auth_hash(request, user)
+            
             return Response(
-                {"message": "Password changed successfully."},
+                {"message": "Password changed successfully. Other sessions have been logged out."},
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -48,10 +48,12 @@ class DailyEntryForm(forms.ModelForm):
     
     notes = forms.CharField(
         required=False,
+        max_length=2000,  # Enforce server-side limit
         widget=forms.Textarea(attrs={
             "class": "form-input form-textarea",
             "rows": 3,
             "placeholder": "Any additional notes about today... (optional)",
+            "maxlength": "2000",  # Client-side limit
         }),
     )
     

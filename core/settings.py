@@ -88,9 +88,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-# Database
+# Database - credentials MUST be provided via environment
 DATABASES = {
-    "default": env.db("DATABASE_URL", default="postgres://csu_user:csu_password@localhost:5432/csu_tracker")
+    "default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3")
 }
 
 # Custom User Model
@@ -149,6 +149,8 @@ REST_FRAMEWORK = {
 }
 
 # JWT Settings - Secure configuration
+# Use a separate signing key from SECRET_KEY for defense in depth
+JWT_SIGNING_KEY = env("JWT_SIGNING_KEY", default=SECRET_KEY)
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Shorter for security
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # Shorter for security
@@ -156,7 +158,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
+    "SIGNING_KEY": JWT_SIGNING_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
 }
@@ -192,14 +194,22 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 # Redis Cloud uses SSL - detect and configure
+# Note: Use CERT_REQUIRED in production for proper security
+# CERT_NONE is only acceptable if the Redis provider doesn't support proper certificates
 if CELERY_BROKER_URL.startswith("rediss://"):
-    CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": "CERT_NONE"}
-    CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": "CERT_NONE"}
+    import ssl
+    CELERY_BROKER_USE_SSL = {
+        "ssl_cert_reqs": ssl.CERT_REQUIRED if not DEBUG else ssl.CERT_NONE,
+    }
+    CELERY_REDIS_BACKEND_USE_SSL = {
+        "ssl_cert_reqs": ssl.CERT_REQUIRED if not DEBUG else ssl.CERT_NONE,
+    }
 
 # Web Push VAPID Configuration
 VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
-VAPID_ADMIN_EMAIL = env("VAPID_ADMIN_EMAIL", default="admin@example.com")
+# IMPORTANT: Set a real email in production - required for VAPID
+VAPID_ADMIN_EMAIL = env("VAPID_ADMIN_EMAIL", default="")
 
 # Cron Webhook Secret (for external cron services like cron-job.org)
 CRON_WEBHOOK_SECRET = env("CRON_WEBHOOK_SECRET", default="")
@@ -213,7 +223,8 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # Session settings for PWA
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
+# Note: 7 days is more appropriate for medical-grade app with sensitive health data
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days (reduced from 30 for security)
 SESSION_COOKIE_SAMESITE = "Lax"
 
 # =============================================================================
@@ -227,10 +238,14 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    # Cross-Origin protection
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # Cookie Security
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+# CSRF token needs to be readable by JavaScript for AJAX requests
+# The token is still protected by SameSite and the actual validation
+CSRF_COOKIE_HTTPONLY = False  # Allow JS to read CSRF token for AJAX
 
 # X-Frame-Options
 X_FRAME_OPTIONS = 'DENY'

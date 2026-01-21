@@ -19,18 +19,12 @@ from datetime import datetime
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-print("=" * 50, flush=True)
-print("CSU Tracker Reminder Daemon", flush=True)
-print("Initializing Django...", flush=True)
-
 # Setup Django
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 import django
 django.setup()
-
-print("Django initialized successfully", flush=True)
 
 import pytz
 from django.utils import timezone
@@ -39,9 +33,7 @@ from notifications.models import ReminderPreferences, ReminderLog, PushSubscript
 from notifications.push import send_push_notification
 from tracking.models import DailyEntry
 
-print("All imports complete", flush=True)
-
-# Configure logging
+# Configure logging - use logger instead of print statements
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -69,10 +61,12 @@ def process_reminders():
         enabled=True,
     ).select_related('user')
     
-    print(f"  Found {preferences.count()} user(s) with reminders enabled", flush=True)
+    logger.debug(f"Found {preferences.count()} user(s) with reminders enabled")
     
     for pref in preferences:
         user = pref.user
+        # Use anonymized user ID for logging (never log email in production)
+        user_id = f"user_{user.id}"
         
         try:
             # Get current time in user's timezone
@@ -92,27 +86,22 @@ def process_reminders():
             # Calculate time since reminder
             time_since = (user_now - reminder_datetime).total_seconds()
             
-            print(f"  User: {user.email}", flush=True)
-            print(f"    Reminder time: {pref.time_of_day} ({pref.timezone})", flush=True)
-            print(f"    Current time:  {user_now.strftime('%H:%M:%S')}", flush=True)
-            print(f"    Time since:    {int(time_since)}s", flush=True)
-            
             # Check if within the window (just passed, not too long ago)
             if time_since < 0:
-                print(f"    SKIP: Reminder time not yet reached", flush=True)
+                logger.debug(f"{user_id}: Reminder time not yet reached")
                 continue
             if time_since > REMINDER_WINDOW:
-                print(f"    SKIP: Outside window (>{REMINDER_WINDOW}s ago)", flush=True)
+                logger.debug(f"{user_id}: Outside window (>{REMINDER_WINDOW}s ago)")
                 continue
             
             # Check if already reminded today
             if ReminderLog.objects.filter(user=user, date=user_today).exists():
-                print(f"    SKIP: Already reminded today", flush=True)
+                logger.debug(f"{user_id}: Already reminded today")
                 continue
             
             # Check if already logged today
             if DailyEntry.objects.filter(user=user, date=user_today).exists():
-                print(f"    SKIP: Already logged today", flush=True)
+                logger.debug(f"{user_id}: Already logged today")
                 continue
             
             # Get active subscriptions
@@ -122,10 +111,10 @@ def process_reminders():
             )
             
             if not subscriptions.exists():
-                print(f"    SKIP: No active push subscriptions", flush=True)
+                logger.debug(f"{user_id}: No active push subscriptions")
                 continue
             
-            print(f"    SENDING to {subscriptions.count()} device(s)...", flush=True)
+            logger.info(f"{user_id}: Sending to {subscriptions.count()} device(s)")
             
             # Send notifications
             success_count = 0
@@ -138,11 +127,10 @@ def process_reminders():
                         url="/tracking/today/",
                         tag=f"reminder-{user_today.isoformat()}"
                     )
-                    print(f"    Push result: {result}", flush=True)
                     if result:
                         success_count += 1
                 except Exception as e:
-                    print(f"    Push ERROR: {e}", flush=True)
+                    logger.error(f"{user_id}: Push error: {type(e).__name__}")
             
             # Log the reminder
             ReminderLog.objects.create(
@@ -154,33 +142,32 @@ def process_reminders():
             
             if success_count > 0:
                 sent_count += 1
-                logger.info(f"✓ Sent reminder to {user.email} ({success_count} devices)")
+                logger.info(f"{user_id}: Sent reminder ({success_count} devices)")
             
         except Exception as e:
-            logger.error(f"Error processing {user.email}: {e}")
+            logger.error(f"{user_id}: Error processing: {type(e).__name__}")
     
     return sent_count
 
 
 def main():
     """Main loop - runs forever, checking every minute."""
-    print("=" * 50, flush=True)
-    print("CSU Tracker Reminder Daemon Started", flush=True)
-    print(f"Checking every {CHECK_INTERVAL} seconds", flush=True)
-    print(f"Reminder window: {REMINDER_WINDOW} seconds", flush=True)
-    print("=" * 50, flush=True)
+    logger.info("=" * 50)
+    logger.info("CSU Tracker Reminder Daemon Started")
+    logger.info(f"Checking every {CHECK_INTERVAL} seconds")
+    logger.info(f"Reminder window: {REMINDER_WINDOW} seconds")
+    logger.info("=" * 50)
     
     while True:
         try:
-            now = datetime.now()
-            print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Checking reminders...", flush=True)
+            logger.debug("Checking reminders...")
             
             sent = process_reminders()
             if sent > 0:
-                print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Sent {sent} reminder(s)", flush=True)
+                logger.info(f"Sent {sent} reminder(s)")
             
         except Exception as e:
-            print(f"Error in main loop: {e}", flush=True)
+            logger.error(f"Error in main loop: {type(e).__name__}: {e}")
             # Don't crash, just log and continue
         
         # Sleep until next check

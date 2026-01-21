@@ -17,6 +17,82 @@ logger = logging.getLogger('security')
 
 
 # =============================================================================
+# ACCOUNT LOCKOUT
+# =============================================================================
+
+class AccountLockout:
+    """
+    Account lockout mechanism to prevent brute force attacks.
+    
+    After MAX_FAILED_ATTEMPTS failed login attempts, the account is locked
+    for LOCKOUT_DURATION seconds.
+    """
+    
+    MAX_FAILED_ATTEMPTS = 5
+    LOCKOUT_DURATION = 900  # 15 minutes in seconds
+    
+    @classmethod
+    def get_lockout_key(cls, identifier: str) -> str:
+        """Get cache key for lockout tracking."""
+        return f"account_lockout:{identifier}"
+    
+    @classmethod
+    def get_attempts_key(cls, identifier: str) -> str:
+        """Get cache key for failed attempts counter."""
+        return f"failed_attempts:{identifier}"
+    
+    @classmethod
+    def is_locked(cls, identifier: str) -> bool:
+        """Check if an identifier (email/IP) is currently locked out."""
+        lockout_key = cls.get_lockout_key(identifier)
+        return cache.get(lockout_key) is not None
+    
+    @classmethod
+    def get_lockout_remaining(cls, identifier: str) -> int:
+        """Get remaining lockout time in seconds."""
+        lockout_key = cls.get_lockout_key(identifier)
+        lockout_time = cache.get(lockout_key)
+        if lockout_time:
+            remaining = cls.LOCKOUT_DURATION - (timezone.now().timestamp() - lockout_time)
+            return max(0, int(remaining))
+        return 0
+    
+    @classmethod
+    def record_failed_attempt(cls, identifier: str) -> tuple[int, bool]:
+        """
+        Record a failed login attempt.
+        
+        Returns:
+            tuple: (attempts_count, is_now_locked)
+        """
+        attempts_key = cls.get_attempts_key(identifier)
+        lockout_key = cls.get_lockout_key(identifier)
+        
+        # Increment attempts
+        attempts = cache.get(attempts_key, 0) + 1
+        cache.set(attempts_key, attempts, cls.LOCKOUT_DURATION)
+        
+        # Check if should lock
+        if attempts >= cls.MAX_FAILED_ATTEMPTS:
+            cache.set(lockout_key, timezone.now().timestamp(), cls.LOCKOUT_DURATION)
+            logger.warning(
+                f"Account locked due to {attempts} failed attempts",
+                extra={'identifier': hashlib.sha256(identifier.encode()).hexdigest()[:16]}
+            )
+            return attempts, True
+        
+        return attempts, False
+    
+    @classmethod
+    def reset_attempts(cls, identifier: str) -> None:
+        """Reset failed attempts after successful login."""
+        attempts_key = cls.get_attempts_key(identifier)
+        lockout_key = cls.get_lockout_key(identifier)
+        cache.delete(attempts_key)
+        cache.delete(lockout_key)
+
+
+# =============================================================================
 # RATE LIMITING
 # =============================================================================
 
@@ -26,13 +102,32 @@ class RateLimitExceeded(Exception):
 
 
 def get_client_ip(request) -> str:
-    """Extract client IP from request, handling proxies."""
+    """
+    Extract client IP from request, handling proxies securely.
+    
+    Security Note: X-Forwarded-For can be spoofed by clients.
+    In production, configure your proxy/load balancer to:
+    1. Strip any existing X-Forwarded-For from client
+    2. Add the real client IP as X-Forwarded-For
+    
+    For PythonAnywhere/Railway/Heroku, the first IP in X-Forwarded-For
+    is typically set by the platform's load balancer and is trustworthy.
+    """
+    # Check if we're behind a trusted proxy (configured in Django settings)
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
-    else:
-        ip = request.META.get('REMOTE_ADDR', 'unknown')
-    return ip
+        # Take the rightmost IP that isn't a known private/internal IP
+        # This is the most recently added by a trusted proxy
+        # For most PaaS platforms, take the first (leftmost) IP
+        ips = [ip.strip() for ip in x_forwarded_for.split(',')]
+        # Filter out obviously invalid IPs
+        for ip in ips:
+            # Basic validation - skip empty or localhost
+            if ip and ip not in ('127.0.0.1', 'localhost', '::1', ''):
+                return ip
+    
+    # Fallback to REMOTE_ADDR
+    return request.META.get('REMOTE_ADDR', 'unknown')
 
 
 def rate_limit(key_prefix: str, max_requests: int, window_seconds: int):
@@ -329,9 +424,11 @@ SECURITY_HEADERS = {
     'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
     
     # Content Security Policy
+    # Note: 'unsafe-inline' for styles is kept as Tailwind requires it
+    # For scripts, we allow specific CDN sources but remove unsafe-eval
     'Content-Security-Policy': (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; "
+        "script-src 'self' https://cdn.tailwindcss.com https://unpkg.com; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: https:; "
         "font-src 'self' data:; "

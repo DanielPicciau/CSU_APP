@@ -41,16 +41,21 @@ class RateLimitMiddleware(MiddlewareMixin):
     Global rate limiting middleware.
     
     Different limits for different endpoints:
+    - Admin login: 3 attempts per minute (strict)
     - Login: 5 attempts per minute
+    - Registration: 3 attempts per minute
     - API: 100 requests per minute
     - General: 200 requests per minute
     """
     
     # Rate limit configurations (max_requests, window_seconds)
     LIMITS = {
+        '/admin/login/': (3, 60),  # Strict limit for admin
+        '/admin/': (20, 60),  # General admin access
         '/accounts/login/': (5, 60),
         '/api/accounts/register/': (3, 60),
         '/api/accounts/token/': (10, 60),
+        '/api/accounts/password/': (3, 60),  # Password change
         '/api/': (100, 60),
         'default': (200, 60),
     }
@@ -61,7 +66,7 @@ class RateLimitMiddleware(MiddlewareMixin):
         '/favicon.ico',
         '/manifest.json',
         '/sw.js',
-        '/notifications/cron/',  # External cron service
+        '/notifications/cron/',  # External cron service (has its own auth)
     ]
     
     def process_request(self, request: HttpRequest) -> HttpResponse | None:

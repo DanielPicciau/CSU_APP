@@ -4,6 +4,7 @@ Views for the notifications app (Django templates).
 
 import hashlib
 import hmac
+import secrets
 from datetime import datetime
 
 import pytz
@@ -13,13 +14,51 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .forms import ReminderPreferencesForm
 from .models import ReminderPreferences, PushSubscription, ReminderLog
 from .push import send_push_notification
 from tracking.models import DailyEntry
+
+
+def verify_cron_token(request) -> bool:
+    """
+    Securely verify the cron webhook token.
+    
+    Accepts token via:
+    1. Authorization header (preferred): "Bearer <token>"
+    2. X-Cron-Token header (alternative)
+    3. Query string (legacy, discouraged)
+    
+    Uses constant-time comparison to prevent timing attacks.
+    """
+    cron_secret = getattr(settings, 'CRON_WEBHOOK_SECRET', None)
+    if not cron_secret:
+        return False
+    
+    # Try Authorization header first (preferred)
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+    else:
+        # Try X-Cron-Token header
+        token = request.headers.get('X-Cron-Token', '')
+    
+    # Fallback to query string (legacy support, log warning)
+    if not token:
+        token = request.GET.get('token', '')
+        if token:
+            import logging
+            logging.getLogger('security').warning(
+                'Cron token passed via query string - migrate to Authorization header'
+            )
+    
+    if not token:
+        return False
+    
+    # Constant-time comparison to prevent timing attacks
+    return secrets.compare_digest(token, cron_secret)
 
 
 @login_required
@@ -92,22 +131,19 @@ def test_notification_view(request):
     return JsonResponse({"error": "POST required"}, status=405)
 
 
-# Webhook secret for cron service authentication
-# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
-CRON_WEBHOOK_SECRET = getattr(settings, 'CRON_WEBHOOK_SECRET', None)
-
 # Window for sending reminders (in seconds) - reduced to prevent overlap
 REMINDER_WINDOW = 60  # 1 minute (cron runs every minute)
 
 
-@csrf_exempt
 @require_http_methods(["GET", "POST"])
 def cron_send_reminders(request):
     """
     Webhook endpoint for external cron service to trigger reminders.
     
-    Call this every minute from cron-job.org or similar.
-    URL: https://yoursite.pythonanywhere.com/notifications/cron/send-reminders/?token=YOUR_SECRET
+    Authentication: Use Authorization header with Bearer token (preferred)
+    Example: Authorization: Bearer YOUR_SECRET
+    
+    Alternative: X-Cron-Token header or ?token= query param (legacy)
     
     Add ?force=1 to bypass all checks and send immediately (for testing).
     
@@ -116,28 +152,21 @@ def cron_send_reminders(request):
     2. Checks ReminderPreferences.last_reminder_date as a secondary guard
     3. Updates both after sending to prevent duplicates
     """
-    # Verify the secret token
-    token = request.GET.get('token') or request.headers.get('X-Cron-Token')
+    # Verify the secret token using secure comparison
+    if not verify_cron_token(request):
+        return JsonResponse({"error": "Unauthorized"}, status=401)
+    
     force = request.GET.get('force') == '1'
-    
-    if not CRON_WEBHOOK_SECRET:
-        return JsonResponse({
-            "error": "CRON_WEBHOOK_SECRET not configured in settings"
-        }, status=500)
-    
-    if not token or token != CRON_WEBHOOK_SECRET:
-        return JsonResponse({"error": "Invalid token"}, status=403)
     
     # Process reminders
     utc_now = timezone.now()
     sent_count = 0
     checked_count = 0
+    skipped_reasons = {}  # Aggregate skip reasons for privacy
     
     preferences = ReminderPreferences.objects.filter(
         enabled=True,
     ).select_related('user')
-    
-    results = []
     
     for pref in preferences:
         user = pref.user
@@ -161,48 +190,33 @@ def cron_send_reminders(request):
             # Calculate time since reminder
             time_since = (user_now - reminder_datetime).total_seconds()
             
-            # Debug info for this user
-            debug_info = {
-                "user": user.email,
-                "reminder_time": str(pref.time_of_day),
-                "timezone": pref.timezone,
-                "current_time": user_now.strftime("%H:%M:%S"),
-                "time_since_seconds": int(time_since),
-                "force": force,
-            }
-            
             # Skip checks if force mode
             if not force:
                 # PRIMARY GUARD: Check if already reminded today via preferences field
                 # This is the most reliable check since it's on the same record we're processing
                 if pref.last_reminder_date == user_today:
-                    debug_info["skip_reason"] = "already_reminded_today_pref_guard"
-                    results.append(debug_info)
+                    skipped_reasons["already_reminded"] = skipped_reasons.get("already_reminded", 0) + 1
                     continue
                 
                 # Check if within the window (just passed, not too long ago)
                 if time_since < 0:
-                    debug_info["skip_reason"] = "reminder_time_not_yet"
-                    results.append(debug_info)
+                    skipped_reasons["not_time_yet"] = skipped_reasons.get("not_time_yet", 0) + 1
                     continue
                 if time_since > REMINDER_WINDOW:
-                    debug_info["skip_reason"] = f"outside_window_{REMINDER_WINDOW}s"
-                    results.append(debug_info)
+                    skipped_reasons["outside_window"] = skipped_reasons.get("outside_window", 0) + 1
                     continue
                 
                 # SECONDARY GUARD: Check ReminderLog (for redundancy)
                 if ReminderLog.objects.filter(user=user, date=user_today).exists():
-                    debug_info["skip_reason"] = "already_reminded_today_log"
+                    skipped_reasons["already_logged_reminder"] = skipped_reasons.get("already_logged_reminder", 0) + 1
                     # Also update pref guard to stay in sync
                     pref.last_reminder_date = user_today
                     pref.save(update_fields=['last_reminder_date'])
-                    results.append(debug_info)
                     continue
                 
                 # Check if already logged today (no need to remind)
                 if DailyEntry.objects.filter(user=user, date=user_today).exists():
-                    debug_info["skip_reason"] = "already_logged_today"
-                    results.append(debug_info)
+                    skipped_reasons["already_logged_entry"] = skipped_reasons.get("already_logged_entry", 0) + 1
                     continue
             
             # Get active subscriptions
@@ -212,11 +226,8 @@ def cron_send_reminders(request):
             )
             
             if not subscriptions.exists():
-                debug_info["skip_reason"] = "no_active_subscriptions"
-                results.append(debug_info)
+                skipped_reasons["no_subscriptions"] = skipped_reasons.get("no_subscriptions", 0) + 1
                 continue
-            
-            debug_info["subscriptions"] = subscriptions.count()
             
             # Send notifications
             success_count = 0
@@ -248,19 +259,18 @@ def cron_send_reminders(request):
             
             if success_count > 0:
                 sent_count += 1
-                debug_info["status"] = "sent"
-                results.append(debug_info)
-            else:
-                debug_info["status"] = "failed_to_send"
-                results.append(debug_info)
             
         except Exception as e:
-            results.append({"user": user.email, "error": str(e)})
+            # Log error without exposing user info in response
+            import logging
+            logging.getLogger('notifications').error(f"Reminder error for user {user.id}: {e}")
+            skipped_reasons["error"] = skipped_reasons.get("error", 0) + 1
     
+    # Return anonymized summary (no user emails or PII)
     return JsonResponse({
         "status": "ok",
         "timestamp": utc_now.isoformat(),
         "checked": checked_count,
         "sent": sent_count,
-        "details": results
+        "skipped": skipped_reasons,
     })

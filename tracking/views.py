@@ -206,7 +206,10 @@ def history_view(request):
     today = get_user_today(request.user)
     
     # Get filter parameters - default to 10 days for the new grid view
-    days = int(request.GET.get("days", 10))
+    try:
+        days = max(1, min(365, int(request.GET.get("days", 10))))
+    except (ValueError, TypeError):
+        days = 10
     view = request.GET.get("view", "grid")  # Default to grid view
     show = request.GET.get("show", "all")
     min_score = request.GET.get("min_score")
@@ -225,9 +228,17 @@ def history_view(request):
     
     # Apply score filters
     if min_score:
-        entries = [e for e in entries if e.score >= int(min_score)]
+        try:
+            min_val = int(min_score)
+            entries = [e for e in entries if e.score >= min_val]
+        except (ValueError, TypeError):
+            pass
     if max_score:
-        entries = [e for e in entries if e.score <= int(max_score)]
+        try:
+            max_val = int(max_score)
+            entries = [e for e in entries if e.score <= max_val]
+        except (ValueError, TypeError):
+            pass
     if antihistamine:
         entries = [e for e in entries if e.took_antihistamine]
     
@@ -352,8 +363,11 @@ def insights_view(request):
     """View insights and analytics."""
     today = get_user_today(request.user)
     
-    # Get period parameter
-    period = int(request.GET.get("period", 30))
+    # Get period parameter with safe parsing
+    try:
+        period = max(1, min(365, int(request.GET.get("period", 30))))
+    except (ValueError, TypeError):
+        period = 30
     start_date = today - timedelta(days=period - 1)
     
     # Get entries for period
@@ -538,7 +552,10 @@ def delete_entry_by_id_view(request, entry_id):
 def chart_data_view(request):
     """Return chart data as JSON for HTMX updates."""
     today = get_user_today(request.user)
-    days = int(request.GET.get("days", 30))
+    try:
+        days = max(1, min(365, int(request.GET.get("days", 30))))
+    except (ValueError, TypeError):
+        days = 30
     start_date = today - timedelta(days=days - 1)
     
     entries = DailyEntry.objects.filter(

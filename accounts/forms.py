@@ -215,7 +215,8 @@ class OnboardingAccountForm(forms.Form):
             "autocomplete": "new-password",
         }),
         label="Password",
-        min_length=8,
+        min_length=12,  # Match AUTH_PASSWORD_VALIDATORS requirement
+        help_text="Must be at least 12 characters with uppercase, lowercase, number, and special character.",
     )
 
     def clean_email(self):
