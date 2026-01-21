@@ -31,17 +31,24 @@ class PushSubscriptionCreateView(APIView):
 
     def post(self, request):
         """Create or update a push subscription."""
-        serializer = PushSubscriptionCreateSerializer(
-            data=request.data,
-            context={"request": request},
-        )
-        if serializer.is_valid():
-            subscription = serializer.save()
-            return Response(
-                PushSubscriptionSerializer(subscription).data,
-                status=status.HTTP_201_CREATED,
+        try:
+            serializer = PushSubscriptionCreateSerializer(
+                data=request.data,
+                context={"request": request},
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if serializer.is_valid():
+                subscription = serializer.save()
+                return Response(
+                    PushSubscriptionSerializer(subscription).data,
+                    status=status.HTTP_201_CREATED,
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import traceback
+            return Response(
+                {"error": str(e), "traceback": traceback.format_exc()},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class PushSubscriptionDeleteView(APIView):
