@@ -149,9 +149,9 @@
     <script>
         const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
         
-        // Register service worker
+        // Register service worker from static files
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
                 .then(reg => {
                     console.log('Service Worker registered');
                 })
