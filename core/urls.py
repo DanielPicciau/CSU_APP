@@ -29,6 +29,10 @@ urlpatterns = [
         template_name="pwa/manifest.json",
         content_type="application/json"
     ), name="manifest"),
+    path("sw.js", TemplateView.as_view(
+        template_name="pwa/sw.js",
+        content_type="application/javascript"
+    ), name="service_worker"),
     path("offline/", TemplateView.as_view(template_name="pwa/offline.html"), name="offline"),
     
     # Home
