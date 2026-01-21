@@ -1,0 +1,95 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Medication Details - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        A few more details
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        This helps us show treatment context on your symptom charts. Everything here is optional.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="medication-details-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        {% if has_antihistamine %}
+        <!-- Antihistamine Details -->
+        <div class="onboarding-details-section">
+            <div class="onboarding-details-section__header">
+                <span class="onboarding-details-section__icon">💊</span>
+                <h2 class="onboarding-details-section__title">Antihistamine details</h2>
+            </div>
+            
+            <p class="onboarding-details-section__note">
+                If you take the same dose daily, you can enter it here. Otherwise, leave blank.
+            </p>
+            
+            <div class="onboarding-inline-fields">
+                <div class="onboarding-inline-field">
+                    <label class="onboarding-inline-label">Dose</label>
+                    <div class="onboarding-inline-inputs">
+                        {{ ah_form.dose_amount }}
+                        {{ ah_form.dose_unit }}
+                    </div>
+                </div>
+                
+                <div class="onboarding-inline-field">
+                    <label class="onboarding-inline-label">Times per day</label>
+                    {{ ah_form.frequency_per_day }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if has_biologic %}
+        <!-- Biologic/Injection Details -->
+        <div class="onboarding-details-section">
+            <div class="onboarding-details-section__header">
+                <span class="onboarding-details-section__icon">💉</span>
+                <h2 class="onboarding-details-section__title">Injection schedule</h2>
+            </div>
+            
+            <p class="onboarding-details-section__note">
+                We'll use this for trend visualization only—to help you see patterns relative to your treatment cycle.
+            </p>
+            
+            <div class="onboarding-form__field">
+                <label class="onboarding-label">When was your last injection?</label>
+                {{ inj_form.last_injection_date }}
+            </div>
+            
+            <div class="onboarding-form__field">
+                <label class="onboarding-label">How often do you usually receive it?</label>
+                {{ inj_form.injection_frequency }}
+            </div>
+        </div>
+        {% endif %}
+    </form>
+    
+    <p class="onboarding-disclaimer onboarding-disclaimer--subtle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Your medication data is stored securely and never shared. We don't provide dosing advice.
+    </p>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="medication-details-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('medication-details-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+    <button type="button" onclick="document.getElementById('form-action').value='skip'; document.getElementById('medication-details-form').submit();" class="btn btn--ghost">
+        Skip
+    </button>
+</div>
+{% endblock %}

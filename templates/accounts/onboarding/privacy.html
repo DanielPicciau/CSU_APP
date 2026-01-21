@@ -1,0 +1,125 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Privacy - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        Your privacy matters
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        We believe you should know exactly what happens with your data.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="privacy-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        <!-- Data Transparency Section -->
+        <div class="onboarding-privacy-info">
+            <h2 class="onboarding-privacy-info__title">What we do with your data</h2>
+            
+            <div class="onboarding-privacy-point">
+                <div class="onboarding-privacy-point__icon onboarding-privacy-point__icon--yes">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="onboarding-privacy-point__text">
+                    <strong>Stored securely</strong> on encrypted servers
+                </div>
+            </div>
+            
+            <div class="onboarding-privacy-point">
+                <div class="onboarding-privacy-point__icon onboarding-privacy-point__icon--yes">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="onboarding-privacy-point__text">
+                    <strong>Used only</strong> to show you your patterns
+                </div>
+            </div>
+            
+            <div class="onboarding-privacy-point">
+                <div class="onboarding-privacy-point__icon onboarding-privacy-point__icon--yes">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="onboarding-privacy-point__text">
+                    <strong>Deletable anytime</strong> in your account settings
+                </div>
+            </div>
+            
+            <div class="onboarding-privacy-point">
+                <div class="onboarding-privacy-point__icon onboarding-privacy-point__icon--no">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </div>
+                <div class="onboarding-privacy-point__text">
+                    <strong>Never sold</strong> to third parties
+                </div>
+            </div>
+            
+            <div class="onboarding-privacy-point">
+                <div class="onboarding-privacy-point__icon onboarding-privacy-point__icon--no">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </div>
+                <div class="onboarding-privacy-point__text">
+                    <strong>Never shared</strong> with advertisers
+                </div>
+            </div>
+        </div>
+        
+        <!-- Consent Checkboxes -->
+        <div class="onboarding-privacy-consent">
+            <label class="onboarding-checkbox">
+                <input type="checkbox" name="privacy_consent" value="true" 
+                       {% if form.privacy_consent.value %}checked{% endif %}
+                       class="onboarding-checkbox__input" required>
+                <span class="onboarding-checkbox__checkmark"></span>
+                <span class="onboarding-checkbox__text">
+                    I understand and agree to the <a href="{% url 'accounts:privacy' %}" target="_blank">Privacy Policy</a>
+                    <span class="onboarding-checkbox__required">*</span>
+                </span>
+            </label>
+            
+            <label class="onboarding-checkbox">
+                <input type="checkbox" name="allow_analytics" value="true"
+                       {% if form.allow_analytics.value %}checked{% endif %}
+                       class="onboarding-checkbox__input">
+                <span class="onboarding-checkbox__checkmark"></span>
+                <span class="onboarding-checkbox__text">
+                    Help improve the app with anonymous usage analytics
+                    <span class="onboarding-checkbox__optional">(optional)</span>
+                </span>
+            </label>
+        </div>
+        
+        {% if form.errors %}
+        <div class="onboarding-error">
+            Please accept the Privacy Policy to continue.
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="privacy-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('privacy-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+</div>
+{% endblock %}

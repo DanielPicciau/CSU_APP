@@ -52,9 +52,67 @@ class User(AbstractUser):
 
 
 # Score scale choices
+# Score scale choices
 SCORE_SCALE_CHOICES = [
     ("0-6", "Combined UAS (0-6)"),
     ("separate", "Separate Itch & Hive (0-3 each)"),
+]
+
+# Gender choices for onboarding
+GENDER_CHOICES = [
+    ("male", "Male"),
+    ("female", "Female"),
+    ("non_binary", "Non-binary"),
+    ("prefer_not_to_say", "Prefer not to say"),
+]
+
+# CSU diagnosis status choices
+CSU_DIAGNOSIS_CHOICES = [
+    ("yes", "Yes"),
+    ("no", "No"),
+    ("unsure", "Unsure"),
+]
+
+# Medication status choices
+MEDICATION_STATUS_CHOICES = [
+    ("yes", "Yes"),
+    ("no", "No"),
+    ("prefer_not_to_say", "Prefer not to say"),
+]
+
+# Medication type choices
+MEDICATION_TYPE_CHOICES = [
+    ("antihistamine", "Antihistamine"),
+    ("biologic", "Biologic / Injectable"),
+    ("other", "Other"),
+]
+
+# Common CSU medications (curated list)
+# Note: This is informational only, not medical advice
+COMMON_MEDICATIONS = [
+    # Second-generation antihistamines (most common for CSU)
+    ("fexofenadine", "Fexofenadine (Allegra)", "antihistamine"),
+    ("cetirizine", "Cetirizine (Zyrtec)", "antihistamine"),
+    ("loratadine", "Loratadine (Claritin)", "antihistamine"),
+    ("desloratadine", "Desloratadine (Clarinex)", "antihistamine"),
+    ("levocetirizine", "Levocetirizine (Xyzal)", "antihistamine"),
+    ("bilastine", "Bilastine (Blexten)", "antihistamine"),
+    ("rupatadine", "Rupatadine (Rupafin)", "antihistamine"),
+    # Biologics
+    ("omalizumab", "Omalizumab (Xolair)", "biologic"),
+    ("ligelizumab", "Ligelizumab", "biologic"),
+    # Other
+    ("other", "Other medication", "other"),
+]
+
+# Injection frequency choices
+INJECTION_FREQUENCY_CHOICES = [
+    ("every_2_weeks", "Every 2 weeks"),
+    ("every_4_weeks", "Every 4 weeks"),
+    ("every_6_weeks", "Every 6 weeks"),
+    ("every_8_weeks", "Every 8 weeks"),
+    ("as_needed", "As needed"),
+    ("other", "Other schedule"),
 ]
 
 
@@ -73,6 +131,48 @@ class Profile(models.Model):
         blank=True,
         default="",
         help_text="Optional name for personalization",
+    )
+    
+    # Onboarding fields
+    age = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="User's age (optional)",
+    )
+    
+    gender = models.CharField(
+        max_length=20,
+        choices=GENDER_CHOICES,
+        blank=True,
+        default="",
+        help_text="How user describes their gender",
+    )
+    
+    csu_diagnosis = models.CharField(
+        max_length=10,
+        choices=CSU_DIAGNOSIS_CHOICES,
+        blank=True,
+        default="",
+        help_text="Whether user has been diagnosed with CSU",
+    )
+    
+    # Treatment context (metadata only - NOT medical advice)
+    has_prescribed_medication = models.CharField(
+        max_length=20,
+        choices=MEDICATION_STATUS_CHOICES,
+        blank=True,
+        default="",
+        help_text="Whether user has been prescribed medication for their condition",
+    )
+    
+    onboarding_completed = models.BooleanField(
+        default=False,
+        help_text="Whether user has completed onboarding",
+    )
+    
+    onboarding_step = models.PositiveIntegerField(
+        default=0,
+        help_text="Current onboarding step (0 = not started)",
     )
     
     # Display preferences
@@ -100,6 +200,18 @@ class Profile(models.Model):
     allow_data_collection = models.BooleanField(
         default=True,
         help_text="Allow anonymous usage analytics",
+    )
+    
+    # Privacy consent (explicit consent for data processing)
+    privacy_consent_given = models.BooleanField(
+        default=False,
+        help_text="User has explicitly consented to data storage and processing",
+    )
+    
+    privacy_consent_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When privacy consent was given",
     )
     
     # Account status
@@ -155,3 +267,120 @@ def save_user_profile(sender, instance, **kwargs):
     """Save the Profile instance when the User is saved."""
     if hasattr(instance, "profile"):
         instance.profile.save()
+
+
+class UserMedication(models.Model):
+    """
+    User-reported medication context for trend visualization.
+    
+    IMPORTANT: This is user-entered contextual metadata only.
+    - NOT a prescription or medical record
+    - NOT used for treatment recommendations
+    - Used solely to help users correlate their symptom patterns
+    
+    All fields are optional and user-controlled.
+    """
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="medications",
+    )
+    
+    # Medication identification
+    medication_key = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Key from COMMON_MEDICATIONS list (e.g., 'fexofenadine')",
+    )
+    
+    custom_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="User-entered medication name (if not in list)",
+    )
+    
+    medication_type = models.CharField(
+        max_length=20,
+        choices=MEDICATION_TYPE_CHOICES,
+        default="other",
+        help_text="Category of medication",
+    )
+    
+    # Antihistamine-specific context (optional)
+    dose_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Dose amount (user-reported, not verified)",
+    )
+    
+    dose_unit = models.CharField(
+        max_length=20,
+        blank=True,
+        default="mg",
+        help_text="Dose unit (e.g., mg, ml)",
+    )
+    
+    frequency_per_day = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="How many times per day (user-reported)",
+    )
+    
+    # Injectable/biologic-specific context (optional)
+    last_injection_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date of last injection (user-reported)",
+    )
+    
+    injection_frequency = models.CharField(
+        max_length=20,
+        choices=INJECTION_FREQUENCY_CHOICES,
+        blank=True,
+        default="",
+        help_text="Typical injection schedule",
+    )
+    
+    # Status
+    is_current = models.BooleanField(
+        default=True,
+        help_text="Whether user is currently taking this",
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "user medication"
+        verbose_name_plural = "user medications"
+        ordering = ["-is_current", "-updated_at"]
+    
+    def __str__(self) -> str:
+        name = self.display_name
+        status = "current" if self.is_current else "past"
+        return f"{name} ({status}) - {self.user.email}"
+    
+    @property
+    def display_name(self) -> str:
+        """Return human-readable medication name."""
+        if self.custom_name:
+            return self.custom_name
+        # Look up from COMMON_MEDICATIONS
+        for key, label, _ in COMMON_MEDICATIONS:
+            if key == self.medication_key:
+                return label
+        return self.medication_key or "Unknown"
+    
+    @property
+    def is_antihistamine(self) -> bool:
+        return self.medication_type == "antihistamine"
+    
+    @property
+    def is_biologic(self) -> bool:
+        return self.medication_type == "biologic"

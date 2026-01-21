@@ -1,0 +1,84 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Welcome - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-welcome">
+    <!-- App Icon -->
+    <div class="onboarding-welcome__icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <rect width="80" height="80" rx="20" fill="url(#gradient)"/>
+            <path d="M40 20C29 20 20 29 20 40C20 51 29 60 40 60C51 60 60 51 60 40C60 29 51 20 40 20Z" stroke="white" stroke-width="3" fill="none"/>
+            <path d="M40 28V40L48 48" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#6366F1"/>
+                    <stop offset="100%" style="stop-color:#4F46E5"/>
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+    
+    <!-- Welcome Text -->
+    <h1 class="onboarding-welcome__title">
+        Welcome to<br>CSU Tracker
+    </h1>
+    
+    <p class="onboarding-welcome__subtitle">
+        A simple way to understand your patterns and track what matters to you.
+    </p>
+    
+    <!-- Features List -->
+    <div class="onboarding-welcome__features">
+        <div class="onboarding-feature">
+            <div class="onboarding-feature__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            </div>
+            <span>Daily symptom tracking</span>
+        </div>
+        <div class="onboarding-feature">
+            <div class="onboarding-feature__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                </svg>
+            </div>
+            <span>See trends over time</span>
+        </div>
+        <div class="onboarding-feature">
+            <div class="onboarding-feature__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <span>Your data stays private</span>
+        </div>
+    </div>
+    
+    <!-- Disclaimer -->
+    <p class="onboarding-welcome__disclaimer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        This is a tracking tool, not medical advice. Always consult your healthcare provider for medical decisions.
+    </p>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<a href="{% url 'accounts:onboarding_account' %}" class="btn btn--primary btn--lg btn--full">
+    Get Started
+</a>
+
+<div class="onboarding-footer__alt">
+    Already have an account?
+    <a href="{% url 'accounts:login' %}" class="onboarding-link">Sign in</a>
+</div>
+{% endblock %}

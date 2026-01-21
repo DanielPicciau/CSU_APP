@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#FAFAFA">
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CSU Tracker">
+    
+    <title>{% block title %}Get Started - CSU Tracker{% endblock %}</title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-32x32.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="{% static 'css/design-tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/onboarding.css' %}">
+</head>
+<body class="onboarding-body">
+    <div class="onboarding-container">
+        <!-- Progress Indicator -->
+        {% if current_step > 1 %}
+        <div class="onboarding-progress">
+            <div class="onboarding-progress__bar">
+                <div class="onboarding-progress__fill" style="width: {{ progress_percent }}%"></div>
+            </div>
+            <div class="onboarding-progress__text">
+                Step {{ current_step|add:"-1" }} of {{ total_steps|add:"-2" }}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Main Content -->
+        <main class="onboarding-main">
+            {% block content %}{% endblock %}
+        </main>
+        
+        <!-- Navigation -->
+        <footer class="onboarding-footer">
+            {% block navigation %}{% endblock %}
+        </footer>
+    </div>
+
+    <script>
+        // Smooth transition effects
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('onboarding-ready');
+        });
+    </script>
+</body>
+</html>

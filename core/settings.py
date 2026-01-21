@@ -63,6 +63,8 @@ MIDDLEWARE = [
     "core.middleware.RateLimitMiddleware",
     "core.middleware.RequestValidationMiddleware",
     "core.middleware.AuditMiddleware",
+    # Onboarding redirect for new users
+    "core.middleware.OnboardingMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"

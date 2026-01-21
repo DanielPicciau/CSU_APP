@@ -1,0 +1,61 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Summary - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        Here's what you shared
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        Everything here helps personalize your experience. You can update these anytime in your profile.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="summary-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        {% if has_data %}
+        <div class="onboarding-summary">
+            {% for item in summary_items %}
+            <div class="onboarding-summary-item">
+                <span class="onboarding-summary-item__icon">{{ item.icon }}</span>
+                <div class="onboarding-summary-item__content">
+                    <span class="onboarding-summary-item__label">{{ item.label }}</span>
+                    <span class="onboarding-summary-item__value">{{ item.value }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="onboarding-empty">
+            <p class="onboarding-empty__text">
+                You haven't shared any personal details yet, and that's perfectly fine. 
+                You can add information later in your profile.
+            </p>
+        </div>
+        {% endif %}
+        
+        <p class="onboarding-reassurance">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Your data stays on your account and is never shared without your consent.
+        </p>
+    </form>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="summary-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('summary-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+</div>
+{% endblock %}

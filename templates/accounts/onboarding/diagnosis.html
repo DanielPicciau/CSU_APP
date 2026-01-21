@@ -1,0 +1,57 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}CSU Diagnosis - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        Have you been diagnosed with Chronic Spontaneous Urticaria?
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        CSU is also called chronic hives. This app works great either way.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="diagnosis-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        <div class="onboarding-options onboarding-options--stacked">
+            {% for option in diagnosis_options %}
+            <label class="onboarding-option onboarding-option--wide">
+                <input type="radio" name="csu_diagnosis" value="{{ option.value }}" 
+                       {% if form.csu_diagnosis.value == option.value %}checked{% endif %}
+                       class="onboarding-option__input">
+                <span class="onboarding-option__card onboarding-option__card--detailed">
+                    <span class="onboarding-option__label">{{ option.label }}</span>
+                    <span class="onboarding-option__description">{{ option.description }}</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+        
+        <p class="onboarding-reassurance">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            No matter what you choose, you'll have full access to all features.
+        </p>
+    </form>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="diagnosis-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('diagnosis-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+    <button type="button" onclick="document.getElementById('form-action').value='skip'; document.getElementById('diagnosis-form').submit();" class="btn btn--ghost">
+        Skip
+    </button>
+</div>
+{% endblock %}

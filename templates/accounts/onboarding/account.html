@@ -1,0 +1,54 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Create Account - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        Let's create your account
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        We'll use this to keep your data safe and synced.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="account-form">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="onboarding-error">
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="onboarding-form__field">
+            <label for="id_email" class="onboarding-label">Email</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+            <p class="onboarding-field-error">{{ form.email.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="onboarding-form__field">
+            <label for="id_password" class="onboarding-label">Password</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+            <p class="onboarding-field-error">{{ form.password.errors.0 }}</p>
+            {% endif %}
+            <p class="onboarding-hint">At least 8 characters</p>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="account-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<a href="{% url 'accounts:onboarding_welcome' %}" class="btn btn--ghost btn--full">
+    Back
+</a>
+{% endblock %}

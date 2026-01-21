@@ -1,0 +1,51 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Gender - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        How do you describe your gender?
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        This is optional and helps us understand our users better.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="gender-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        <div class="onboarding-options">
+            {% for option in gender_options %}
+            <label class="onboarding-option">
+                <input type="radio" name="gender" value="{{ option.value }}" 
+                       {% if form.gender.value == option.value %}checked{% endif %}
+                       class="onboarding-option__input">
+                <span class="onboarding-option__card">
+                    {% if option.icon %}
+                    <span class="onboarding-option__emoji">{{ option.icon }}</span>
+                    {% endif %}
+                    <span class="onboarding-option__label">{{ option.label }}</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="gender-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('gender-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+    <button type="button" onclick="document.getElementById('form-action').value='skip'; document.getElementById('gender-form').submit();" class="btn btn--ghost">
+        Skip
+    </button>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@ Views for the accounts app (Django templates).
 """
 
 from django.contrib import messages
-from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth import login, logout, update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import render, redirect
@@ -17,7 +17,22 @@ from .forms import (
     ProfileForm,
     CustomPasswordChangeForm,
     DeleteAccountForm,
+    OnboardingAccountForm,
+    OnboardingNameForm,
+    OnboardingAgeForm,
+    OnboardingGenderForm,
+    OnboardingDiagnosisForm,
+    OnboardingMedicationStatusForm,
+    OnboardingMedicationSelectForm,
+    OnboardingAntihistamineDetailsForm,
+    OnboardingInjectionDetailsForm,
+    OnboardingPrivacyConsentForm,
+    OnboardingReminderForm,
 )
+
+from .models import COMMON_MEDICATIONS, UserMedication
+
+User = get_user_model()
 
 
 class CustomLoginView(LoginView):
@@ -38,22 +53,17 @@ class CustomLogoutView(LogoutView):
 
 
 class RegisterView(CreateView):
-    """User registration view."""
+    """User registration view - redirects to onboarding flow."""
 
     template_name = "accounts/register.html"
     form_class = RegisterForm
     success_url = reverse_lazy("home")
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            return redirect("home")
-        return super().dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        login(self.request, self.object)
-        messages.success(self.request, "Welcome to CSU Tracker! Your account has been created.")
-        return response
+        # Redirect to onboarding for new users
+        if not request.user.is_authenticated:
+            return redirect("accounts:onboarding_welcome")
+        return redirect("home")
 
 
 @login_required
@@ -135,3 +145,640 @@ def privacy_view(request):
     return render(request, "accounts/privacy.html", {
         "profile": profile,
     })
+
+
+# =============================================================================
+# ONBOARDING VIEWS
+# A calm, step-by-step guided experience for new users
+# =============================================================================
+
+ONBOARDING_STEPS = [
+    {"name": "welcome", "title": "Welcome", "required": False},
+    {"name": "account", "title": "Create Account", "required": True},
+    {"name": "name", "title": "Your Name", "required": False},
+    {"name": "age", "title": "Your Age", "required": False},
+    {"name": "gender", "title": "Gender", "required": False},
+    {"name": "diagnosis", "title": "CSU Status", "required": False},
+    {"name": "medication_status", "title": "Treatment", "required": False},
+    {"name": "medication_select", "title": "Medications", "required": False, "conditional": True},
+    {"name": "medication_details", "title": "Details", "required": False, "conditional": True},
+    {"name": "summary", "title": "Summary", "required": False},
+    {"name": "privacy", "title": "Privacy", "required": True},
+    {"name": "reminders", "title": "Reminders", "required": False},
+    {"name": "complete", "title": "All Set", "required": False},
+]
+
+def get_onboarding_context(step_index, exclude_conditional=False):
+    """Generate context for onboarding progress."""
+    steps = ONBOARDING_STEPS
+    if exclude_conditional:
+        steps = [s for s in steps if not s.get("conditional")]
+    total_steps = len(steps)
+    return {
+        "current_step": step_index + 1,
+        "total_steps": total_steps,
+        "progress_percent": int((step_index / (total_steps - 1)) * 100) if total_steps > 1 else 100,
+        "step_info": ONBOARDING_STEPS[step_index] if step_index < len(ONBOARDING_STEPS) else None,
+        "steps": steps,
+    }
+
+
+def onboarding_welcome(request):
+    """Step 1: Welcome screen with app explanation."""
+    # If user is already logged in and has completed onboarding, go to home
+    if request.user.is_authenticated:
+        if request.user.profile.onboarding_completed:
+            return redirect("home")
+    
+    context = get_onboarding_context(0)
+    return render(request, "accounts/onboarding/welcome.html", context)
+
+
+def onboarding_account(request):
+    """Step 2: Account creation (email/password)."""
+    if request.user.is_authenticated:
+        # Already logged in, skip to next step
+        return redirect("accounts:onboarding_name")
+    
+    if request.method == "POST":
+        form = OnboardingAccountForm(request.POST)
+        if form.is_valid():
+            # Create user implicitly in the background
+            user = User.objects.create_user(
+                email=form.cleaned_data["email"],
+                password=form.cleaned_data["password"],
+            )
+            user.profile.onboarding_step = 2
+            user.profile.save()
+            
+            # Log them in immediately
+            login(request, user)
+            
+            return redirect("accounts:onboarding_name")
+    else:
+        form = OnboardingAccountForm()
+    
+    context = get_onboarding_context(1)
+    context["form"] = form
+    return render(request, "accounts/onboarding/account.html", context)
+
+
+@login_required
+def onboarding_name(request):
+    """Step 3: What's your name?"""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 3
+            profile.save()
+            return redirect("accounts:onboarding_age")
+        
+        form = OnboardingNameForm(request.POST)
+        if form.is_valid():
+            profile.display_name = form.cleaned_data.get("display_name", "")
+            profile.onboarding_step = 3
+            profile.save()
+            return redirect("accounts:onboarding_age")
+    else:
+        form = OnboardingNameForm(initial={"display_name": profile.display_name})
+    
+    context = get_onboarding_context(2)
+    context["form"] = form
+    context["can_skip"] = True
+    return render(request, "accounts/onboarding/name.html", context)
+
+
+@login_required
+def onboarding_age(request):
+    """Step 4: What is your age?"""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 4
+            profile.save()
+            return redirect("accounts:onboarding_gender")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_name")
+        
+        form = OnboardingAgeForm(request.POST)
+        if form.is_valid():
+            profile.age = form.cleaned_data.get("age")
+            profile.onboarding_step = 4
+            profile.save()
+            return redirect("accounts:onboarding_gender")
+    else:
+        form = OnboardingAgeForm(initial={"age": profile.age})
+    
+    context = get_onboarding_context(3)
+    context["form"] = form
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    return render(request, "accounts/onboarding/age.html", context)
+
+
+@login_required
+def onboarding_gender(request):
+    """Step 5: How do you describe your gender?"""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 5
+            profile.save()
+            return redirect("accounts:onboarding_diagnosis")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_age")
+        
+        form = OnboardingGenderForm(request.POST)
+        if form.is_valid():
+            profile.gender = form.cleaned_data.get("gender", "")
+            profile.onboarding_step = 5
+            profile.save()
+            return redirect("accounts:onboarding_diagnosis")
+    else:
+        form = OnboardingGenderForm(initial={"gender": profile.gender})
+    
+    context = get_onboarding_context(4)
+    context["form"] = form
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    context["gender_options"] = [
+        {"value": "male", "label": "Male", "icon": "👨"},
+        {"value": "female", "label": "Female", "icon": "👩"},
+        {"value": "non_binary", "label": "Non-binary", "icon": "🧑"},
+        {"value": "prefer_not_to_say", "label": "Prefer not to say", "icon": ""},
+    ]
+    return render(request, "accounts/onboarding/gender.html", context)
+
+
+@login_required
+def onboarding_diagnosis(request):
+    """Step 6: Have you been diagnosed with CSU?"""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 6
+            profile.save()
+            return redirect("accounts:onboarding_medication_status")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_gender")
+        
+        form = OnboardingDiagnosisForm(request.POST)
+        if form.is_valid():
+            profile.csu_diagnosis = form.cleaned_data.get("csu_diagnosis", "")
+            profile.onboarding_step = 6
+            profile.save()
+            return redirect("accounts:onboarding_medication_status")
+    else:
+        form = OnboardingDiagnosisForm(initial={"csu_diagnosis": profile.csu_diagnosis})
+    
+    context = get_onboarding_context(5)
+    context["form"] = form
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    context["diagnosis_options"] = [
+        {"value": "yes", "label": "Yes", "description": "I have a formal diagnosis"},
+        {"value": "no", "label": "No", "description": "I haven't been diagnosed"},
+        {"value": "unsure", "label": "Unsure", "description": "I'm still figuring it out"},
+    ]
+    return render(request, "accounts/onboarding/diagnosis.html", context)
+
+
+@login_required
+def onboarding_medication_status(request):
+    """Step 7: Have you been prescribed medication?"""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 7
+            profile.save()
+            return redirect("accounts:onboarding_summary")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_diagnosis")
+        
+        form = OnboardingMedicationStatusForm(request.POST)
+        if form.is_valid():
+            status = form.cleaned_data.get("has_prescribed_medication", "")
+            profile.has_prescribed_medication = status
+            profile.onboarding_step = 7
+            profile.save()
+            
+            # Conditional routing: only ask about medications if user said "yes"
+            if status == "yes":
+                return redirect("accounts:onboarding_medication_select")
+            else:
+                return redirect("accounts:onboarding_summary")
+    else:
+        form = OnboardingMedicationStatusForm(
+            initial={"has_prescribed_medication": profile.has_prescribed_medication}
+        )
+    
+    context = get_onboarding_context(6)
+    context["form"] = form
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    context["medication_options"] = [
+        {"value": "yes", "label": "Yes", "description": "I've been prescribed treatment"},
+        {"value": "no", "label": "No", "description": "I haven't been prescribed anything"},
+        {"value": "prefer_not_to_say", "label": "Prefer not to say", "description": ""},
+    ]
+    return render(request, "accounts/onboarding/medication_status.html", context)
+
+
+@login_required
+def onboarding_medication_select(request):
+    """Step 8: Select medications (conditional - only if prescribed)."""
+    profile = request.user.profile
+    
+    # Get existing user medications for initial state
+    existing_meds = list(request.user.medications.values_list("medication_key", flat=True))
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 8
+            profile.save()
+            return redirect("accounts:onboarding_summary")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_medication_status")
+        
+        form = OnboardingMedicationSelectForm(request.POST)
+        if form.is_valid():
+            selected = form.cleaned_data.get("selected_medications", [])
+            custom = form.cleaned_data.get("custom_medication", "").strip()
+            
+            # Clear existing medications from onboarding (keep any added later)
+            request.user.medications.filter(medication_key__in=[
+                key for key, _, _ in COMMON_MEDICATIONS
+            ]).delete()
+            
+            # Create medications for selected items
+            has_antihistamine = False
+            has_biologic = False
+            
+            for med_key in selected:
+                # Find medication type from COMMON_MEDICATIONS
+                med_type = "other"
+                for key, label, mtype in COMMON_MEDICATIONS:
+                    if key == med_key:
+                        med_type = mtype
+                        break
+                
+                UserMedication.objects.create(
+                    user=request.user,
+                    medication_key=med_key,
+                    medication_type=med_type,
+                )
+                
+                if med_type == "antihistamine":
+                    has_antihistamine = True
+                elif med_type == "biologic":
+                    has_biologic = True
+            
+            # Handle custom medication
+            if custom:
+                UserMedication.objects.create(
+                    user=request.user,
+                    custom_name=custom,
+                    medication_type="other",
+                )
+            
+            profile.onboarding_step = 8
+            profile.save()
+            
+            # Store what we found for the details step
+            request.session["onboarding_has_antihistamine"] = has_antihistamine
+            request.session["onboarding_has_biologic"] = has_biologic
+            
+            # Route to details if user has antihistamine or biologic
+            if has_antihistamine or has_biologic:
+                return redirect("accounts:onboarding_medication_details")
+            else:
+                return redirect("accounts:onboarding_summary")
+    else:
+        form = OnboardingMedicationSelectForm(initial={"selected_medications": existing_meds})
+    
+    # Build medication options grouped by type
+    antihistamines = [
+        {"key": key, "label": label}
+        for key, label, mtype in COMMON_MEDICATIONS if mtype == "antihistamine"
+    ]
+    biologics = [
+        {"key": key, "label": label}
+        for key, label, mtype in COMMON_MEDICATIONS if mtype == "biologic"
+    ]
+    
+    context = get_onboarding_context(7)
+    context["form"] = form
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    context["antihistamines"] = antihistamines
+    context["biologics"] = biologics
+    return render(request, "accounts/onboarding/medication_select.html", context)
+
+
+@login_required
+def onboarding_medication_details(request):
+    """Step 9: Medication details (dose/frequency for antihistamines, schedule for biologics)."""
+    profile = request.user.profile
+    
+    # Check what types of medications user selected
+    has_antihistamine = request.session.get("onboarding_has_antihistamine", False)
+    has_biologic = request.session.get("onboarding_has_biologic", False)
+    
+    # Or check from database
+    if not has_antihistamine and not has_biologic:
+        user_meds = request.user.medications.all()
+        has_antihistamine = user_meds.filter(medication_type="antihistamine").exists()
+        has_biologic = user_meds.filter(medication_type="biologic").exists()
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 9
+            profile.save()
+            return redirect("accounts:onboarding_summary")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_medication_select")
+        
+        # Process antihistamine details
+        if has_antihistamine:
+            ah_form = OnboardingAntihistamineDetailsForm(request.POST, prefix="ah")
+            if ah_form.is_valid():
+                # Update all user's antihistamines with this info
+                dose = ah_form.cleaned_data.get("dose_amount")
+                unit = ah_form.cleaned_data.get("dose_unit", "mg")
+                freq = ah_form.cleaned_data.get("frequency_per_day")
+                
+                request.user.medications.filter(medication_type="antihistamine").update(
+                    dose_amount=dose,
+                    dose_unit=unit,
+                    frequency_per_day=freq,
+                )
+        
+        # Process biologic/injection details
+        if has_biologic:
+            inj_form = OnboardingInjectionDetailsForm(request.POST, prefix="inj")
+            if inj_form.is_valid():
+                last_date = inj_form.cleaned_data.get("last_injection_date")
+                frequency = inj_form.cleaned_data.get("injection_frequency", "")
+                
+                request.user.medications.filter(medication_type="biologic").update(
+                    last_injection_date=last_date,
+                    injection_frequency=frequency,
+                )
+        
+        profile.onboarding_step = 9
+        profile.save()
+        
+        # Clean up session
+        request.session.pop("onboarding_has_antihistamine", None)
+        request.session.pop("onboarding_has_biologic", None)
+        
+        return redirect("accounts:onboarding_summary")
+    else:
+        ah_form = OnboardingAntihistamineDetailsForm(prefix="ah")
+        inj_form = OnboardingInjectionDetailsForm(prefix="inj")
+    
+    context = get_onboarding_context(8)
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    context["has_antihistamine"] = has_antihistamine
+    context["has_biologic"] = has_biologic
+    context["ah_form"] = ah_form
+    context["inj_form"] = inj_form
+    
+    # Get medication names for display
+    if has_antihistamine:
+        context["antihistamine_names"] = list(
+            request.user.medications.filter(medication_type="antihistamine")
+            .values_list("medication_key", flat=True)
+        )
+    if has_biologic:
+        context["biologic_names"] = list(
+            request.user.medications.filter(medication_type="biologic")
+            .values_list("medication_key", flat=True)
+        )
+    
+    return render(request, "accounts/onboarding/medication_details.html", context)
+
+
+@login_required
+def onboarding_summary(request):
+    """Step 10: Summary of what you've shared."""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "back":
+            # Go back to medications or diagnosis depending on path
+            if profile.has_prescribed_medication == "yes":
+                return redirect("accounts:onboarding_medication_details")
+            else:
+                return redirect("accounts:onboarding_medication_status")
+        
+        profile.onboarding_step = 10
+        profile.save()
+        return redirect("accounts:onboarding_privacy")
+    
+    # Build summary data
+    summary_items = []
+    
+    if profile.display_name:
+        summary_items.append({
+            "label": "Name",
+            "value": profile.display_name,
+            "icon": "👤",
+        })
+    
+    if profile.age:
+        summary_items.append({
+            "label": "Age",
+            "value": f"{profile.age} years old",
+            "icon": "🎂",
+        })
+    
+    if profile.gender and profile.gender != "prefer_not_to_say":
+        gender_display = {
+            "male": "Male",
+            "female": "Female",
+            "non_binary": "Non-binary",
+        }.get(profile.gender, profile.gender)
+        summary_items.append({
+            "label": "Gender",
+            "value": gender_display,
+            "icon": "🧑",
+        })
+    
+    if profile.csu_diagnosis:
+        diagnosis_display = {
+            "yes": "Diagnosed with CSU",
+            "no": "Not diagnosed",
+            "unsure": "Still figuring it out",
+        }.get(profile.csu_diagnosis, "")
+        if diagnosis_display:
+            summary_items.append({
+                "label": "CSU Status",
+                "value": diagnosis_display,
+                "icon": "🩺",
+            })
+    
+    # Get medications
+    medications = list(request.user.medications.all())
+    if medications:
+        med_names = []
+        for med in medications:
+            if med.custom_name:
+                med_names.append(med.custom_name)
+            elif med.medication_key:
+                # Find display name from COMMON_MEDICATIONS
+                for key, label, _ in COMMON_MEDICATIONS:
+                    if key == med.medication_key:
+                        med_names.append(label)
+                        break
+        if med_names:
+            summary_items.append({
+                "label": "Medications",
+                "value": ", ".join(med_names),
+                "icon": "💊",
+            })
+    elif profile.has_prescribed_medication == "no":
+        summary_items.append({
+            "label": "Medications",
+            "value": "No prescribed treatment",
+            "icon": "💊",
+        })
+    
+    context = get_onboarding_context(9)
+    context["summary_items"] = summary_items
+    context["can_go_back"] = True
+    context["has_data"] = len(summary_items) > 0
+    return render(request, "accounts/onboarding/summary.html", context)
+
+
+@login_required
+def onboarding_privacy(request):
+    """Step 11: Privacy and data consent."""
+    profile = request.user.profile
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_summary")
+        
+        form = OnboardingPrivacyConsentForm(request.POST)
+        if form.is_valid():
+            profile.privacy_consent_given = form.cleaned_data.get("privacy_consent", False)
+            profile.allow_data_collection = form.cleaned_data.get("allow_analytics", False)
+            
+            if profile.privacy_consent_given:
+                profile.privacy_consent_date = timezone.now()
+            
+            profile.onboarding_step = 11
+            profile.save()
+            return redirect("accounts:onboarding_reminders")
+    else:
+        form = OnboardingPrivacyConsentForm(initial={
+            "privacy_consent": profile.privacy_consent_given,
+            "allow_analytics": getattr(profile, "allow_data_collection", False),
+        })
+    
+    context = get_onboarding_context(10)
+    context["form"] = form
+    context["can_go_back"] = True
+    return render(request, "accounts/onboarding/privacy.html", context)
+
+
+@login_required
+def onboarding_reminders(request):
+    """Step 12: Optional reminder setup."""
+    profile = request.user.profile
+    
+    # Import here to avoid circular imports
+    from notifications.models import ReminderPreferences
+    
+    # Get or create reminder preferences
+    reminder_prefs, _ = ReminderPreferences.objects.get_or_create(user=request.user)
+    
+    if request.method == "POST":
+        action = request.POST.get("action", "next")
+        
+        if action == "skip":
+            profile.onboarding_step = 12
+            profile.save()
+            return redirect("accounts:onboarding_complete")
+        
+        if action == "back":
+            return redirect("accounts:onboarding_privacy")
+        
+        form = OnboardingReminderForm(request.POST)
+        if form.is_valid():
+            enable = form.cleaned_data.get("enable_reminders") == "yes"
+            reminder_prefs.enabled = enable
+            
+            if enable:
+                reminder_time = form.cleaned_data.get("reminder_time")
+                if reminder_time:
+                    reminder_prefs.time_of_day = reminder_time
+            
+            reminder_prefs.save()
+            profile.onboarding_step = 12
+            profile.save()
+            return redirect("accounts:onboarding_complete")
+    else:
+        form = OnboardingReminderForm(initial={
+            "enable_reminders": "yes" if reminder_prefs.enabled else "no",
+            "reminder_time": reminder_prefs.time_of_day,
+        })
+    
+    context = get_onboarding_context(11)
+    context["form"] = form
+    context["can_skip"] = True
+    context["can_go_back"] = True
+    return render(request, "accounts/onboarding/reminders.html", context)
+
+
+@login_required
+def onboarding_complete(request):
+    """Final step: All set! Welcome to the app."""
+    profile = request.user.profile
+    profile.onboarding_completed = True
+    profile.onboarding_step = 13
+    profile.save()
+    
+    # Get some stats for the completion screen
+    from notifications.models import ReminderPreferences
+    
+    reminder_prefs = ReminderPreferences.objects.filter(user=request.user).first()
+    reminders_enabled = reminder_prefs.enabled if reminder_prefs else False
+    reminder_time = reminder_prefs.time_of_day if reminder_prefs else None
+    
+    context = get_onboarding_context(12)
+    context["display_name"] = profile.display_name_or_email
+    context["reminders_enabled"] = reminders_enabled
+    context["reminder_time"] = reminder_time
+    return render(request, "accounts/onboarding/complete.html", context)

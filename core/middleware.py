@@ -252,3 +252,54 @@ class RequestValidationMiddleware(MiddlewareMixin):
                 )
         
         return None
+
+
+class OnboardingMiddleware(MiddlewareMixin):
+    """
+    Redirect authenticated users who haven't completed onboarding.
+    
+    This ensures new users complete the onboarding flow before
+    accessing the main application.
+    """
+    
+    # Paths that don't require onboarding completion
+    EXEMPT_PATHS = [
+        '/accounts/onboarding/',
+        '/accounts/logout/',
+        '/accounts/login/',
+        '/api/',
+        '/admin/',
+        '/static/',
+        '/manifest.json',
+        '/sw.js',
+    ]
+    
+    def process_request(self, request: HttpRequest):
+        # Skip for unauthenticated users
+        if not request.user.is_authenticated:
+            return None
+        
+        # Skip for exempt paths
+        path = request.path
+        for exempt in self.EXEMPT_PATHS:
+            if path.startswith(exempt):
+                return None
+        
+        # Check if user has completed onboarding
+        if hasattr(request.user, 'profile') and not request.user.profile.onboarding_completed:
+            from django.shortcuts import redirect
+            # Determine which onboarding step to redirect to
+            step = request.user.profile.onboarding_step
+            step_urls = {
+                0: 'accounts:onboarding_name',
+                1: 'accounts:onboarding_name',
+                2: 'accounts:onboarding_name',
+                3: 'accounts:onboarding_age',
+                4: 'accounts:onboarding_gender',
+                5: 'accounts:onboarding_diagnosis',
+                6: 'accounts:onboarding_complete',
+            }
+            target = step_urls.get(step, 'accounts:onboarding_name')
+            return redirect(target)
+        
+        return None

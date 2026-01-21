@@ -1,0 +1,105 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Your Medications - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <h1 class="onboarding-step__title">
+        Which medications have you been prescribed?
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        Select all that apply, or add your own below. This is optional and can be changed later.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="medication-select-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        <!-- Antihistamines Section -->
+        <div class="onboarding-medication-group">
+            <h2 class="onboarding-medication-group__title">
+                <span class="onboarding-medication-group__icon">💊</span>
+                Antihistamines
+            </h2>
+            <p class="onboarding-medication-group__subtitle">Common oral medications</p>
+            
+            <div class="onboarding-checkbox-grid">
+                {% for med in antihistamines %}
+                <label class="onboarding-checkbox-card">
+                    <input type="checkbox" 
+                           name="selected_medications" 
+                           value="{{ med.key }}"
+                           {% if med.key in form.selected_medications.value %}checked{% endif %}
+                           class="onboarding-checkbox-card__input">
+                    <span class="onboarding-checkbox-card__content">
+                        <span class="onboarding-checkbox-card__check">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="onboarding-checkbox-card__label">{{ med.label }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Biologics Section -->
+        <div class="onboarding-medication-group">
+            <h2 class="onboarding-medication-group__title">
+                <span class="onboarding-medication-group__icon">💉</span>
+                Biologics / Injectables
+            </h2>
+            <p class="onboarding-medication-group__subtitle">Prescription injection treatments</p>
+            
+            <div class="onboarding-checkbox-grid">
+                {% for med in biologics %}
+                <label class="onboarding-checkbox-card">
+                    <input type="checkbox" 
+                           name="selected_medications" 
+                           value="{{ med.key }}"
+                           {% if med.key in form.selected_medications.value %}checked{% endif %}
+                           class="onboarding-checkbox-card__input">
+                    <span class="onboarding-checkbox-card__content">
+                        <span class="onboarding-checkbox-card__check">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="onboarding-checkbox-card__label">{{ med.label }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Custom Medication -->
+        <div class="onboarding-medication-group">
+            <h2 class="onboarding-medication-group__title">
+                <span class="onboarding-medication-group__icon">✏️</span>
+                Something else?
+            </h2>
+            
+            <div class="onboarding-form__field">
+                {{ form.custom_medication }}
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="medication-select-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('medication-select-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+    <button type="button" onclick="document.getElementById('form-action').value='skip'; document.getElementById('medication-select-form').submit();" class="btn btn--ghost">
+        Skip
+    </button>
+</div>
+{% endblock %}

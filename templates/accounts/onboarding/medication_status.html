@@ -1,0 +1,63 @@
+{% extends 'accounts/onboarding/base.html' %}
+
+{% block title %}Treatment - CSU Tracker{% endblock %}
+
+{% block content %}
+<div class="onboarding-step">
+    <div class="onboarding-step__emoji">💊</div>
+    
+    <h1 class="onboarding-step__title">
+        Have you been prescribed medication for this condition?
+    </h1>
+    
+    <p class="onboarding-step__subtitle">
+        This helps us show treatment context alongside your symptom trends. 
+        You can update this anytime in settings.
+    </p>
+    
+    <form method="post" class="onboarding-form" id="medication-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="next" id="form-action">
+        
+        <div class="onboarding-options onboarding-options--stacked">
+            {% for option in medication_options %}
+            <label class="onboarding-option onboarding-option--wide">
+                <input type="radio" name="has_prescribed_medication" value="{{ option.value }}" 
+                       {% if form.has_prescribed_medication.value == option.value %}checked{% endif %}
+                       class="onboarding-option__input">
+                <span class="onboarding-option__card onboarding-option__card--detailed">
+                    <span class="onboarding-option__label">{{ option.label }}</span>
+                    {% if option.description %}
+                    <span class="onboarding-option__description">{{ option.description }}</span>
+                    {% endif %}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+    </form>
+    
+    <p class="onboarding-disclaimer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        We never recommend or suggest changes to your treatment. This is your personal tracking data only.
+    </p>
+</div>
+{% endblock %}
+
+{% block navigation %}
+<button type="submit" form="medication-form" class="btn btn--primary btn--lg btn--full">
+    Continue
+</button>
+
+<div class="onboarding-nav-row">
+    <button type="button" onclick="document.getElementById('form-action').value='back'; document.getElementById('medication-form').submit();" class="btn btn--ghost">
+        Back
+    </button>
+    <button type="button" onclick="document.getElementById('form-action').value='skip'; document.getElementById('medication-form').submit();" class="btn btn--ghost">
+        Skip
+    </button>
+</div>
+{% endblock %}
