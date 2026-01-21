@@ -98,17 +98,21 @@ class TestNotificationView(APIView):
 class DebugNotificationView(APIView):
     """Debug endpoint to check notification configuration."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         """Return debug info about push notification setup."""
         from django.conf import settings
         from .models import PushSubscription
         
-        subscriptions = PushSubscription.objects.filter(
-            user=request.user,
-            is_active=True
-        )
+        # Show all subscriptions if not authenticated, otherwise just user's
+        if request.user.is_authenticated:
+            subscriptions = PushSubscription.objects.filter(
+                user=request.user,
+                is_active=True
+            )
+        else:
+            subscriptions = PushSubscription.objects.filter(is_active=True)
         
         return Response({
             "vapid_public_key_configured": bool(settings.VAPID_PUBLIC_KEY),
