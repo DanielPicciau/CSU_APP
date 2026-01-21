@@ -108,9 +108,12 @@ def cron_send_reminders(request):
     
     Call this every minute from cron-job.org or similar.
     URL: https://yoursite.pythonanywhere.com/notifications/cron/send-reminders/?token=YOUR_SECRET
+    
+    Add ?force=1 to bypass all checks and send immediately (for testing).
     """
     # Verify the secret token
     token = request.GET.get('token') or request.headers.get('X-Cron-Token')
+    force = request.GET.get('force') == '1'
     
     if not CRON_WEBHOOK_SECRET:
         return JsonResponse({
@@ -160,29 +163,32 @@ def cron_send_reminders(request):
                 "timezone": pref.timezone,
                 "current_time": user_now.strftime("%H:%M:%S"),
                 "time_since_seconds": int(time_since),
+                "force": force,
             }
             
-            # Check if within the window (just passed, not too long ago)
-            if time_since < 0:
-                debug_info["skip_reason"] = "reminder_time_not_yet"
-                results.append(debug_info)
-                continue
-            if time_since > REMINDER_WINDOW:
-                debug_info["skip_reason"] = f"outside_window_{REMINDER_WINDOW}s"
-                results.append(debug_info)
-                continue
-            
-            # Check if already reminded today
-            if ReminderLog.objects.filter(user=user, date=user_today).exists():
-                debug_info["skip_reason"] = "already_reminded_today"
-                results.append(debug_info)
-                continue
-            
-            # Check if already logged today
-            if DailyEntry.objects.filter(user=user, date=user_today).exists():
-                debug_info["skip_reason"] = "already_logged_today"
-                results.append(debug_info)
-                continue
+            # Skip checks if force mode
+            if not force:
+                # Check if within the window (just passed, not too long ago)
+                if time_since < 0:
+                    debug_info["skip_reason"] = "reminder_time_not_yet"
+                    results.append(debug_info)
+                    continue
+                if time_since > REMINDER_WINDOW:
+                    debug_info["skip_reason"] = f"outside_window_{REMINDER_WINDOW}s"
+                    results.append(debug_info)
+                    continue
+                
+                # Check if already reminded today
+                if ReminderLog.objects.filter(user=user, date=user_today).exists():
+                    debug_info["skip_reason"] = "already_reminded_today"
+                    results.append(debug_info)
+                    continue
+                
+                # Check if already logged today
+                if DailyEntry.objects.filter(user=user, date=user_today).exists():
+                    debug_info["skip_reason"] = "already_logged_today"
+                    results.append(debug_info)
+                    continue
             
             # Get active subscriptions
             subscriptions = PushSubscription.objects.filter(
