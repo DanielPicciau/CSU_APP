@@ -106,7 +106,7 @@
 
 {% block extra_js %}
 <script>
-const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
+// VAPID_PUBLIC_KEY already defined in base.html
 
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
