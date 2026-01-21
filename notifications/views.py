@@ -153,16 +153,35 @@ def cron_send_reminders(request):
             # Calculate time since reminder
             time_since = (user_now - reminder_datetime).total_seconds()
             
+            # Debug info for this user
+            debug_info = {
+                "user": user.email,
+                "reminder_time": str(pref.time_of_day),
+                "timezone": pref.timezone,
+                "current_time": user_now.strftime("%H:%M:%S"),
+                "time_since_seconds": int(time_since),
+            }
+            
             # Check if within the window (just passed, not too long ago)
-            if time_since < 0 or time_since > REMINDER_WINDOW:
+            if time_since < 0:
+                debug_info["skip_reason"] = "reminder_time_not_yet"
+                results.append(debug_info)
+                continue
+            if time_since > REMINDER_WINDOW:
+                debug_info["skip_reason"] = f"outside_window_{REMINDER_WINDOW}s"
+                results.append(debug_info)
                 continue
             
             # Check if already reminded today
             if ReminderLog.objects.filter(user=user, date=user_today).exists():
+                debug_info["skip_reason"] = "already_reminded_today"
+                results.append(debug_info)
                 continue
             
             # Check if already logged today
             if DailyEntry.objects.filter(user=user, date=user_today).exists():
+                debug_info["skip_reason"] = "already_logged_today"
+                results.append(debug_info)
                 continue
             
             # Get active subscriptions
@@ -172,7 +191,11 @@ def cron_send_reminders(request):
             )
             
             if not subscriptions.exists():
+                debug_info["skip_reason"] = "no_active_subscriptions"
+                results.append(debug_info)
                 continue
+            
+            debug_info["subscriptions"] = subscriptions.count()
             
             # Send notifications
             success_count = 0
