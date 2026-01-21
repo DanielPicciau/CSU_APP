@@ -48,6 +48,13 @@
     </div>
 
     <script>
+        // Register service worker for push notifications
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.error('SW registration failed:', err));
+        }
+        
         // Smooth transition effects
         document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.add('onboarding-ready');

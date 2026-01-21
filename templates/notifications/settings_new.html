@@ -477,6 +477,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Daily Reminders toggle - ensure subscription when enabled
+    const enabledToggle = document.getElementById('id_enabled');
+    if (enabledToggle) {
+        enabledToggle.addEventListener('change', async function() {
+            if (this.checked) {
+                // When enabling reminders, ensure push subscription exists
+                if (Notification.permission === 'granted') {
+                    await ensureSubscription();
+                } else if (Notification.permission === 'default') {
+                    // Request permission and subscribe
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        await ensureSubscription();
+                        showToast('Notifications enabled!', 'success');
+                    } else {
+                        showToast('Please allow notifications to receive reminders', 'error');
+                        this.checked = false;
+                    }
+                } else {
+                    showToast('Notifications are blocked. Please enable in browser settings.', 'error');
+                    this.checked = false;
+                }
+            }
+        });
+    }
+    
     // Update time display when input changes
     const timeInput = document.getElementById('id_time_of_day');
     const timeDisplay = document.getElementById('current-time-display');
