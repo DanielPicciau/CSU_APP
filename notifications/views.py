@@ -29,9 +29,7 @@ def verify_cron_token(request) -> bool:
     Accepts token via:
     1. Authorization header (preferred): "Bearer <token>"
     2. X-Cron-Token header (alternative)
-    
-    SECURITY: Query string tokens are no longer accepted as they can leak
-    through access logs, browser history, and referrer headers.
+    3. Query string (legacy support for cron-job.org)
     
     Uses constant-time comparison to prevent timing attacks.
     """
@@ -47,15 +45,9 @@ def verify_cron_token(request) -> bool:
         # Try X-Cron-Token header (alternative)
         token = request.headers.get('X-Cron-Token', '')
     
-    # SECURITY: Query string tokens are no longer accepted
-    # If token is still in query string, log security warning but reject
-    if not token and request.GET.get('token', ''):
-        import logging
-        logging.getLogger('security').warning(
-            'Cron token passed via query string - REJECTED for security. '
-            'Migrate to Authorization header: Bearer <token>'
-        )
-        return False
+    # Fallback to query string (for cron-job.org compatibility)
+    if not token:
+        token = request.GET.get('token', '')
     
     if not token:
         return False
