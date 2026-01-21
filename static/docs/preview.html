@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CSU Tracker - Design System Preview</title>
+    
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="../css/design-tokens.css">
+    <link rel="stylesheet" href="../css/components.css">
+    
+    <style>
+        .preview-section {
+            padding: var(--space-6);
+            margin-bottom: var(--space-8);
+            border-bottom: 1px solid var(--border-default);
+        }
+        .preview-section:last-child {
+            border-bottom: none;
+        }
+        .preview-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+        .preview-subtitle {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-6);
+        }
+        .preview-grid {
+            display: grid;
+            gap: var(--space-4);
+        }
+        .preview-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+            align-items: center;
+        }
+        .color-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: flex-end;
+            padding: var(--space-1);
+        }
+        .color-swatch span {
+            font-size: 10px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .theme-toggle {
+            position: fixed;
+            top: var(--space-4);
+            right: var(--space-4);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="app-shell" style="padding: 0;">
+    
+    <!-- Theme Toggle -->
+    <div class="theme-toggle">
+        <select onchange="document.documentElement.setAttribute('data-theme', this.value)" class="form-input" style="width: auto;">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+        </select>
+    </div>
+    
+    <main class="app-main" style="padding-bottom: 0;">
+        
+        <!-- Header -->
+        <div class="preview-section" style="background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800)); color: white; text-align: center; padding: var(--space-12) var(--space-6);">
+            <h1 style="font-size: var(--text-4xl); font-weight: var(--font-bold); margin-bottom: var(--space-2);">
+                CSU Tracker
+            </h1>
+            <p style="font-size: var(--text-lg); opacity: 0.9;">Design System v1.0</p>
+            <p style="font-size: var(--text-sm); opacity: 0.7; margin-top: var(--space-2);">
+                Mobile-first • iPhone-optimized • WCAG AA Compliant
+            </p>
+        </div>
+        
+        <!-- Color Palette -->
+        <div class="preview-section">
+            <h2 class="preview-title">Color Palette</h2>
+            <p class="preview-subtitle">Calm, medical-inspired colors with semantic meaning</p>
+            
+            <h3 style="font-weight: var(--font-semibold); margin-bottom: var(--space-3);">Primary (Indigo)</h3>
+            <div class="preview-row" style="margin-bottom: var(--space-4);">
+                <div class="color-swatch" style="background: var(--color-primary-100);"><span style="color: var(--color-primary-900);">100</span></div>
+                <div class="color-swatch" style="background: var(--color-primary-300);"><span style="color: var(--color-primary-900);">300</span></div>
+                <div class="color-swatch" style="background: var(--color-primary-500);"><span>500</span></div>
+                <div class="color-swatch" style="background: var(--color-primary-600);"><span>600</span></div>
+                <div class="color-swatch" style="background: var(--color-primary-800);"><span>800</span></div>
+            </div>
+            
+            <h3 style="font-weight: var(--font-semibold); margin-bottom: var(--space-3);">Score Colors</h3>
+            <div class="preview-row">
+                <div class="color-swatch score-bg-0"><span>0</span></div>
+                <div class="color-swatch score-bg-1"><span>1</span></div>
+                <div class="color-swatch score-bg-2"><span>2</span></div>
+                <div class="color-swatch score-bg-3"><span>3</span></div>
+                <div class="color-swatch score-bg-4"><span>4</span></div>
+                <div class="color-swatch score-bg-5"><span>5</span></div>
+                <div class="color-swatch score-bg-6"><span>6</span></div>
+            </div>
+        </div>
+        
+        <!-- Typography -->
+        <div class="preview-section">
+            <h2 class="preview-title">Typography</h2>
+            <p class="preview-subtitle">System fonts with iOS-optimized sizing</p>
+            
+            <div class="preview-grid">
+                <div style="font-size: var(--text-4xl); font-weight: var(--font-bold);">Heading 4XL (36px)</div>
+                <div style="font-size: var(--text-2xl); font-weight: var(--font-bold);">Heading 2XL (24px)</div>
+                <div style="font-size: var(--text-xl); font-weight: var(--font-semibold);">Heading XL (20px)</div>
+                <div style="font-size: var(--text-lg); font-weight: var(--font-semibold);">Heading LG (18px)</div>
+                <div style="font-size: var(--text-base);">Body text (16px) - Regular weight for readability</div>
+                <div style="font-size: var(--text-sm); color: var(--text-secondary);">Small text (14px) - Secondary information</div>
+                <div style="font-size: var(--text-xs); color: var(--text-tertiary);">Extra small (12px) - Labels, captions</div>
+            </div>
+        </div>
+        
+        <!-- Buttons -->
+        <div class="preview-section">
+            <h2 class="preview-title">Buttons</h2>
+            <p class="preview-subtitle">Touch-optimized with 44px minimum height</p>
+            
+            <h3 style="font-weight: var(--font-semibold); margin-bottom: var(--space-3);">Variants</h3>
+            <div class="preview-row" style="margin-bottom: var(--space-4);">
+                <button class="btn btn--primary">Primary</button>
+                <button class="btn btn--secondary">Secondary</button>
+                <button class="btn btn--ghost">Ghost</button>
+                <button class="btn btn--destructive">Destructive</button>
+            </div>
+            
+            <h3 style="font-weight: var(--font-semibold); margin-bottom: var(--space-3);">Sizes</h3>
+            <div class="preview-row" style="margin-bottom: var(--space-4);">
+                <button class="btn btn--primary btn--sm">Small</button>
+                <button class="btn btn--primary">Medium</button>
+                <button class="btn btn--primary btn--lg">Large</button>
+            </div>
+            
+            <h3 style="font-weight: var(--font-semibold); margin-bottom: var(--space-3);">Full Width</h3>
+            <button class="btn btn--primary btn--full">Full Width Button</button>
+            
+            <h3 style="font-weight: var(--font-semibold); margin: var(--space-4) 0 var(--space-3);">With Icons</h3>
+            <div class="preview-row">
+                <button class="btn btn--primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Entry
+                </button>
+                <button class="btn btn--icon btn--secondary" aria-label="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Cards -->
+        <div class="preview-section">
+            <h2 class="preview-title">Cards</h2>
+            <p class="preview-subtitle">Elevated surfaces for content grouping</p>
+            
+            <div class="preview-grid">
+                <!-- Standard Card -->
+                <div class="card">
+                    <div class="card__header">
+                        <h3 class="card__title">Standard Card</h3>
+                    </div>
+                    <div class="card__body">
+                        <p>This is a standard card with header and body sections.</p>
+                    </div>
+                    <div class="card__footer">
+                        <button class="btn btn--ghost btn--sm">Action</button>
+                    </div>
+                </div>
+                
+                <!-- Score Card -->
+                <div class="card card--score">
+                    <div class="card__score-value score-bg-3">3</div>
+                    <h2 style="font-size: var(--text-lg); font-weight: var(--font-semibold);">Today's Score</h2>
+                    <p class="text-secondary text-sm" style="margin-top: var(--space-1);">Itch: 2/3 • Hives: 1/3</p>
+                </div>
+                
+                <!-- Interactive Card -->
+                <div class="card card--interactive">
+                    <div class="card__body card__body--compact">
+                        <div style="display: flex; align-items: center; gap: var(--space-3);">
+                            <div class="score-bg-2" style="width: 48px; height: 48px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: var(--color-neutral-900); font-weight: var(--font-bold);">2</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: var(--font-semibold);">Monday</div>
+                                <div style="font-size: var(--text-sm); color: var(--text-secondary);">Itch: 1/3 • Hives: 1/3</div>
+                            </div>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Form Inputs -->
+        <div class="preview-section">
+            <h2 class="preview-title">Form Inputs</h2>
+            <p class="preview-subtitle">Touch-optimized with clear focus states</p>
+            
+            <div class="preview-grid" style="max-width: 400px;">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" placeholder="you@example.com">
+                    <p class="form-helper">We'll never share your email.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password (Error State)</label>
+                    <input type="password" class="form-input form-input--error" value="short" aria-invalid="true">
+                    <p class="form-error">Password must be at least 8 characters.</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-input form-textarea" placeholder="How are you feeling today?"></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Radio Cards -->
+        <div class="preview-section">
+            <h2 class="preview-title">Radio Cards</h2>
+            <p class="preview-subtitle">Large touch targets for symptom scoring</p>
+            
+            <div style="max-width: 400px;">
+                <div class="form-group">
+                    <label class="form-label form-label--lg">Itch Intensity</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="demo-itch" value="0" class="radio-card__input" checked>
+                            <span class="radio-card__indicator"></span>
+                            <div class="radio-card__content">
+                                <div class="radio-card__title">0 - None</div>
+                                <div class="radio-card__description">No itching at all</div>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="demo-itch" value="1" class="radio-card__input">
+                            <span class="radio-card__indicator"></span>
+                            <div class="radio-card__content">
+                                <div class="radio-card__title">1 - Mild</div>
+                                <div class="radio-card__description">Present but not annoying</div>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="demo-itch" value="2" class="radio-card__input">
+                            <span class="radio-card__indicator"></span>
+                            <div class="radio-card__content">
+                                <div class="radio-card__title">2 - Moderate</div>
+                                <div class="radio-card__description">Troublesome but tolerable</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toggle & Checkbox -->
+        <div class="preview-section">
+            <h2 class="preview-title">Toggle & Checkbox</h2>
+            <p class="preview-subtitle">iOS-style controls</p>
+            
+            <div class="preview-grid" style="max-width: 400px;">
+                <label class="toggle">
+                    <input type="checkbox" class="toggle__input" checked>
+                    <span class="toggle__track">
+                        <span class="toggle__thumb"></span>
+                    </span>
+                    <span class="toggle__label">Enable Notifications</span>
+                </label>
+                
+                <label class="toggle">
+                    <input type="checkbox" class="toggle__input">
+                    <span class="toggle__track">
+                        <span class="toggle__thumb"></span>
+                    </span>
+                    <span class="toggle__label">Dark Mode</span>
+                </label>
+                
+                <label class="checkbox">
+                    <input type="checkbox" class="checkbox__input" checked>
+                    <span class="checkbox__box">
+                        <svg class="checkbox__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </span>
+                    <span class="checkbox__label">I took antihistamine today</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Feedback Banners -->
+        <div class="preview-section">
+            <h2 class="preview-title">Feedback Banners</h2>
+            <p class="preview-subtitle">Inline notifications for form feedback</p>
+            
+            <div class="preview-grid">
+                <div class="feedback-banner feedback-banner--success">
+                    <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <span class="feedback-banner__text">Your entry has been saved successfully.</span>
+                </div>
+                
+                <div class="feedback-banner feedback-banner--error">
+                    <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span class="feedback-banner__text">Please select an itch score before saving.</span>
+                </div>
+                
+                <div class="feedback-banner feedback-banner--warning">
+                    <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span class="feedback-banner__text">You haven't logged your symptoms in 3 days.</span>
+                </div>
+                
+                <div class="feedback-banner feedback-banner--info">
+                    <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    <span class="feedback-banner__text">Tip: Log your symptoms at the same time each day for consistency.</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Loading States -->
+        <div class="preview-section">
+            <h2 class="preview-title">Loading States</h2>
+            <p class="preview-subtitle">Skeleton screens and spinners</p>
+            
+            <div class="preview-row" style="margin-bottom: var(--space-4);">
+                <div class="spinner spinner--sm"></div>
+                <div class="spinner"></div>
+                <div class="spinner spinner--lg"></div>
+            </div>
+            
+            <div class="card">
+                <div class="card__body">
+                    <div class="skeleton" style="width: 60%; height: 20px; margin-bottom: var(--space-3);"></div>
+                    <div class="skeleton" style="width: 100%; height: 16px; margin-bottom: var(--space-2);"></div>
+                    <div class="skeleton" style="width: 80%; height: 16px;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toast Demo -->
+        <div class="preview-section">
+            <h2 class="preview-title">Toast Notifications</h2>
+            <p class="preview-subtitle">Non-intrusive feedback messages</p>
+            
+            <div class="preview-row">
+                <button class="btn btn--primary btn--sm" onclick="CSU.Toast.success('Entry saved!')">Success</button>
+                <button class="btn btn--secondary btn--sm" onclick="CSU.Toast.error('Something went wrong.')">Error</button>
+                <button class="btn btn--secondary btn--sm" onclick="CSU.Toast.warning('Missing entries this week.')">Warning</button>
+                <button class="btn btn--secondary btn--sm" onclick="CSU.Toast.info('Tip: Log daily for accurate UAS7.')">Info</button>
+            </div>
+        </div>
+        
+        <!-- Bottom Sheet Demo -->
+        <div class="preview-section">
+            <h2 class="preview-title">Bottom Sheet</h2>
+            <p class="preview-subtitle">iOS-style sliding panel</p>
+            
+            <button class="btn btn--primary" onclick="CSU.BottomSheet.open('demo-sheet')">
+                Open Bottom Sheet
+            </button>
+        </div>
+        
+        <!-- Modal Demo -->
+        <div class="preview-section">
+            <h2 class="preview-title">Modal</h2>
+            <p class="preview-subtitle">Centered dialog for confirmations</p>
+            
+            <button class="btn btn--destructive" onclick="CSU.Modal.open('demo-modal')">
+                Open Delete Confirmation
+            </button>
+        </div>
+        
+    </main>
+    
+    <!-- Demo Bottom Sheet -->
+    <div id="demo-sheet-backdrop" class="bottom-sheet-backdrop" onclick="CSU.BottomSheet.close('demo-sheet')"></div>
+    <div id="demo-sheet" class="bottom-sheet">
+        <div class="bottom-sheet__handle">
+            <div class="bottom-sheet__handle-bar"></div>
+        </div>
+        <div class="bottom-sheet__header">
+            <h2 class="bottom-sheet__title">Filter Options</h2>
+            <button class="btn btn--ghost btn--sm" onclick="CSU.BottomSheet.close('demo-sheet')">Done</button>
+        </div>
+        <div class="bottom-sheet__body">
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">
+                Swipe down on the handle to dismiss, or tap the backdrop.
+            </p>
+            <div class="form-group">
+                <label class="form-label">Date Range</label>
+                <input type="date" class="form-input">
+            </div>
+            <button class="btn btn--primary btn--full" onclick="CSU.BottomSheet.close('demo-sheet')">
+                Apply Filters
+            </button>
+        </div>
+    </div>
+    
+    <!-- Demo Modal -->
+    <div id="demo-modal-backdrop" class="modal-backdrop" onclick="CSU.Modal.close('demo-modal')"></div>
+    <div id="demo-modal" class="modal" role="dialog" aria-labelledby="demo-modal-title">
+        <div class="modal__header">
+            <h2 id="demo-modal-title" class="modal__title">Delete Entry?</h2>
+            <button class="modal__close" onclick="CSU.Modal.close('demo-modal')" aria-label="Close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <p style="color: var(--text-secondary);">
+                Are you sure you want to delete this entry? This action cannot be undone.
+            </p>
+        </div>
+        <div class="modal__footer">
+            <button class="btn btn--secondary" style="flex: 1;" onclick="CSU.Modal.close('demo-modal')">Cancel</button>
+            <button class="btn btn--destructive" style="flex: 1;" onclick="CSU.Modal.close('demo-modal'); CSU.Toast.success('Entry deleted.');">Delete</button>
+        </div>
+    </div>
+    
+    <!-- Design System JavaScript -->
+    <script src="../js/components.js"></script>
+    
+</body>
+</html>

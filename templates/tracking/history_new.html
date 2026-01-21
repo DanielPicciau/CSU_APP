@@ -1,0 +1,246 @@
+{% extends 'base_new.html' %}
+
+{% block title %}History - CSU Tracker{% endblock %}
+
+{% block header_title %}History{% endblock %}
+
+{% block header_right %}
+<button 
+    class="btn btn--icon btn--ghost" 
+    aria-label="Filter entries"
+    onclick="CSU.BottomSheet.open('filter-sheet')"
+>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    </svg>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="app-content fade-in">
+    <!-- UAS7 Summary Card -->
+    <div class="card mb-5">
+        <div class="card__body">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-primary">Weekly UAS7</h2>
+                    <p class="text-sm text-secondary">{{ week_start|date:"M j" }} - {{ week_end|date:"M j" }}</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-bold text-brand">{{ uas7_score }}</div>
+                    <div class="text-xs text-secondary">
+                        {% if uas7_score <= 6 %}Well Controlled
+                        {% elif uas7_score <= 15 %}Mild
+                        {% elif uas7_score <= 27 %}Moderate
+                        {% else %}Severe
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- UAS7 Progress Bar -->
+            <div class="mb-2" style="height: 8px; background: var(--bg-tertiary); border-radius: var(--radius-full); overflow: hidden;">
+                <div 
+                    style="height: 100%; width: {{ uas7_score|floatformat:0 }}%; max-width: 100%; background: linear-gradient(90deg, var(--color-score-0), var(--color-score-3), var(--color-score-6)); border-radius: var(--radius-full);"
+                    role="progressbar"
+                    aria-valuenow="{{ uas7_score }}"
+                    aria-valuemin="0"
+                    aria-valuemax="42"
+                    aria-label="UAS7 score {{ uas7_score }} out of 42"
+                ></div>
+            </div>
+            <div class="flex justify-between text-xs text-tertiary">
+                <span>0</span>
+                <span>21</span>
+                <span>42</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- View Toggle -->
+    <div class="flex gap-2 mb-5" role="tablist" aria-label="View options">
+        <a 
+            href="{% url 'tracking:history' %}" 
+            class="btn btn--sm {% if not view or view == 'list' %}btn--primary{% else %}btn--secondary{% endif %}"
+            role="tab"
+            aria-selected="{% if not view or view == 'list' %}true{% else %}false{% endif %}"
+        >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            List
+        </a>
+        <a 
+            href="{% url 'tracking:history' %}?view=calendar" 
+            class="btn btn--sm {% if view == 'calendar' %}btn--primary{% else %}btn--secondary{% endif %}"
+            role="tab"
+            aria-selected="{% if view == 'calendar' %}true{% else %}false{% endif %}"
+        >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Calendar
+        </a>
+    </div>
+    
+    <!-- Entry List -->
+    {% if entries %}
+    <div class="space-y-3">
+        {% for entry in entries %}
+        <a href="{% url 'tracking:entry_detail' entry.date|date:'Y-m-d' %}" class="card card--interactive">
+            <div class="card__body card__body--compact">
+                <div class="flex items-center gap-4">
+                    <!-- Score Badge -->
+                    <div 
+                        class="flex items-center justify-center rounded-full score-bg-{{ entry.score }}"
+                        style="width: 48px; height: 48px; flex-shrink: 0;"
+                    >
+                        <span class="text-lg font-bold text-inverse">{{ entry.score }}</span>
+                    </div>
+                    
+                    <!-- Entry Details -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-semibold text-primary">{{ entry.date|date:"l" }}</h3>
+                            <span class="text-sm text-secondary">{{ entry.date|date:"M j" }}</span>
+                        </div>
+                        <p class="text-sm text-secondary">
+                            Itch: {{ entry.itch_score }}/3 • Hives: {{ entry.hive_count_score }}/3
+                            {% if entry.took_antihistamine %}
+                            <span class="ml-1">💊</span>
+                            {% endif %}
+                        </p>
+                        {% if entry.notes %}
+                        <p class="text-xs text-tertiary mt-1 truncate">{{ entry.notes|truncatewords:10 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Chevron -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2" aria-hidden="true">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="flex justify-center gap-2 mt-6" aria-label="Pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn--secondary btn--sm">
+            Previous
+        </a>
+        {% endif %}
+        
+        <span class="btn btn--ghost btn--sm" aria-current="page">
+            {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn btn--secondary btn--sm">
+            Next
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="card">
+        <div class="card__body text-center py-8">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" style="margin: 0 auto 16px;">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-primary mb-2">No Entries Yet</h3>
+            <p class="text-secondary mb-4">Start tracking your symptoms to see your history here.</p>
+            <a href="{% url 'tracking:log_entry' %}" class="btn btn--primary">
+                Log Your First Entry
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filter Bottom Sheet -->
+<div id="filter-sheet-backdrop" class="bottom-sheet-backdrop" onclick="CSU.BottomSheet.close('filter-sheet')"></div>
+<div id="filter-sheet" class="bottom-sheet" role="dialog" aria-labelledby="filter-title" aria-modal="true">
+    <div class="bottom-sheet__handle">
+        <div class="bottom-sheet__handle-bar"></div>
+    </div>
+    <div class="bottom-sheet__header">
+        <h2 id="filter-title" class="bottom-sheet__title">Filter Entries</h2>
+        <button class="btn btn--ghost btn--sm" onclick="CSU.BottomSheet.close('filter-sheet')">Done</button>
+    </div>
+    <div class="bottom-sheet__body">
+        <form method="get" action="{% url 'tracking:history' %}">
+            <div class="form-group">
+                <label class="form-label">Date Range</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label text-xs text-tertiary" for="from-date">From</label>
+                        <input type="date" id="from-date" name="from" class="form-input" value="{{ filter_from }}">
+                    </div>
+                    <div>
+                        <label class="form-label text-xs text-tertiary" for="to-date">To</label>
+                        <input type="date" id="to-date" name="to" class="form-input" value="{{ filter_to }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Score Range</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label text-xs text-tertiary" for="min-score">Min</label>
+                        <select id="min-score" name="min_score" class="form-input">
+                            <option value="">Any</option>
+                            {% for i in "0123456" %}
+                            <option value="{{ i }}" {% if filter_min_score == i %}selected{% endif %}>{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label text-xs text-tertiary" for="max-score">Max</label>
+                        <select id="max-score" name="max_score" class="form-input">
+                            <option value="">Any</option>
+                            {% for i in "0123456" %}
+                            <option value="{{ i }}" {% if filter_max_score == i %}selected{% endif %}>{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="checkbox">
+                    <input type="checkbox" name="antihistamine_only" class="checkbox__input" {% if filter_antihistamine %}checked{% endif %}>
+                    <span class="checkbox__box">
+                        <svg class="checkbox__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </span>
+                    <span class="checkbox__label">Only entries with antihistamine</span>
+                </label>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <a href="{% url 'tracking:history' %}" class="btn btn--secondary flex-1">Clear</a>
+                <button type="submit" class="btn btn--primary flex-1">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

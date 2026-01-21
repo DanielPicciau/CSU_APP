@@ -1,0 +1,183 @@
+{% extends 'base_new.html' %}
+
+{% block title %}Log Entry - CSU Tracker{% endblock %}
+
+{% block header %}
+<header class="app-header" role="banner">
+    <div class="app-header__inner">
+        <a href="{% url 'home' %}" class="app-header__back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            Back
+        </a>
+        <div></div>
+        <div></div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="app-content fade-in">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-primary">
+            {% if is_today %}Log Today's Score{% else %}Log Score{% endif %}
+        </h1>
+        <p class="text-secondary mt-1">
+            {% if existing_entry %}
+            Update your entry for {{ entry_date|date:"M j, Y" }}
+            {% else %}
+            {{ entry_date|date:"l, F j, Y" }}
+            {% endif %}
+        </p>
+    </div>
+    
+    <form method="post" data-validate>
+        {% csrf_token %}
+        
+        <!-- Itch Score -->
+        <div class="form-group">
+            <label class="form-label form-label--lg" id="itch-label">
+                {{ form.itch_score.label }}
+            </label>
+            <div class="radio-group" role="radiogroup" aria-labelledby="itch-label">
+                {% for choice in form.itch_score %}
+                <label class="radio-card">
+                    <input 
+                        type="radio" 
+                        name="{{ choice.data.name }}" 
+                        value="{{ choice.data.value }}"
+                        class="radio-card__input"
+                        {% if choice.data.selected %}checked{% endif %}
+                        required
+                    >
+                    <span class="radio-card__indicator" aria-hidden="true"></span>
+                    <div class="radio-card__content">
+                        <div class="radio-card__title">{{ choice.choice_label }}</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            {% if form.itch_score.errors %}
+            <p class="form-error" role="alert">{{ form.itch_score.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <!-- Hive Count Score -->
+        <div class="form-group">
+            <label class="form-label form-label--lg" id="hive-label">
+                {{ form.hive_count_score.label }}
+            </label>
+            <div class="radio-group" role="radiogroup" aria-labelledby="hive-label">
+                {% for choice in form.hive_count_score %}
+                <label class="radio-card">
+                    <input 
+                        type="radio" 
+                        name="{{ choice.data.name }}" 
+                        value="{{ choice.data.value }}"
+                        class="radio-card__input"
+                        {% if choice.data.selected %}checked{% endif %}
+                        required
+                    >
+                    <span class="radio-card__indicator" aria-hidden="true"></span>
+                    <div class="radio-card__content">
+                        <div class="radio-card__title">{{ choice.choice_label }}</div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            {% if form.hive_count_score.errors %}
+            <p class="form-error" role="alert">{{ form.hive_count_score.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <!-- Antihistamine Toggle -->
+        <div class="card mb-5">
+            <div class="card__body card__body--compact">
+                <label class="toggle">
+                    <input 
+                        type="checkbox" 
+                        name="took_antihistamine" 
+                        class="toggle__input"
+                        {% if form.took_antihistamine.value %}checked{% endif %}
+                        id="id_took_antihistamine"
+                    >
+                    <span class="toggle__track">
+                        <span class="toggle__thumb"></span>
+                    </span>
+                    <span class="toggle__label">{{ form.took_antihistamine.label }}</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Notes -->
+        <div class="form-group">
+            <label class="form-label" for="id_notes">{{ form.notes.label }}</label>
+            <textarea 
+                name="notes" 
+                id="id_notes" 
+                class="form-input form-textarea"
+                placeholder="Any additional notes about how you're feeling today..."
+                aria-describedby="notes-helper"
+            >{{ form.notes.value|default:'' }}</textarea>
+            <p id="notes-helper" class="form-helper">Optional - track triggers, medications, etc.</p>
+        </div>
+        
+        <!-- Preview Score -->
+        <div class="card mb-5" id="score-preview" style="display: none;">
+            <div class="card__body card__body--compact">
+                <div class="flex items-center justify-between">
+                    <span class="text-secondary">Calculated UAS Score</span>
+                    <span class="text-2xl font-bold text-primary" id="calculated-score">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn--primary btn--lg btn--full">
+            {% if existing_entry %}Update Entry{% else %}Save Entry{% endif %}
+        </button>
+    </form>
+    
+    {% if existing_entry %}
+    <div class="mt-4 text-center">
+        <a href="{% url 'tracking:delete_entry' entry_date|date:'Y-m-d' %}" class="btn btn--ghost btn--destructive">
+            Delete this entry
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const preview = document.getElementById('score-preview');
+    const calculatedScore = document.getElementById('calculated-score');
+    
+    function updateScorePreview() {
+        const itchValue = document.querySelector('input[name="itch_score"]:checked');
+        const hiveValue = document.querySelector('input[name="hive_count_score"]:checked');
+        
+        if (itchValue && hiveValue) {
+            const score = parseInt(itchValue.value) + parseInt(hiveValue.value);
+            calculatedScore.textContent = score;
+            preview.style.display = 'block';
+            
+            // Update color based on score
+            const colors = ['#22C55E', '#4ADE80', '#FACC15', '#FB923C', '#F97316', '#EF4444', '#DC2626'];
+            calculatedScore.style.color = colors[score] || colors[6];
+        }
+    }
+    
+    form.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+        radio.addEventListener('change', updateScorePreview);
+    });
+    
+    // Initial check
+    updateScorePreview();
+});
+</script>
+{% endblock %}
+{% endblock %}

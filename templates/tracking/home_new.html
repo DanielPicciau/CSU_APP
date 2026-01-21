@@ -1,0 +1,161 @@
+{% extends 'base_new.html' %}
+
+{% block title %}Today - CSU Tracker{% endblock %}
+
+{% block header_title %}
+    {% now "l" %}
+{% endblock %}
+
+{% block header_right %}
+<a href="{% url 'accounts:profile' %}" class="btn btn--icon btn--ghost" aria-label="Profile">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="app-content fade-in">
+    <!-- Greeting Section -->
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-primary">
+            {% if today_entry %}
+            ✓ Logged Today
+            {% else %}
+            {% now "H" as current_hour %}
+            {% if current_hour|add:0 < 12 %}
+            Good morning!
+            {% elif current_hour|add:0 < 17 %}
+            Good afternoon!
+            {% else %}
+            Good evening!
+            {% endif %}
+            {% endif %}
+        </h1>
+        <p class="text-secondary mt-1">{{ today|date:"l, F j" }}</p>
+    </div>
+    
+    <!-- Today's Status Card -->
+    <div class="card mb-5">
+        <div class="card__body text-center">
+            {% if today_entry %}
+            <div class="card__score-value score-bg-{{ today_entry.score }}">
+                {{ today_entry.score }}
+            </div>
+            <h2 class="text-lg font-semibold text-primary">Today's UAS Score</h2>
+            <p class="text-secondary text-sm mt-1">
+                Itch: {{ today_entry.itch_score }}/3 • Hives: {{ today_entry.hive_count_score }}/3
+            </p>
+            {% if today_entry.took_antihistamine %}
+            <span class="inline-flex items-center gap-1 mt-3 text-sm text-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Took antihistamine
+            </span>
+            {% endif %}
+            <div class="mt-4">
+                <a href="{% url 'tracking:log_entry' %}" class="btn btn--ghost">
+                    Edit Entry
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+            {% else %}
+            <div class="card__score-value" style="background-color: var(--bg-tertiary);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </div>
+            <h2 class="text-lg font-semibold text-primary">No Entry Yet</h2>
+            <p class="text-secondary text-sm mt-1">Log your CSU symptoms for today</p>
+            <div class="mt-4">
+                <a href="{% url 'tracking:log_entry' %}" class="btn btn--primary btn--lg">
+                    Log Today's Score
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Week Overview -->
+    <div class="card mb-5">
+        <div class="card__header">
+            <h3 class="card__title">Last 7 Days</h3>
+            <span class="text-sm {% if uas7_complete %}text-brand font-semibold{% else %}text-tertiary{% endif %}">
+                UAS7: {{ uas7_score }}{% if not uas7_complete %}*{% endif %}
+            </span>
+        </div>
+        <div class="card__body">
+            <!-- Mini Chart -->
+            <div class="flex justify-between items-end gap-1" style="height: 100px;" role="img" aria-label="Weekly score chart">
+                {% for day in chart_data %}
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full flex flex-col justify-end" style="height: 64px;">
+                        {% if day.has_entry %}
+                        <div 
+                            class="w-full rounded-t-md score-bg-{{ day.score }}" 
+                            style="height: {{ day.score|add:1 }}0px; min-height: 8px;"
+                            title="{{ day.date|date:'M j' }}: Score {{ day.score }}"
+                            aria-label="{{ day.date|date:'M j' }}: Score {{ day.score }}"
+                        ></div>
+                        {% else %}
+                        <div 
+                            class="w-full rounded" 
+                            style="height: 4px; background-color: var(--border-default);"
+                            title="{{ day.date|date:'M j' }}: No entry"
+                            aria-label="{{ day.date|date:'M j' }}: No entry"
+                        ></div>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs text-tertiary mt-2">{{ day.date|date:"D" }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if not uas7_complete %}
+            <p class="text-xs text-tertiary mt-3">*Incomplete week - log daily for accurate UAS7</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 gap-4 mb-5">
+        <div class="card">
+            <div class="card__body card__body--compact text-center">
+                <div class="text-3xl font-bold text-brand">{{ streak }}</div>
+                <div class="text-sm text-secondary mt-1">Day Streak 🔥</div>
+            </div>
+        </div>
+        <a href="{% url 'tracking:history' %}" class="card card--interactive">
+            <div class="card__body card__body--compact text-center">
+                <div class="text-3xl font-bold text-primary">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline;">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="text-sm text-secondary mt-1">View History</div>
+            </div>
+        </a>
+    </div>
+    
+    <!-- Reminder CTA -->
+    {% if not has_notification_setup %}
+    <div class="card" style="background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));">
+        <div class="card__body">
+            <h3 class="font-semibold text-inverse mb-2">🔔 Stay on Track</h3>
+            <p class="text-sm mb-4" style="color: rgba(255,255,255,0.85);">
+                Set up daily reminders to never miss logging your symptoms.
+            </p>
+            <a href="{% url 'notifications:settings' %}" class="btn btn--secondary btn--sm">
+                Set Reminder
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

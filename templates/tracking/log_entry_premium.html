@@ -1,0 +1,457 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}{% if editing %}Edit Entry{% else %}Log Today{% endif %} - CSU Tracker{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/score-selector.css' %}">
+{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'tracking:today' %}" class="btn btn--icon btn--ghost" aria-label="Back to today">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block header_title %}
+{% if editing %}Edit Entry{% else %}Log Today{% endif %}
+{% endblock %}
+
+{% block header_right %}
+{% if editing %}
+<button type="button" id="delete-entry-btn" class="btn btn--icon btn--ghost" aria-label="Delete entry">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" stroke-width="2">
+        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    </svg>
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="app-content">
+    
+    <form id="log-form" method="post" action="{% url 'tracking:log_entry' %}" class="fade-in" novalidate>
+        {% csrf_token %}
+        {% if editing %}
+        <input type="hidden" name="entry_id" value="{{ entry.id }}">
+        {% endif %}
+        
+        <!-- Date Display -->
+        <div class="text-center mb-6">
+            <p class="text-secondary text-sm">{{ today|date:"l, F j, Y" }}</p>
+        </div>
+        
+        <!-- Score Selector (Segmented) -->
+        <div class="card mb-5">
+            <div class="card__body">
+                <h2 class="text-lg font-semibold text-primary mb-4 text-center">
+                    Today's UAS Score
+                </h2>
+                <p class="text-sm text-secondary text-center mb-5">
+                    Combined itch + hives severity (0-6)
+                </p>
+                
+                <div class="score-segmented" data-component="score-segmented" data-name="calculated_score" data-value="{{ entry.score|default:'' }}">
+                    <input type="hidden" name="calculated_score" id="calculated-score" value="{{ entry.score|default:'' }}">
+                    {% for i in "0123456" %}
+                    <button 
+                        type="button" 
+                        class="score-segmented__btn {% if entry.score|stringformat:'s' == i %}score-segmented__btn--active{% endif %}"
+                        data-value="{{ i }}"
+                        aria-label="Score {{ i }}"
+                    >
+                        {{ i }}
+                    </button>
+                    {% endfor %}
+                </div>
+                
+                <p id="score-label" class="text-sm text-center mt-4 font-medium" style="color: var(--color-score-{{ entry.score|default:3 }});">
+                    {% if entry.score == 0 %}No symptoms{% elif entry.score == 1 %}Minimal{% elif entry.score == 2 %}Mild{% elif entry.score == 3 %}Moderate{% elif entry.score == 4 %}Considerable{% elif entry.score == 5 %}Significant{% elif entry.score == 6 %}Severe{% else %}Select your score{% endif %}
+                </p>
+            </div>
+        </div>
+        
+        <!-- Detailed Breakdown -->
+        <div class="card mb-5 slide-up" style="animation-delay: 0.1s;">
+            <div class="card__header">
+                <h3 class="card__title">Detailed Breakdown</h3>
+                <button type="button" class="btn btn--ghost btn--sm" id="toggle-details" aria-expanded="true">
+                    <svg id="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;">
+                        <path d="M18 15l-6-6-6 6"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="details-panel" class="card__body" style="border-top: 1px solid var(--border-subtle);">
+                
+                <!-- Itch Severity -->
+                <div class="mb-6">
+                    <label class="input-label mb-3">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 4px;">
+                            <path d="M8 19c0-4.4 2.7-8 6-8s6 3.6 6 8"/>
+                            <circle cx="14" cy="5" r="3"/>
+                        </svg>
+                        Itch Intensity
+                    </label>
+                    
+                    <div class="severity-selector" data-component="severity-selector" data-name="itch_score" data-max="3" data-value="{{ entry.itch_score|default:'' }}">
+                        {% for choice in itch_choices %}
+                        <label class="severity-card {% if entry.itch_score == choice.0 %}severity-card--selected{% endif %}" data-value="{{ choice.0 }}">
+                            <input 
+                                type="radio" 
+                                name="itch_score" 
+                                value="{{ choice.0 }}"
+                                class="sr-only"
+                                {% if entry.itch_score == choice.0 %}checked{% endif %}
+                            >
+                            <span class="severity-card__score">{{ choice.0 }}</span>
+                            <span class="severity-card__content">
+                                <span class="severity-card__label">{{ choice.1 }}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Hive Severity -->
+                <div class="mb-4">
+                    <label class="input-label mb-3">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 4px;">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="6"/>
+                            <circle cx="12" cy="12" r="2"/>
+                        </svg>
+                        Hive Count
+                    </label>
+                    
+                    <div class="severity-selector" data-component="severity-selector" data-name="hive_count_score" data-max="3" data-value="{{ entry.hive_count_score|default:'' }}">
+                        {% for choice in hive_choices %}
+                        <label class="severity-card {% if entry.hive_count_score == choice.0 %}severity-card--selected{% endif %}" data-value="{{ choice.0 }}">
+                            <input 
+                                type="radio" 
+                                name="hive_count_score" 
+                                value="{{ choice.0 }}"
+                                class="sr-only"
+                                {% if entry.hive_count_score == choice.0 %}checked{% endif %}
+                            >
+                            <span class="severity-card__score">{{ choice.0 }}</span>
+                            <span class="severity-card__content">
+                                <span class="severity-card__label">{{ choice.1 }}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Additional Info -->
+        <div class="card mb-5 slide-up" style="animation-delay: 0.2s;">
+            <div class="card__header">
+                <h3 class="card__title">Additional Info</h3>
+                <span class="text-sm text-tertiary">Optional</span>
+            </div>
+            <div class="card__body" style="border-top: 1px solid var(--border-subtle);">
+                
+                <!-- Antihistamine Toggle -->
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-3">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-secondary">
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <label for="antihistamine" class="font-medium text-primary">
+                            Took Antihistamine
+                        </label>
+                    </div>
+                    <label class="toggle">
+                        <input 
+                            type="checkbox" 
+                            id="antihistamine" 
+                            name="took_antihistamine"
+                            class="toggle__input"
+                            {% if entry.took_antihistamine %}checked{% endif %}
+                        >
+                        <span class="toggle__slider" aria-hidden="true"></span>
+                    </label>
+                </div>
+                
+                <!-- Notes -->
+                <div>
+                    <label for="notes" class="input-label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 4px;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Notes
+                    </label>
+                    <textarea 
+                        id="notes"
+                        name="notes"
+                        class="input input--textarea mt-2"
+                        rows="3"
+                        placeholder="Any triggers, symptoms, or notes for today..."
+                    >{{ entry.notes|default:'' }}</textarea>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Submit Button -->
+        <div class="slide-up" style="animation-delay: 0.3s;">
+            <button type="submit" id="submit-btn" class="btn btn--primary btn--full btn--lg">
+                {% if editing %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Update Entry
+                {% else %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Save Entry
+                {% endif %}
+            </button>
+        </div>
+        
+        {% if editing %}
+        <p class="text-center text-sm text-tertiary mt-4">
+            Originally logged {{ entry.created_at|timesince }} ago
+        </p>
+        {% endif %}
+        
+    </form>
+    
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if editing %}
+<div class="modal" id="delete-modal" role="dialog" aria-labelledby="delete-modal-title" aria-modal="true">
+    <div class="modal__content">
+        <div class="modal__header">
+            <h3 class="modal__title" id="delete-modal-title">Delete Entry?</h3>
+        </div>
+        <div class="modal__body">
+            <p class="text-secondary">
+                Are you sure you want to delete this entry? This action cannot be undone.
+            </p>
+        </div>
+        <div class="modal__footer">
+            <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
+            <form method="post" action="{% url 'tracking:delete_entry_by_id' entry.id %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--destructive">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/components.js' %}"></script>
+<script src="{% static 'js/score-selector.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('log-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const scoreInput = document.getElementById('calculated-score');
+    const scoreLabel = document.getElementById('score-label');
+    const detailsPanel = document.getElementById('details-panel');
+    const toggleDetails = document.getElementById('toggle-details');
+    const chevronIcon = document.getElementById('chevron-icon');
+    
+    // Score labels
+    const scoreLabels = {
+        0: 'No symptoms',
+        1: 'Minimal',
+        2: 'Mild',
+        3: 'Moderate',
+        4: 'Considerable',
+        5: 'Significant',
+        6: 'Severe'
+    };
+    
+    // Initialize score segmented component
+    const scoreSegmented = document.querySelector('[data-component="score-segmented"]');
+    if (scoreSegmented) {
+        const buttons = scoreSegmented.querySelectorAll('.score-segmented__btn');
+        
+        buttons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const value = parseInt(this.dataset.value);
+                
+                // Update hidden input
+                scoreInput.value = value;
+                
+                // Update UI
+                buttons.forEach(b => b.classList.remove('score-segmented__btn--active'));
+                this.classList.add('score-segmented__btn--active');
+                
+                // Update label
+                scoreLabel.textContent = scoreLabels[value];
+                scoreLabel.style.color = `var(--color-score-${value})`;
+                
+                // Haptic feedback
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+                
+                // Also update severity selectors to match
+                updateSeverityFromTotal(value);
+            });
+        });
+    }
+    
+    // Initialize severity selectors
+    const severitySelectors = document.querySelectorAll('[data-component="severity-selector"]');
+    severitySelectors.forEach(selector => {
+        const cards = selector.querySelectorAll('.severity-card');
+        cards.forEach(card => {
+            card.addEventListener('click', function() {
+                // Update UI
+                cards.forEach(c => c.classList.remove('severity-card--selected'));
+                this.classList.add('severity-card--selected');
+                
+                // Haptic feedback
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+                
+                // Recalculate total score from itch + hives
+                recalculateTotalScore();
+            });
+        });
+    });
+    
+    function recalculateTotalScore() {
+        const itchRadio = document.querySelector('input[name="itch_score"]:checked');
+        const hiveRadio = document.querySelector('input[name="hive_count_score"]:checked');
+        
+        if (itchRadio && hiveRadio) {
+            const total = parseInt(itchRadio.value) + parseInt(hiveRadio.value);
+            
+            // Update score input and button
+            scoreInput.value = total;
+            
+            // Update segmented control
+            const buttons = scoreSegmented.querySelectorAll('.score-segmented__btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('score-segmented__btn--active');
+                if (parseInt(btn.dataset.value) === total) {
+                    btn.classList.add('score-segmented__btn--active');
+                }
+            });
+            
+            // Update label
+            scoreLabel.textContent = scoreLabels[total];
+            scoreLabel.style.color = `var(--color-score-${total})`;
+        }
+    }
+    
+    function updateSeverityFromTotal(total) {
+        // Simple split: half for itch, half for hives (with rounding)
+        const itch = Math.min(3, Math.ceil(total / 2));
+        const hives = Math.min(3, Math.floor(total / 2));
+        
+        // Update itch selector
+        const itchCards = document.querySelectorAll('[data-name="itch_score"] .severity-card');
+        itchCards.forEach(card => {
+            const radio = card.querySelector('input');
+            if (parseInt(radio.value) === itch) {
+                card.classList.add('severity-card--selected');
+                radio.checked = true;
+            } else {
+                card.classList.remove('severity-card--selected');
+            }
+        });
+        
+        // Update hive selector
+        const hiveCards = document.querySelectorAll('[data-name="hive_count_score"] .severity-card');
+        hiveCards.forEach(card => {
+            const radio = card.querySelector('input');
+            if (parseInt(radio.value) === hives) {
+                card.classList.add('severity-card--selected');
+                radio.checked = true;
+            } else {
+                card.classList.remove('severity-card--selected');
+            }
+        });
+    }
+    
+    // Toggle details panel
+    if (toggleDetails && detailsPanel) {
+        toggleDetails.addEventListener('click', function() {
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            this.setAttribute('aria-expanded', !isExpanded);
+            detailsPanel.hidden = isExpanded;
+            chevronIcon.style.transform = isExpanded ? 'rotate(180deg)' : '';
+        });
+    }
+    
+    // Unsaved changes tracking
+    let hasChanges = false;
+    const originalData = new FormData(form);
+    
+    form.addEventListener('input', () => {
+        hasChanges = true;
+    });
+    
+    window.addEventListener('beforeunload', (e) => {
+        if (hasChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        hasChanges = false; // Don't warn on submit
+        
+        // Validate score is selected
+        if (!scoreInput.value) {
+            e.preventDefault();
+            CSU.Toast.error('Please select a score', 'Validation Error');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner spinner--sm" style="border-top-color: white;"></span> Saving...';
+    });
+    
+    // Delete modal (if editing)
+    const deleteBtn = document.getElementById('delete-entry-btn');
+    const deleteModal = document.getElementById('delete-modal');
+    
+    if (deleteBtn && deleteModal) {
+        deleteBtn.addEventListener('click', function() {
+            deleteModal.classList.add('modal--open');
+            document.body.style.overflow = 'hidden';
+        });
+        
+        // Close modal handlers
+        deleteModal.querySelectorAll('[data-modal-close]').forEach(closeBtn => {
+            closeBtn.addEventListener('click', () => {
+                deleteModal.classList.remove('modal--open');
+                document.body.style.overflow = '';
+            });
+        });
+        
+        deleteModal.addEventListener('click', (e) => {
+            if (e.target === deleteModal) {
+                deleteModal.classList.remove('modal--open');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

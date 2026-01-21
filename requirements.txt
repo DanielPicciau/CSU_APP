@@ -67,6 +67,7 @@ python-dotenv==1.2.1
 pytz==2025.2
 pywebpush==2.2.0
 redis==6.4.0
+reportlab==4.4.9
 requests==2.32.5
 ruff==0.14.13
 six==1.17.0

@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Sum
+from django.db.models import Avg, Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.http import JsonResponse
@@ -14,7 +14,7 @@ from django.http import JsonResponse
 import pytz
 
 from .models import DailyEntry
-from .forms import DailyEntryForm
+from .forms import DailyEntryForm, ITCH_CHOICES, HIVE_CHOICES
 
 
 def get_user_today(user) -> date:
@@ -25,17 +25,23 @@ def get_user_today(user) -> date:
 
 @login_required
 def home_view(request):
-    """Home page - shows today's status and quick actions."""
+    """Home page - redirect to Today screen."""
+    return redirect("tracking:today")
+
+
+@login_required
+def today_view(request):
+    """Today screen - premium mobile-first experience."""
     today = get_user_today(request.user)
     today_entry = DailyEntry.objects.filter(user=request.user, date=today).first()
     
     # Get last 7 days of entries for the mini chart
     week_ago = today - timedelta(days=6)
-    recent_entries = DailyEntry.objects.filter(
+    recent_entries = list(DailyEntry.objects.filter(
         user=request.user,
         date__gte=week_ago,
         date__lte=today,
-    ).order_by("date")
+    ).order_by("date"))
     
     # Build chart data (fill in missing days with None)
     chart_data = []
@@ -49,9 +55,8 @@ def home_view(request):
         })
     
     # Calculate UAS7 (last 7 days sum)
-    uas7_entries = list(recent_entries)
-    uas7_score = sum(e.score for e in uas7_entries)
-    uas7_complete = len(uas7_entries) == 7
+    uas7_score = sum(e.score for e in recent_entries)
+    uas7_complete = len(recent_entries) == 7
     
     # Streak calculation
     streak = 0
@@ -63,33 +68,71 @@ def home_view(request):
         else:
             break
     
-    return render(request, "tracking/home.html", {
+    # Total entries count
+    total_entries = DailyEntry.objects.filter(user=request.user).count()
+    
+    # Check notification setup
+    has_notification_setup = hasattr(request.user, 'notification_preferences')
+    
+    return render(request, "tracking/today.html", {
         "today": today,
         "today_entry": today_entry,
         "chart_data": chart_data,
         "uas7_score": uas7_score,
         "uas7_complete": uas7_complete,
         "streak": streak,
+        "total_entries": total_entries,
+        "has_notification_setup": has_notification_setup,
     })
 
 
 @login_required
 def log_entry_view(request, date_str=None):
     """Log or update a daily entry."""
+    user_today = get_user_today(request.user)
+    
     if date_str:
         try:
             entry_date = date.fromisoformat(date_str)
         except ValueError:
             messages.error(request, "Invalid date format.")
-            return redirect("home")
+            return redirect("tracking:today")
     else:
-        entry_date = get_user_today(request.user)
+        entry_date = user_today
+    
+    # Prevent logging future dates
+    if entry_date > user_today:
+        messages.error(request, "Cannot log entries for future dates.")
+        return redirect("tracking:today")
     
     # Check if entry exists (for update)
     existing_entry = DailyEntry.objects.filter(
         user=request.user,
         date=entry_date,
     ).first()
+    
+    # Handle quick mode (score only, auto-split to itch/hives)
+    if request.method == "POST" and request.POST.get("quick_mode"):
+        score = int(request.POST.get("score", 0))
+        itch = min(3, (score + 1) // 2)
+        hives = min(3, score // 2)
+        
+        if existing_entry:
+            existing_entry.itch_score = itch
+            existing_entry.hive_count_score = hives
+            existing_entry.score = itch + hives
+            existing_entry.save()
+        else:
+            DailyEntry.objects.create(
+                user=request.user,
+                date=entry_date,
+                score=score,
+                itch_score=itch,
+                hive_count_score=hives,
+            )
+        
+        messages.success(request, "Score logged successfully!")
+        return redirect("tracking:today")
     
     if request.method == "POST":
         form = DailyEntryForm(
@@ -102,7 +145,7 @@ def log_entry_view(request, date_str=None):
             form.save()
             action = "updated" if existing_entry else "logged"
             messages.success(request, f"Entry {action} successfully!")
-            return redirect("home")
+            return redirect("tracking:today")
     else:
         form = DailyEntryForm(
             instance=existing_entry,
@@ -110,53 +153,314 @@ def log_entry_view(request, date_str=None):
             entry_date=entry_date,
         )
     
-    return render(request, "tracking/log_entry.html", {
+    # Determine which template to use (check for new design preference)
+    template = "tracking/log_entry_premium.html"
+    
+    return render(request, template, {
         "form": form,
         "entry_date": entry_date,
-        "is_today": entry_date == get_user_today(request.user),
+        "today": entry_date,
+        "is_today": entry_date == user_today,
         "existing_entry": existing_entry,
+        "editing": existing_entry is not None,
+        "entry": existing_entry,
+        "itch_choices": ITCH_CHOICES,
+        "hive_choices": HIVE_CHOICES,
     })
 
 
 @login_required
 def history_view(request):
-    """View entry history."""
+    """View entry history with filters and calendar view."""
     today = get_user_today(request.user)
     
     # Get filter parameters
     days = int(request.GET.get("days", 30))
+    view = request.GET.get("view", "list")
+    show = request.GET.get("show", "all")
+    min_score = request.GET.get("min_score")
+    max_score = request.GET.get("max_score")
+    antihistamine = request.GET.get("antihistamine")
+    month_str = request.GET.get("month")
+    
     start_date = today - timedelta(days=days - 1)
     
-    entries = DailyEntry.objects.filter(
+    # Get all entries in range
+    entries = list(DailyEntry.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=today,
-    ).order_by("-date")
+    ).order_by("-date"))
     
-    # Calculate statistics
-    stats = entries.aggregate(
-        avg_score=Avg("score"),
-        total_entries=Sum("score"),
-    )
+    # Apply score filters
+    if min_score:
+        entries = [e for e in entries if e.score >= int(min_score)]
+    if max_score:
+        entries = [e for e in entries if e.score <= int(max_score)]
+    if antihistamine:
+        entries = [e for e in entries if e.took_antihistamine]
     
-    # Build calendar data
-    calendar_data = []
+    # Create entry lookup
+    entry_by_date = {e.date: e for e in entries}
+    
+    # Build list data (all days in range)
+    list_data = []
+    entries_count = 0
+    missing_count = 0
+    
     for i in range(days):
-        day = start_date + timedelta(days=i)
-        entry = next((e for e in entries if e.date == day), None)
-        calendar_data.append({
+        day = today - timedelta(days=i)
+        entry = entry_by_date.get(day)
+        is_missing = entry is None
+        
+        if is_missing:
+            missing_count += 1
+        else:
+            entries_count += 1
+        
+        # Filter based on show parameter
+        if show == "logged" and is_missing:
+            continue
+        if show == "missing" and not is_missing:
+            continue
+        
+        list_data.append({
             "date": day,
             "entry": entry,
-            "weekday": day.strftime("%a"),
+            "is_today": day == today,
+            "is_missing": is_missing,
         })
     
-    return render(request, "tracking/history.html", {
-        "entries": entries,
-        "calendar_data": list(reversed(calendar_data)),
-        "stats": stats,
+    # Calculate adherence percentage
+    adherence_pct = (entries_count / days * 100) if days > 0 else 0
+    
+    # Build calendar data for calendar view
+    calendar_data = []
+    if view == "calendar":
+        # Determine which month to show
+        if month_str:
+            try:
+                year, month = map(int, month_str.split("-"))
+                current_month = date(year, month, 1)
+            except ValueError:
+                current_month = date(today.year, today.month, 1)
+        else:
+            current_month = date(today.year, today.month, 1)
+        
+        # Calculate prev/next months
+        if current_month.month == 1:
+            prev_month = date(current_month.year - 1, 12, 1)
+        else:
+            prev_month = date(current_month.year, current_month.month - 1, 1)
+        
+        if current_month.month == 12:
+            next_month = date(current_month.year + 1, 1, 1)
+        else:
+            next_month = date(current_month.year, current_month.month + 1, 1)
+        
+        # Get first day of month and number of days
+        first_day_weekday = current_month.weekday()  # Monday = 0
+        # Adjust for Sunday start (0 = Sunday)
+        first_day_weekday = (first_day_weekday + 1) % 7
+        
+        # Add empty cells for days before first of month
+        for _ in range(first_day_weekday):
+            calendar_data.append({"empty": True})
+        
+        # Get entries for this month
+        month_end = (next_month - timedelta(days=1))
+        month_entries = DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=current_month,
+            date__lte=month_end,
+        )
+        month_entry_by_date = {e.date: e for e in month_entries}
+        
+        # Add days of the month
+        day = current_month
+        while day.month == current_month.month:
+            is_future = day > today
+            calendar_data.append({
+                "date": day,
+                "day": day.day,
+                "entry": month_entry_by_date.get(day) if not is_future else None,
+                "is_today": day == today,
+                "future": is_future,
+            })
+            day += timedelta(days=1)
+    
+    context = {
+        "list_data": list_data,
+        "calendar_data": calendar_data,
+        "entries_count": entries_count,
+        "missing_count": missing_count,
+        "adherence_pct": adherence_pct,
         "days": days,
-        "start_date": start_date,
+        "view": view,
         "today": today,
+        "filter_show": show,
+        "filter_min": min_score,
+        "filter_max": max_score,
+        "filter_antihistamine": antihistamine,
+        "has_more": days < 365,
+        "next_days": min(days * 2, 365),
+    }
+    
+    if view == "calendar":
+        context.update({
+            "current_month": current_month,
+            "prev_month": prev_month,
+            "next_month": next_month,
+        })
+    
+    return render(request, "tracking/history_premium.html", context)
+
+
+@login_required
+def insights_view(request):
+    """View insights and analytics."""
+    today = get_user_today(request.user)
+    
+    # Get period parameter
+    period = int(request.GET.get("period", 30))
+    start_date = today - timedelta(days=period - 1)
+    
+    # Get entries for period
+    entries = list(DailyEntry.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lte=today,
+    ).order_by("date"))
+    
+    logged_days = len(entries)
+    missing_days = period - logged_days
+    adherence_pct = (logged_days / period * 100) if period > 0 else 0
+    adherence_offset = 327 - (327 * adherence_pct / 100)  # For SVG circle
+    
+    # Calculate streak
+    current_streak = 0
+    check_date = today
+    while True:
+        if DailyEntry.objects.filter(user=request.user, date=check_date).exists():
+            current_streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+    
+    # Calculate longest streak
+    all_entries = DailyEntry.objects.filter(user=request.user).order_by("date")
+    longest_streak = 0
+    temp_streak = 0
+    prev_date = None
+    for entry in all_entries:
+        if prev_date is None or entry.date == prev_date + timedelta(days=1):
+            temp_streak += 1
+        else:
+            temp_streak = 1
+        longest_streak = max(longest_streak, temp_streak)
+        prev_date = entry.date
+    
+    total_entries = all_entries.count()
+    
+    # Calculate averages
+    if entries:
+        avg_score = sum(e.score for e in entries) / len(entries)
+        avg_itch = sum(e.itch_score for e in entries) / len(entries)
+        avg_hives = sum(e.hive_count_score for e in entries) / len(entries)
+        best_score = min(e.score for e in entries)
+        worst_score = max(e.score for e in entries)
+    else:
+        avg_score = avg_itch = avg_hives = 0
+        best_score = worst_score = "-"
+    
+    avg_score_pct = (avg_score / 6 * 100) if avg_score else 0
+    avg_itch_pct = (avg_itch / 3 * 100) if avg_itch else 0
+    avg_hives_pct = (avg_hives / 3 * 100) if avg_hives else 0
+    
+    # Antihistamine stats
+    antihistamine_days = sum(1 for e in entries if e.took_antihistamine)
+    antihistamine_pct = (antihistamine_days / logged_days * 100) if logged_days > 0 else 0
+    
+    # Weekly UAS7 comparison (last 4 weeks)
+    weekly_scores = []
+    for week_num in range(4):
+        week_end = today - timedelta(days=week_num * 7)
+        week_start = week_end - timedelta(days=6)
+        
+        week_entries = DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=week_start,
+            date__lte=week_end,
+        )
+        
+        uas7 = sum(e.score for e in week_entries)
+        complete = week_entries.count() == 7
+        
+        # Calculate change from previous week
+        change = None
+        if week_num > 0 and weekly_scores:
+            prev_uas7 = weekly_scores[-1]["uas7"]
+            change = uas7 - prev_uas7
+        
+        weekly_scores.append({
+            "week_start": week_start,
+            "week_end": week_end,
+            "uas7": uas7,
+            "complete": complete,
+            "change": change,
+            "label": f"{week_num + 1}w ago",
+        })
+    
+    # Build chart data
+    chart_points = []
+    chart_path = ""
+    chart_area_path = ""
+    chart_width = 300
+    
+    if entries:
+        # Filter to only days with entries for clean chart
+        point_width = (chart_width - 30) / max(len(entries) - 1, 1)
+        
+        for i, entry in enumerate(entries):
+            x = 25 + i * point_width
+            y = 130 - (entry.score / 6 * 105)  # Invert Y axis
+            chart_points.append({"x": x, "y": y, "score": entry.score})
+        
+        if len(chart_points) > 1:
+            # Build line path
+            path_parts = [f"M {chart_points[0]['x']} {chart_points[0]['y']}"]
+            for point in chart_points[1:]:
+                path_parts.append(f"L {point['x']} {point['y']}")
+            chart_path = " ".join(path_parts)
+            
+            # Build area path
+            chart_area_path = chart_path + f" L {chart_points[-1]['x']} 130 L {chart_points[0]['x']} 130 Z"
+    
+    return render(request, "tracking/insights.html", {
+        "period": period,
+        "today": today,
+        "logged_days": logged_days,
+        "missing_days": missing_days,
+        "adherence_pct": adherence_pct,
+        "adherence_offset": adherence_offset,
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "total_entries": total_entries,
+        "avg_score": avg_score,
+        "avg_itch": avg_itch,
+        "avg_hives": avg_hives,
+        "avg_score_pct": avg_score_pct,
+        "avg_itch_pct": avg_itch_pct,
+        "avg_hives_pct": avg_hives_pct,
+        "best_score": best_score,
+        "worst_score": worst_score,
+        "antihistamine_days": antihistamine_days,
+        "antihistamine_pct": antihistamine_pct,
+        "weekly_scores": weekly_scores,
+        "chart_points": chart_points,
+        "chart_path": chart_path,
+        "chart_area_path": chart_area_path,
+        "chart_width": chart_width,
     })
 
 
@@ -175,14 +479,14 @@ def entry_detail_view(request, date_str):
         date=entry_date,
     )
     
-    return render(request, "tracking/entry_detail.html", {
+    return render(request, "tracking/entry_detail_new.html", {
         "entry": entry,
     })
 
 
 @login_required
 def delete_entry_view(request, date_str):
-    """Delete an entry."""
+    """Delete an entry by date."""
     try:
         entry_date = date.fromisoformat(date_str)
     except ValueError:
@@ -198,11 +502,28 @@ def delete_entry_view(request, date_str):
     if request.method == "POST":
         entry.delete()
         messages.success(request, "Entry deleted successfully.")
-        return redirect("tracking:history")
+        return redirect("tracking:today")
     
-    return render(request, "tracking/confirm_delete.html", {
+    return render(request, "tracking/confirm_delete_new.html", {
         "entry": entry,
     })
+
+
+@login_required
+def delete_entry_by_id_view(request, entry_id):
+    """Delete an entry by ID (for modal delete)."""
+    entry = get_object_or_404(
+        DailyEntry,
+        user=request.user,
+        id=entry_id,
+    )
+    
+    if request.method == "POST":
+        entry.delete()
+        messages.success(request, "Entry deleted successfully.")
+        return redirect("tracking:today")
+    
+    return redirect("tracking:today")
 
 
 # HTMX partial views
@@ -229,3 +550,96 @@ def chart_data_view(request):
         })
     
     return JsonResponse({"data": data})
+
+
+# Export views
+@login_required
+def export_page_view(request):
+    """Render the export options page."""
+    today = get_user_today(request.user)
+    
+    # Get first and last entry dates for the user
+    first_entry = DailyEntry.objects.filter(user=request.user).order_by("date").first()
+    last_entry = DailyEntry.objects.filter(user=request.user).order_by("-date").first()
+    
+    # Calculate total entries
+    total_entries = DailyEntry.objects.filter(user=request.user).count()
+    
+    return render(request, "tracking/export.html", {
+        "today": today,
+        "first_entry_date": first_entry.date if first_entry else today,
+        "last_entry_date": last_entry.date if last_entry else today,
+        "total_entries": total_entries,
+        "has_entries": total_entries > 0,
+    })
+
+
+@login_required
+def export_csv_view(request):
+    """Generate and download CSV export."""
+    from .exports import CSUExporter
+    
+    today = get_user_today(request.user)
+    
+    # Parse date range from request
+    try:
+        start_date = date.fromisoformat(request.GET.get("start", (today - timedelta(days=29)).isoformat()))
+        end_date = date.fromisoformat(request.GET.get("end", today.isoformat()))
+    except ValueError:
+        messages.error(request, "Invalid date format.")
+        return redirect("tracking:export")
+    
+    # Validate dates
+    if start_date > end_date:
+        messages.error(request, "Start date must be before end date.")
+        return redirect("tracking:export")
+    
+    if end_date > today:
+        end_date = today
+    
+    # Parse options
+    options = {
+        "anonymize": request.GET.get("anonymize") == "1",
+        "include_notes": request.GET.get("notes", "1") == "1",
+        "include_antihistamine": request.GET.get("antihistamine", "1") == "1",
+        "include_breakdown": request.GET.get("breakdown", "1") == "1",
+    }
+    
+    exporter = CSUExporter(request.user, start_date, end_date, options)
+    return exporter.export_csv()
+
+
+@login_required
+def export_pdf_view(request):
+    """Generate and download PDF export."""
+    from .exports import CSUExporter
+    
+    today = get_user_today(request.user)
+    
+    # Parse date range from request
+    try:
+        start_date = date.fromisoformat(request.GET.get("start", (today - timedelta(days=29)).isoformat()))
+        end_date = date.fromisoformat(request.GET.get("end", today.isoformat()))
+    except ValueError:
+        messages.error(request, "Invalid date format.")
+        return redirect("tracking:export")
+    
+    # Validate dates
+    if start_date > end_date:
+        messages.error(request, "Start date must be before end date.")
+        return redirect("tracking:export")
+    
+    if end_date > today:
+        end_date = today
+    
+    # Parse options
+    options = {
+        "anonymize": request.GET.get("anonymize") == "1",
+        "include_notes": request.GET.get("notes", "1") == "1",
+        "include_antihistamine": request.GET.get("antihistamine", "1") == "1",
+        "include_breakdown": request.GET.get("breakdown", "1") == "1",
+    }
+    
+    exporter = CSUExporter(request.user, start_date, end_date, options)
+    return exporter.export_pdf()
+

@@ -1,0 +1,505 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Export Data - CSU Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+.export-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    margin-bottom: var(--space-4);
+}
+.export-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+.export-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.export-card__icon--csv {
+    background: var(--color-success-100);
+    color: var(--color-success-600);
+}
+.export-card__icon--pdf {
+    background: var(--color-error-100);
+    color: var(--color-error-600);
+}
+[data-theme="dark"] .export-card__icon--csv {
+    background: rgba(34, 197, 94, 0.2);
+}
+[data-theme="dark"] .export-card__icon--pdf {
+    background: rgba(239, 68, 68, 0.2);
+}
+.export-card__title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.export-card__description {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.option-group {
+    margin-bottom: var(--space-5);
+}
+.option-group__label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+    display: block;
+}
+
+.option-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.option-row:last-child {
+    border-bottom: none;
+}
+.option-row__label {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+}
+.option-row__hint {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-top: var(--space-1);
+}
+
+.date-range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.quick-range {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+.quick-range__btn {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.quick-range__btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--color-primary-500);
+    color: var(--color-primary-600);
+}
+
+.export-preview {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-top: var(--space-4);
+}
+.export-preview__title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+}
+.export-preview__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    text-align: center;
+}
+.export-preview__stat-value {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-primary-600);
+}
+.export-preview__stat-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.disclaimer-banner {
+    background: var(--color-warning-50);
+    border: 1px solid var(--color-warning-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-top: var(--space-5);
+}
+[data-theme="dark"] .disclaimer-banner {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+.disclaimer-banner__icon {
+    color: var(--color-warning-600);
+    margin-right: var(--space-2);
+}
+.disclaimer-banner__text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+</style>
+{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'tracking:insights' %}" class="btn btn--icon btn--ghost" aria-label="Back to insights">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block header_title %}Export Data{% endblock %}
+
+{% block content %}
+<div class="app-content">
+    
+    {% if not has_entries %}
+    <!-- No entries state -->
+    <div class="card">
+        <div class="card__body text-center py-8">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" style="margin: 0 auto 16px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <h3 class="text-lg font-semibold text-primary mb-2">No Data to Export</h3>
+            <p class="text-secondary mb-4">Start tracking your symptoms to enable data export.</p>
+            <a href="{% url 'tracking:log_entry' %}" class="btn btn--primary">
+                Log Your First Entry
+            </a>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Export Options Form -->
+    <form id="export-form" method="get" class="fade-in">
+        
+        <!-- Date Range Section -->
+        <div class="export-card">
+            <h2 class="option-group__label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 6px;">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Date Range
+            </h2>
+            
+            <div class="date-range">
+                <div>
+                    <label class="text-xs text-tertiary mb-1 block" for="start-date">From</label>
+                    <input 
+                        type="date" 
+                        id="start-date" 
+                        name="start" 
+                        class="input"
+                        value="{{ first_entry_date|date:'Y-m-d' }}"
+                        min="{{ first_entry_date|date:'Y-m-d' }}"
+                        max="{{ today|date:'Y-m-d' }}"
+                    >
+                </div>
+                <div>
+                    <label class="text-xs text-tertiary mb-1 block" for="end-date">To</label>
+                    <input 
+                        type="date" 
+                        id="end-date" 
+                        name="end" 
+                        class="input"
+                        value="{{ today|date:'Y-m-d' }}"
+                        min="{{ first_entry_date|date:'Y-m-d' }}"
+                        max="{{ today|date:'Y-m-d' }}"
+                    >
+                </div>
+            </div>
+            
+            <div class="quick-range">
+                <button type="button" class="quick-range__btn" data-days="7">Last 7 days</button>
+                <button type="button" class="quick-range__btn" data-days="30">Last 30 days</button>
+                <button type="button" class="quick-range__btn" data-days="90">Last 90 days</button>
+                <button type="button" class="quick-range__btn" data-days="all">All time</button>
+            </div>
+            
+            <!-- Preview stats -->
+            <div class="export-preview" id="preview-stats">
+                <div class="export-preview__title">Export Preview</div>
+                <div class="export-preview__stats">
+                    <div>
+                        <div class="export-preview__stat-value" id="preview-days">{{ total_entries }}</div>
+                        <div class="export-preview__stat-label">Entries</div>
+                    </div>
+                    <div>
+                        <div class="export-preview__stat-value" id="preview-range">-</div>
+                        <div class="export-preview__stat-label">Days</div>
+                    </div>
+                    <div>
+                        <div class="export-preview__stat-value" id="preview-size">~</div>
+                        <div class="export-preview__stat-label">Est. Size</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Options -->
+        <div class="export-card slide-up" style="animation-delay: 0.1s;">
+            <h2 class="option-group__label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 6px;">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33"/>
+                </svg>
+                Export Options
+            </h2>
+            
+            <div class="option-row">
+                <div>
+                    <div class="option-row__label">Include Score Breakdown</div>
+                    <div class="option-row__hint">Itch and hive scores separately</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="breakdown" value="1" class="toggle__input" checked>
+                    <span class="toggle__slider"></span>
+                </label>
+            </div>
+            
+            <div class="option-row">
+                <div>
+                    <div class="option-row__label">Include Notes</div>
+                    <div class="option-row__hint">Patient-recorded notes</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="notes" value="1" class="toggle__input" checked>
+                    <span class="toggle__slider"></span>
+                </label>
+            </div>
+            
+            <div class="option-row">
+                <div>
+                    <div class="option-row__label">Include Antihistamine</div>
+                    <div class="option-row__hint">Medication tracking data</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="antihistamine" value="1" class="toggle__input" checked>
+                    <span class="toggle__slider"></span>
+                </label>
+            </div>
+            
+            <div class="option-row">
+                <div>
+                    <div class="option-row__label">Anonymize Export</div>
+                    <div class="option-row__hint">Remove personal identifiers</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="anonymize" value="1" class="toggle__input">
+                    <span class="toggle__slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Export Buttons -->
+        <div class="space-y-3 slide-up" style="animation-delay: 0.2s;">
+            
+            <!-- PDF Export Card -->
+            <div class="export-card">
+                <div class="export-card__header">
+                    <div class="export-card__icon export-card__icon--pdf">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="export-card__title">PDF Report</h3>
+                        <p class="export-card__description">Formatted report for healthcare providers</p>
+                    </div>
+                </div>
+                <p class="text-sm text-secondary mb-4">
+                    Professional, print-friendly report with summary statistics, trend chart, 
+                    weekly UAS7 scores, and daily log. Includes disclaimer for clinical use.
+                </p>
+                <button 
+                    type="submit" 
+                    formaction="{% url 'tracking:export_pdf' %}" 
+                    class="btn btn--primary btn--full"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download PDF Report
+                </button>
+            </div>
+            
+            <!-- CSV Export Card -->
+            <div class="export-card">
+                <div class="export-card__header">
+                    <div class="export-card__icon export-card__icon--csv">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="8" y1="13" x2="16" y2="13"/>
+                            <line x1="8" y1="17" x2="16" y2="17"/>
+                            <line x1="10" y1="9" x2="10" y2="21"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="export-card__title">CSV Data</h3>
+                        <p class="export-card__description">Raw data for spreadsheets or analysis</p>
+                    </div>
+                </div>
+                <p class="text-sm text-secondary mb-4">
+                    Comma-separated values file with all selected data fields. 
+                    Import into Excel, Google Sheets, or data analysis tools.
+                </p>
+                <button 
+                    type="submit" 
+                    formaction="{% url 'tracking:export_csv' %}" 
+                    class="btn btn--secondary btn--full"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download CSV Data
+                </button>
+            </div>
+            
+        </div>
+        
+        <!-- Disclaimer -->
+        <div class="disclaimer-banner slide-up" style="animation-delay: 0.3s;">
+            <p class="disclaimer-banner__text">
+                <svg class="disclaimer-banner__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -3px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <strong>Healthcare Provider Notice:</strong> Exported data is patient-recorded and 
+                has not been verified by a healthcare professional. It should be reviewed in the 
+                context of a clinical evaluation and is not intended for diagnostic purposes.
+            </p>
+        </div>
+        
+    </form>
+    
+    {% endif %}
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/components.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startDate = document.getElementById('start-date');
+    const endDate = document.getElementById('end-date');
+    const previewDays = document.getElementById('preview-days');
+    const previewRange = document.getElementById('preview-range');
+    const previewSize = document.getElementById('preview-size');
+    const quickBtns = document.querySelectorAll('.quick-range__btn');
+    
+    const firstEntryDate = new Date('{{ first_entry_date|date:"Y-m-d" }}');
+    const today = new Date('{{ today|date:"Y-m-d" }}');
+    
+    function updatePreview() {
+        const start = new Date(startDate.value);
+        const end = new Date(endDate.value);
+        
+        if (start && end && start <= end) {
+            const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            previewRange.textContent = daysDiff;
+            
+            // Estimate entries (rough, actual may differ)
+            const estimatedEntries = Math.min(daysDiff, {{ total_entries }});
+            previewDays.textContent = estimatedEntries;
+            
+            // Estimate file size
+            const csvSize = estimatedEntries * 100; // ~100 bytes per row
+            const pdfSize = estimatedEntries * 50 + 5000; // base + per row
+            
+            if (pdfSize > 1024 * 1024) {
+                previewSize.textContent = (pdfSize / (1024 * 1024)).toFixed(1) + ' MB';
+            } else {
+                previewSize.textContent = Math.ceil(pdfSize / 1024) + ' KB';
+            }
+        }
+    }
+    
+    // Date change listeners
+    if (startDate && endDate) {
+        startDate.addEventListener('change', updatePreview);
+        endDate.addEventListener('change', updatePreview);
+        updatePreview();
+    }
+    
+    // Quick range buttons
+    quickBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const days = this.dataset.days;
+            
+            if (days === 'all') {
+                startDate.value = '{{ first_entry_date|date:"Y-m-d" }}';
+            } else {
+                const daysNum = parseInt(days);
+                const newStart = new Date(today);
+                newStart.setDate(newStart.getDate() - daysNum + 1);
+                
+                // Ensure we don't go before first entry
+                if (newStart < firstEntryDate) {
+                    startDate.value = '{{ first_entry_date|date:"Y-m-d" }}';
+                } else {
+                    startDate.value = newStart.toISOString().split('T')[0];
+                }
+            }
+            
+            endDate.value = '{{ today|date:"Y-m-d" }}';
+            updatePreview();
+            
+            // Haptic feedback
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10);
+            }
+        });
+    });
+    
+    // Form submission feedback
+    document.getElementById('export-form').addEventListener('submit', function(e) {
+        const btn = e.submitter;
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner spinner--sm" style="border-top-color: currentColor;"></span> Generating...';
+        
+        // Re-enable after a delay (download starts)
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            if (typeof CSU !== 'undefined' && CSU.Toast) {
+                CSU.Toast.success('Export downloaded successfully!');
+            }
+        }, 2000);
+    });
+});
+</script>
+{% endblock %}

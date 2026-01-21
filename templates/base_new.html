@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme|default:'system' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CSU Tracker">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- SEO -->
+    <meta name="description" content="Track and manage your Chronic Spontaneous Urticaria symptoms with UAS7 scoring">
+    
+    <title>{% block title %}CSU Tracker{% endblock %}</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% url 'manifest' %}">
+    
+    <!-- Favicons -->
+    {% load static %}
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    
+    <!-- Splash Screens for iOS -->
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-640x1136.png' %}" media="(device-width: 320px) and (device-height: 568px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-750x1334.png' %}" media="(device-width: 375px) and (device-height: 667px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-1242x2208.png' %}" media="(device-width: 414px) and (device-height: 736px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-1125x2436.png' %}" media="(device-width: 375px) and (device-height: 812px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-1284x2778.png' %}" media="(device-width: 428px) and (device-height: 926px)">
+    
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="{% static 'css/design-tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    
+    <!-- Preconnect to CDN -->
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    
+    <!-- HTMX for dynamic interactions -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="app-shell">
+    <!-- Skip Link for Accessibility -->
+    <a href="#main-content" class="sr-only" style="position:absolute;top:-40px;left:0;background:var(--bg-primary);padding:8px;z-index:9999;">
+        Skip to main content
+    </a>
+    
+    {% if user.is_authenticated %}
+    <!-- App Header (conditionally shown per page) -->
+    {% block header %}
+    <header class="app-header" role="banner">
+        <div class="app-header__inner">
+            {% block header_left %}
+            <div></div>
+            {% endblock %}
+            
+            <h1 class="app-header__title">{% block header_title %}CSU Tracker{% endblock %}</h1>
+            
+            {% block header_right %}
+            <div></div>
+            {% endblock %}
+        </div>
+    </header>
+    {% endblock %}
+    {% endif %}
+    
+    <!-- Toast Container for Notifications -->
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+    
+    <!-- Main Content Area -->
+    <main id="main-content" class="app-main" role="main">
+        <!-- Flash Messages -->
+        {% if messages %}
+        <div class="app-content">
+            {% for message in messages %}
+            <div class="feedback-banner feedback-banner--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} fade-in" role="alert">
+                {% if message.tags == 'error' %}
+                <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                {% elif message.tags == 'success' %}
+                <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                {% elif message.tags == 'warning' %}
+                <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                {% else %}
+                <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                {% endif %}
+                <span class="feedback-banner__text">{{ message }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% if user.is_authenticated %}
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+        <div class="bottom-nav__inner">
+            <!-- Today -->
+            <a href="{% url 'tracking:today' %}" 
+               class="bottom-nav__item {% if request.resolver_match.url_name == 'today' or request.resolver_match.url_name == 'home' %}bottom-nav__item--active{% endif %}"
+               aria-label="Today"
+               {% if request.resolver_match.url_name == 'today' or request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>
+                <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <circle cx="12" cy="15" r="2"/>
+                </svg>
+                <span class="bottom-nav__label">Today</span>
+            </a>
+            
+            <!-- History -->
+            <a href="{% url 'tracking:history' %}" 
+               class="bottom-nav__item {% if request.resolver_match.url_name == 'history' %}bottom-nav__item--active{% endif %}"
+               aria-label="History"
+               {% if request.resolver_match.url_name == 'history' %}aria-current="page"{% endif %}>
+                <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 8v4l3 3"/>
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M3 12h1M12 3v1M21 12h1M12 21v1"/>
+                </svg>
+                <span class="bottom-nav__label">History</span>
+            </a>
+            
+            <!-- Log Entry (FAB) -->
+            <div class="bottom-nav__fab">
+                <a href="{% url 'tracking:log_entry' %}" 
+                   class="bottom-nav__fab-button"
+                   aria-label="Log new entry"
+                   {% if request.resolver_match.url_name == 'log_entry' %}aria-current="page"{% endif %}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                </a>
+                <span class="bottom-nav__label" style="margin-top: 8px;">Log</span>
+            </div>
+            
+            <!-- Insights -->
+            <a href="{% url 'tracking:insights' %}" 
+               class="bottom-nav__item {% if request.resolver_match.url_name == 'insights' %}bottom-nav__item--active{% endif %}"
+               aria-label="Insights"
+               {% if request.resolver_match.url_name == 'insights' %}aria-current="page"{% endif %}>
+                <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                </svg>
+                <span class="bottom-nav__label">Insights</span>
+            </a>
+            
+            <!-- Settings -->
+            <a href="{% url 'notifications:settings' %}" 
+               class="bottom-nav__item {% if 'settings' in request.path or 'notifications' in request.path %}bottom-nav__item--active{% endif %}"
+               aria-label="Settings"
+               {% if 'settings' in request.path or 'notifications' in request.path %}aria-current="page"{% endif %}>
+                <svg class="bottom-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span class="bottom-nav__label">Settings</span>
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Modal Backdrop (shared) -->
+    <div id="modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+    
+    <!-- Bottom Sheet Backdrop (shared) -->
+    <div id="bottom-sheet-backdrop" class="bottom-sheet-backdrop" aria-hidden="true"></div>
+    
+    <!-- Service Worker & Push Notifications -->
+    <script>
+        const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
+        
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.error('SW registration failed:', err));
+        }
+    </script>
+    
+    <!-- Design System JavaScript -->
+    <script src="{% static 'js/components.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

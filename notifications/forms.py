@@ -14,14 +14,14 @@ class ReminderPreferencesForm(forms.ModelForm):
     enabled = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={
-            "class": "w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500",
+            "class": "form-checkbox",
         }),
         label="Enable daily reminders",
     )
     
     time_of_day = forms.TimeField(
         widget=forms.TimeInput(attrs={
-            "class": "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+            "class": "form-input",
             "type": "time",
         }),
         label="Reminder time",
@@ -30,7 +30,7 @@ class ReminderPreferencesForm(forms.ModelForm):
     timezone = forms.ChoiceField(
         choices=TIMEZONE_CHOICES,
         widget=forms.Select(attrs={
-            "class": "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+            "class": "form-input",
         }),
         label="Your timezone",
     )

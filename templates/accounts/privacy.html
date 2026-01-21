@@ -1,0 +1,283 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Privacy - CSU Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+.privacy-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+}
+.privacy-section__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+.privacy-section__icon {
+    width: 40px;
+    height: 40px;
+    background: var(--color-primary-50);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+[data-theme="dark"] .privacy-section__icon {
+    background: var(--color-primary-900);
+}
+.privacy-section__title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.privacy-content {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+.privacy-content p {
+    margin-bottom: var(--space-3);
+}
+.privacy-content ul {
+    list-style: disc;
+    padding-left: var(--space-5);
+    margin-bottom: var(--space-3);
+}
+.privacy-content li {
+    margin-bottom: var(--space-2);
+}
+.privacy-content strong {
+    color: var(--text-primary);
+}
+
+.data-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.data-item:last-child {
+    border-bottom: none;
+}
+.data-item__icon {
+    width: 36px;
+    height: 36px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.data-item__content {
+    flex: 1;
+}
+.data-item__title {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.data-item__desc {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+}
+.toggle-row__content {
+    flex: 1;
+    margin-right: var(--space-4);
+}
+.toggle-row__title {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.toggle-row__desc {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-top: var(--space-1);
+}
+</style>
+{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'notifications:settings' %}" class="btn btn--icon btn--ghost" aria-label="Back to settings">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block header_title %}Privacy{% endblock %}
+
+{% block content %}
+<div class="app-content fade-in">
+    
+    <!-- Your Data -->
+    <div class="privacy-section">
+        <div class="privacy-section__header">
+            <div class="privacy-section__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <h2 class="privacy-section__title">Your Data Is Yours</h2>
+        </div>
+        
+        <div class="privacy-content">
+            <p>
+                CSU Tracker is designed with your privacy as a priority. We only collect the data you explicitly provide, 
+                and we never sell or share your personal health information with third parties.
+            </p>
+        </div>
+    </div>
+    
+    <!-- What We Store -->
+    <div class="privacy-section">
+        <div class="privacy-section__header">
+            <div class="privacy-section__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" stroke-width="2">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+            </div>
+            <h2 class="privacy-section__title">What We Store</h2>
+        </div>
+        
+        <div class="data-item">
+            <div class="data-item__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+            <div class="data-item__content">
+                <div class="data-item__title">Account Information</div>
+                <div class="data-item__desc">Email address, optional display name, preferences</div>
+            </div>
+        </div>
+        
+        <div class="data-item">
+            <div class="data-item__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            </div>
+            <div class="data-item__content">
+                <div class="data-item__title">Daily Entries</div>
+                <div class="data-item__desc">Date, itch score, hive count, notes, antihistamine use</div>
+            </div>
+        </div>
+        
+        <div class="data-item">
+            <div class="data-item__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+            </div>
+            <div class="data-item__content">
+                <div class="data-item__title">Notification Preferences</div>
+                <div class="data-item__desc">Reminder settings, push subscription tokens</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- What We Don't Do -->
+    <div class="privacy-section">
+        <div class="privacy-section__header">
+            <div class="privacy-section__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-500)" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
+            <h2 class="privacy-section__title">Our Commitments</h2>
+        </div>
+        
+        <div class="privacy-content">
+            <ul>
+                <li><strong>No selling of data</strong> — Your health information is never sold to advertisers or data brokers.</li>
+                <li><strong>No third-party tracking</strong> — We don't use invasive analytics or tracking pixels.</li>
+                <li><strong>Encrypted storage</strong> — Your data is encrypted at rest and in transit.</li>
+                <li><strong>Full data export</strong> — Download all your data anytime in PDF or CSV format.</li>
+                <li><strong>Account deletion</strong> — You can permanently delete your account and all associated data.</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Analytics Preference -->
+    <div class="privacy-section">
+        <div class="privacy-section__header">
+            <div class="privacy-section__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+            </div>
+            <h2 class="privacy-section__title">Usage Analytics</h2>
+        </div>
+        
+        <div class="privacy-content mb-4">
+            <p>
+                We collect anonymous usage data to improve the app experience. This includes things like which 
+                features are used most, but <strong>never</strong> includes your personal health data.
+            </p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="toggle-row">
+                <div class="toggle-row__content">
+                    <div class="toggle-row__title">Allow Anonymous Analytics</div>
+                    <div class="toggle-row__desc">Help us improve by sharing anonymous usage patterns</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="allow_analytics" {% if profile.allow_data_collection %}checked{% endif %}
+                           onchange="this.form.submit()">
+                    <span class="toggle__track">
+                        <span class="toggle__thumb"></span>
+                    </span>
+                </label>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Medical Disclaimer -->
+    <div class="feedback-banner feedback-banner--warning">
+        <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="feedback-banner__text">
+            CSU Tracker is not a medical device. The data you record is for personal tracking and sharing with your healthcare provider. 
+            It should not be used for self-diagnosis or treatment decisions.
+        </span>
+    </div>
+    
+    <p class="text-sm text-tertiary text-center mt-5">
+        Last updated: January 2026
+    </p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/components.js' %}"></script>
+{% endblock %}

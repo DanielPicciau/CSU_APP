@@ -1,0 +1,685 @@
+/**
+ * CSU Tracker - Score Selector Components
+ * ========================================
+ * Premium score selection UI optimized for iPhone touch interaction
+ */
+
+/* ==========================================================================
+   SCORE SELECTOR - Slider Style
+   Horizontal slider with large numeric display
+   ========================================================================== */
+
+.score-selector {
+  --score-color: var(--color-score-0);
+  padding: var(--space-6) var(--space-4);
+  background: var(--surface-primary);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.score-selector__header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.score-selector__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  margin-bottom: var(--space-2);
+}
+
+.score-selector__value {
+  font-family: var(--font-display);
+  font-size: 4.5rem;
+  font-weight: var(--font-bold);
+  line-height: 1;
+  color: var(--score-color);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.score-selector__description {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  min-height: 1.5em;
+}
+
+/* Slider Track */
+.score-selector__slider-container {
+  position: relative;
+  padding: var(--space-4) 0;
+}
+
+.score-selector__slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  background: linear-gradient(
+    to right,
+    var(--color-score-0) 0%,
+    var(--color-score-1) 16.66%,
+    var(--color-score-2) 33.33%,
+    var(--color-score-3) 50%,
+    var(--color-score-4) 66.66%,
+    var(--color-score-5) 83.33%,
+    var(--color-score-6) 100%
+  );
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+
+/* Slider Thumb - WebKit */
+.score-selector__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  background: var(--surface-primary);
+  border: 4px solid var(--score-color);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  cursor: grab;
+  transition: transform var(--duration-fast) var(--ease-spring),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.score-selector__slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.score-selector__slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+
+.score-selector__slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--shadow-lg), var(--shadow-focus);
+}
+
+/* Slider Thumb - Firefox */
+.score-selector__slider::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
+  background: var(--surface-primary);
+  border: 4px solid var(--score-color);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  cursor: grab;
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.score-selector__slider::-moz-range-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+/* Tick Marks */
+.score-selector__ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+  margin-top: var(--space-2);
+}
+
+.score-selector__tick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 28px;
+}
+
+.score-selector__tick-mark {
+  width: 2px;
+  height: 8px;
+  background: var(--border-default);
+  border-radius: var(--radius-full);
+}
+
+.score-selector__tick-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+}
+
+.score-selector__tick--active .score-selector__tick-label {
+  color: var(--text-primary);
+  font-weight: var(--font-bold);
+}
+
+/* ==========================================================================
+   SCORE SELECTOR - Segmented Control Style
+   Horizontal buttons for quick selection (0-6 daily score)
+   ========================================================================== */
+
+.score-segmented {
+  padding: var(--space-4);
+  background: var(--surface-primary);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.score-segmented__header {
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.score-segmented__value {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  font-weight: var(--font-bold);
+  line-height: 1;
+  color: var(--score-color);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.score-segmented__label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.score-segmented__options {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xl);
+}
+
+.score-segmented__option {
+  flex: 1;
+  position: relative;
+}
+
+.score-segmented__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.score-segmented__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-all);
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.score-segmented__input:checked + .score-segmented__button {
+  color: white;
+  background: var(--score-color);
+  box-shadow: var(--shadow-md);
+  transform: scale(1.05);
+}
+
+.score-segmented__input:focus-visible + .score-segmented__button {
+  box-shadow: var(--shadow-focus);
+}
+
+.score-segmented__button:active {
+  transform: scale(0.95);
+}
+
+/* ==========================================================================
+   SCORE SELECTOR - Dial/Wheel Style (Premium)
+   Circular dial for intuitive score selection
+   ========================================================================== */
+
+.score-dial {
+  --dial-size: 280px;
+  --dial-stroke: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6);
+}
+
+.score-dial__container {
+  position: relative;
+  width: var(--dial-size);
+  height: var(--dial-size);
+}
+
+.score-dial__svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-dial__track {
+  fill: none;
+  stroke: var(--bg-tertiary);
+  stroke-width: var(--dial-stroke);
+}
+
+.score-dial__progress {
+  fill: none;
+  stroke: var(--score-color);
+  stroke-width: var(--dial-stroke);
+  stroke-linecap: round;
+  transition: stroke-dasharray var(--duration-normal) var(--ease-out),
+              stroke var(--duration-fast) var(--ease-out);
+}
+
+.score-dial__center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.score-dial__value {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: var(--font-bold);
+  line-height: 1;
+  color: var(--score-color);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.score-dial__max {
+  font-size: var(--text-lg);
+  color: var(--text-tertiary);
+}
+
+.score-dial__description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+/* Touch area for dial */
+.score-dial__touch-area {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  touch-action: none;
+}
+
+/* Dial controls */
+.score-dial__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.score-dial__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--interactive-secondary);
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  transition: var(--transition-all);
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.score-dial__btn:hover {
+  background: var(--interactive-secondary-hover);
+}
+
+.score-dial__btn:active {
+  transform: scale(0.95);
+}
+
+.score-dial__btn:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.score-dial__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   SEVERITY SELECTOR - Vertical Cards (0-3)
+   For itch and hive severity selection
+   ========================================================================== */
+
+.severity-selector {
+  margin-bottom: var(--space-5);
+}
+
+.severity-selector__label {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.severity-selector__icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-brand);
+}
+
+.severity-selector__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.severity-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-primary);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: var(--transition-all);
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.severity-card:hover {
+  border-color: var(--border-strong);
+}
+
+.severity-card--selected {
+  border-color: var(--border-brand);
+  background: var(--bg-brand-subtle);
+}
+
+.severity-card__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.severity-card__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: white;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.severity-card__badge--0 { background: var(--color-score-0); }
+.severity-card__badge--1 { background: var(--color-score-2); color: var(--color-neutral-900); }
+.severity-card__badge--2 { background: var(--color-score-4); }
+.severity-card__badge--3 { background: var(--color-score-6); }
+
+.severity-card__content {
+  flex: 1;
+}
+
+.severity-card__title {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.severity-card__description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-0-5);
+}
+
+.severity-card__check {
+  width: 24px;
+  height: 24px;
+  color: var(--interactive-primary);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: var(--duration-fast) var(--ease-spring);
+}
+
+.severity-card--selected .severity-card__check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.severity-card:has(.severity-card__input:focus-visible) {
+  box-shadow: var(--shadow-focus);
+}
+
+/* ==========================================================================
+   QUICK SCORE SELECTOR - Horizontal Compact
+   For rapid score selection
+   ========================================================================== */
+
+.quick-score {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xl);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.quick-score::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-score__option {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.quick-score__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.quick-score__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 64px;
+  background: var(--surface-primary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-all);
+}
+
+.quick-score__number {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.quick-score__label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.quick-score__input:checked + .quick-score__button {
+  border-color: var(--border-brand);
+  background: var(--bg-brand-subtle);
+}
+
+.quick-score__input:checked + .quick-score__button .quick-score__number {
+  color: var(--text-brand);
+}
+
+.quick-score__input:focus-visible + .quick-score__button {
+  box-shadow: var(--shadow-focus);
+}
+
+/* ==========================================================================
+   TODAY STATUS CARD
+   ========================================================================== */
+
+.today-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.today-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.today-card__date {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.today-card__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.today-card__status--logged {
+  color: var(--color-success-600);
+}
+
+.today-card__status--pending {
+  color: var(--color-warning-600);
+}
+
+.today-card__body {
+  padding: var(--space-6);
+}
+
+.today-card__score-display {
+  text-align: center;
+}
+
+.today-card__score-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-full);
+  background: var(--score-color);
+  margin-bottom: var(--space-4);
+  box-shadow: 0 8px 32px -8px var(--score-color);
+}
+
+.today-card__score-number {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  font-weight: var(--font-bold);
+  color: white;
+  line-height: 1;
+}
+
+.today-card__score-label {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.today-card__score-detail {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.today-card__updated {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-3);
+}
+
+.today-card__empty {
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.today-card__empty-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto var(--space-4);
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+.today-card__empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.today-card__empty-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.today-card__footer {
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-secondary);
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes scoreChange {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.score-animate {
+  animation: scoreChange var(--duration-fast) var(--ease-spring);
+}
+
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 var(--score-color); }
+  70% { box-shadow: 0 0 0 20px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.pulse-ring {
+  animation: pulseRing 0.6s ease-out;
+}

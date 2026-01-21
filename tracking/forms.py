@@ -49,7 +49,7 @@ class DailyEntryForm(forms.ModelForm):
     notes = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
-            "class": "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+            "class": "form-input form-textarea",
             "rows": 3,
             "placeholder": "Any additional notes about today... (optional)",
         }),
@@ -58,7 +58,7 @@ class DailyEntryForm(forms.ModelForm):
     took_antihistamine = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={
-            "class": "w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500",
+            "class": "form-checkbox",
         }),
         label="I took antihistamine today",
     )
@@ -92,7 +92,7 @@ class QuickScoreForm(forms.Form):
         min_value=0,
         max_value=settings.CSU_MAX_SCORE,
         widget=forms.NumberInput(attrs={
-            "class": "w-full px-4 py-3 text-2xl text-center rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+            "class": "form-input text-2xl text-center",
             "placeholder": "0-6",
         }),
     )

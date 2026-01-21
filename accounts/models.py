@@ -51,6 +51,13 @@ class User(AbstractUser):
         return self.email
 
 
+# Score scale choices
+SCORE_SCALE_CHOICES = [
+    ("0-6", "Combined UAS (0-6)"),
+    ("separate", "Separate Itch & Hive (0-3 each)"),
+]
+
+
 class Profile(models.Model):
     """Extended user profile for CSU tracking preferences."""
 
@@ -60,6 +67,14 @@ class Profile(models.Model):
         related_name="profile",
     )
     
+    # Personal info
+    display_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Optional name for personalization",
+    )
+    
     # Display preferences
     date_format = models.CharField(
         max_length=20,
@@ -67,11 +82,31 @@ class Profile(models.Model):
         help_text="Preferred date display format",
     )
     
+    preferred_score_scale = models.CharField(
+        max_length=20,
+        choices=SCORE_SCALE_CHOICES,
+        default="0-6",
+        help_text="Preferred score input method",
+    )
+    
     # Tracking preferences
     default_timezone = models.CharField(
         max_length=50,
         default="America/New_York",
         help_text="IANA timezone string for the user",
+    )
+    
+    # Privacy settings
+    allow_data_collection = models.BooleanField(
+        default=True,
+        help_text="Allow anonymous usage analytics",
+    )
+    
+    # Account status
+    account_deletion_requested = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When account deletion was requested (30-day grace period)",
     )
     
     # Metadata
@@ -84,6 +119,23 @@ class Profile(models.Model):
 
     def __str__(self) -> str:
         return f"Profile for {self.user.email}"
+    
+    @property
+    def display_name_or_email(self) -> str:
+        """Return display name if set, otherwise email username part."""
+        if self.display_name:
+            return self.display_name
+        return self.user.email.split("@")[0]
+    
+    @property
+    def initials(self) -> str:
+        """Return initials for avatar."""
+        if self.display_name:
+            parts = self.display_name.split()
+            if len(parts) >= 2:
+                return (parts[0][0] + parts[-1][0]).upper()
+            return self.display_name[0].upper()
+        return self.user.email[0].upper()
 
 
 # Signal to create profile when user is created

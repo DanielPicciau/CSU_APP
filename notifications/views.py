@@ -32,7 +32,7 @@ def reminder_settings_view(request):
     else:
         form = ReminderPreferencesForm(instance=preferences)
     
-    return render(request, "notifications/settings.html", {
+    return render(request, "notifications/settings_new.html", {
         "form": form,
         "preferences": preferences,
         "subscriptions_count": subscriptions_count,

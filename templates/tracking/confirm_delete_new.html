@@ -1,0 +1,91 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Delete Entry - CSU Tracker{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'tracking:history' %}" class="btn btn--icon btn--ghost" aria-label="Cancel">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block header_title %}Delete Entry{% endblock %}
+
+{% block content %}
+<div class="app-content fade-in">
+    
+    <!-- Warning Card -->
+    <div class="card" style="border-color: var(--color-error-200); background: var(--color-error-50);">
+        <div class="card__body text-center">
+            <!-- Icon -->
+            <div style="width: 64px; height: 64px; margin: 0 auto var(--space-4); background: var(--color-error-100); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-600)" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+            </div>
+            
+            <h2 class="text-xl font-bold text-primary mb-2">Delete this entry?</h2>
+            
+            <p class="text-secondary mb-4">
+                You're about to delete your entry for <strong>{{ entry.date|date:"F j, Y" }}</strong>.
+            </p>
+            
+            <!-- Entry Preview -->
+            <div style="background: var(--bg-primary); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);">
+                <div class="flex items-center justify-center gap-4">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--color-score-{{ entry.score }}); display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 1.25rem; font-weight: 700; color: white;">{{ entry.score }}</span>
+                    </div>
+                    <div class="text-left">
+                        <div class="font-semibold text-primary">Score: {{ entry.score }}/6</div>
+                        <div class="text-sm text-secondary">
+                            Itch: {{ entry.itch_score }}/3 • Hives: {{ entry.hive_count_score }}/3
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-sm text-tertiary">
+                This action cannot be undone. Your UAS7 calculations and insights will be updated.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <form method="post" class="mt-5">
+        {% csrf_token %}
+        <div class="flex flex-col gap-3">
+            <button type="submit" class="btn btn--full" style="background: var(--color-error-500); color: white; border: none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Yes, Delete Entry
+            </button>
+            <a href="{% url 'tracking:history' %}" class="btn btn--ghost btn--full">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Add dark mode styles -->
+<style>
+[data-theme="dark"] .card[style*="background: var(--color-error-50)"] {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: var(--color-error-900) !important;
+}
+[data-theme="dark"] .card[style*="background: var(--color-error-50)"] div[style*="background: var(--color-error-100)"] {
+    background: rgba(239, 68, 68, 0.2) !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/components.js' %}"></script>
+{% endblock %}

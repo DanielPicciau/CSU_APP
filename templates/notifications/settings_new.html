@@ -1,0 +1,378 @@
+{% extends 'base_new.html' %}
+
+{% block title %}Settings - CSU Tracker{% endblock %}
+
+{% block header_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="app-content fade-in">
+    
+    <!-- Profile Section -->
+    <div class="card mb-5">
+        <div class="card__body">
+            <div class="flex items-center gap-4">
+                <div 
+                    class="flex items-center justify-center rounded-full"
+                    style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));"
+                >
+                    <span class="text-xl font-bold text-inverse">
+                        {{ user.profile.initials }}
+                    </span>
+                </div>
+                <div class="flex-1">
+                    <h2 class="font-semibold text-primary">
+                        {{ user.profile.display_name_or_email }}
+                    </h2>
+                    <p class="text-sm text-secondary">{{ user.email }}</p>
+                </div>
+                <a href="{% url 'accounts:profile' %}" class="btn btn--secondary btn--sm">Edit</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Appearance Section -->
+    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
+        Appearance
+    </h3>
+    <div class="card mb-5">
+        <div class="card__body card__body--compact">
+            <div class="form-group mb-0">
+                <label class="form-label" id="theme-label">Theme</label>
+                <div class="grid grid-cols-3 gap-2 mt-2" role="radiogroup" aria-labelledby="theme-label">
+                    <label class="radio-card" style="padding: var(--space-3); text-align: center;">
+                        <input type="radio" name="theme" value="light" class="radio-card__input" 
+                               onchange="CSU.ThemeManager.setTheme('light')">
+                        <div class="radio-card__content">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 4px;">
+                                <circle cx="12" cy="12" r="5"/>
+                                <line x1="12" y1="1" x2="12" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="23"/>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                <line x1="1" y1="12" x2="3" y2="12"/>
+                                <line x1="21" y1="12" x2="23" y2="12"/>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                            </svg>
+                            <div class="radio-card__title text-sm">Light</div>
+                        </div>
+                    </label>
+                    <label class="radio-card" style="padding: var(--space-3); text-align: center;">
+                        <input type="radio" name="theme" value="dark" class="radio-card__input"
+                               onchange="CSU.ThemeManager.setTheme('dark')">
+                        <div class="radio-card__content">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 4px;">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                            </svg>
+                            <div class="radio-card__title text-sm">Dark</div>
+                        </div>
+                    </label>
+                    <label class="radio-card" style="padding: var(--space-3); text-align: center;">
+                        <input type="radio" name="theme" value="system" class="radio-card__input" checked
+                               onchange="CSU.ThemeManager.setTheme('system')">
+                        <div class="radio-card__content">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 4px;">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                            <div class="radio-card__title text-sm">System</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notifications Section -->
+    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
+        Notifications
+    </h3>
+    
+    <!-- Push Permission Status -->
+    <div id="push-status-card" class="card mb-4">
+        <div class="card__body">
+            <div id="push-not-supported" class="hidden">
+                <div class="flex items-start gap-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning-500)" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <div>
+                        <h4 class="font-semibold text-primary">Not Supported</h4>
+                        <p class="text-sm text-secondary mt-1">Push notifications aren't supported in this browser. Add to Home Screen for the best experience.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="push-prompt" class="hidden">
+                <div class="flex items-start gap-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-brand)" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-primary">Enable Push Notifications</h4>
+                        <p class="text-sm text-secondary mt-1 mb-3">Get reminded to log your symptoms daily.</p>
+                        <button id="enable-push-btn" class="btn btn--primary btn--sm">
+                            Enable Notifications
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="push-enabled" class="hidden">
+                <div class="flex items-center gap-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-500)" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <div>
+                        <h4 class="font-semibold text-primary">Notifications Enabled</h4>
+                        <p class="text-sm text-secondary">{{ subscriptions_count }} device(s) registered</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="push-denied" class="hidden">
+                <div class="flex items-start gap-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-500)" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                    </svg>
+                    <div>
+                        <h4 class="font-semibold text-primary">Notifications Blocked</h4>
+                        <p class="text-sm text-secondary mt-1">Enable notifications in your browser or device settings.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reminder Settings -->
+    <div class="card mb-5">
+        <form method="post">
+            {% csrf_token %}
+            <div class="card__body">
+                <div class="form-group">
+                    <label class="toggle">
+                        {{ form.enabled }}
+                        <span class="toggle__track">
+                            <span class="toggle__thumb"></span>
+                        </span>
+                        <span class="toggle__label">Daily Reminders</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="id_time_of_day">Reminder Time</label>
+                    <input type="time" name="time_of_day" id="id_time_of_day" 
+                           class="form-input" value="{{ form.time_of_day.value|default:'20:00' }}">
+                    <p class="form-helper">We'll remind you if you haven't logged by this time.</p>
+                </div>
+                
+                <div class="form-group mb-0">
+                    <label class="form-label" for="id_timezone">Timezone</label>
+                    {{ form.timezone }}
+                </div>
+            </div>
+            <div class="card__footer">
+                <button type="submit" class="btn btn--primary btn--full">Save Settings</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Test Notification -->
+    <div class="card mb-5">
+        <div class="card__body">
+            <h4 class="font-semibold text-primary mb-2">Test Notification</h4>
+            <p class="text-sm text-secondary mb-3">Verify your notification setup is working.</p>
+            <button id="test-notification-btn" class="btn btn--secondary btn--full">
+                Send Test Notification
+            </button>
+        </div>
+    </div>
+    
+    <!-- Data & Privacy Section -->
+    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
+        Data & Privacy
+    </h3>
+    <div class="card mb-5">
+        <a href="{% url 'tracking:export' %}" class="card__body card__body--compact flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span class="font-medium text-primary">Export Data</span>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+            </svg>
+        </a>
+        <div style="height: 1px; background: var(--border-subtle);"></div>
+        <a href="{% url 'accounts:privacy' %}" class="card__body card__body--compact flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span class="font-medium text-primary">Privacy Policy</span>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+            </svg>
+        </a>
+    </div>
+    
+    <!-- Account Section -->
+    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
+        Account
+    </h3>
+    <div class="card mb-5">
+        <a href="{% url 'accounts:change_password' %}" class="card__body card__body--compact flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span class="font-medium text-primary">Change Password</span>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+            </svg>
+        </a>
+        <div style="height: 1px; background: var(--border-subtle);"></div>
+        <a href="{% url 'accounts:delete_account' %}" class="card__body card__body--compact flex items-center gap-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-500)" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            <span class="font-medium" style="color: var(--color-error-600);">Delete Account</span>
+        </a>
+        <div style="height: 1px; background: var(--border-subtle);"></div>
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="card__body card__body--compact flex items-center gap-3 w-full text-left" style="border: none; background: none; cursor: pointer;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span class="font-medium text-secondary">Sign Out</span>
+            </button>
+        </form>
+    </div>
+    
+    <!-- App Info -->
+    <div class="text-center text-sm text-tertiary mt-8 mb-4">
+        <p>CSU Tracker v1.0.0</p>
+        <p class="mt-1">Made with ❤️ for better health tracking</p>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update theme radio based on current setting
+    const currentTheme = CSU.ThemeManager.getTheme();
+    const themeRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
+    if (themeRadio) themeRadio.checked = true;
+    
+    // Push notification status
+    function updatePushStatus() {
+        const notSupported = document.getElementById('push-not-supported');
+        const prompt = document.getElementById('push-prompt');
+        const enabled = document.getElementById('push-enabled');
+        const denied = document.getElementById('push-denied');
+        
+        // Hide all first
+        [notSupported, prompt, enabled, denied].forEach(el => el.classList.add('hidden'));
+        
+        if (!('PushManager' in window) || !('serviceWorker' in navigator)) {
+            notSupported.classList.remove('hidden');
+            return;
+        }
+        
+        Notification.requestPermission().then(function() {
+            // Don't actually request, just check
+        });
+        
+        if (Notification.permission === 'granted') {
+            enabled.classList.remove('hidden');
+        } else if (Notification.permission === 'denied') {
+            denied.classList.remove('hidden');
+        } else {
+            prompt.classList.remove('hidden');
+        }
+    }
+    
+    updatePushStatus();
+    
+    // Enable push button
+    const enableBtn = document.getElementById('enable-push-btn');
+    if (enableBtn) {
+        enableBtn.addEventListener('click', async function() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // Subscribe to push
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: VAPID_PUBLIC_KEY
+                    });
+                    
+                    // Send subscription to server
+                    await fetch('/api/notifications/subscribe/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify(subscription)
+                    });
+                    
+                    CSU.Toast.success('Notifications enabled successfully!');
+                    updatePushStatus();
+                }
+            } catch (error) {
+                CSU.Toast.error('Failed to enable notifications.');
+                console.error(error);
+            }
+        });
+    }
+    
+    // Test notification button
+    const testBtn = document.getElementById('test-notification-btn');
+    if (testBtn) {
+        testBtn.addEventListener('click', async function() {
+            testBtn.disabled = true;
+            testBtn.textContent = 'Sending...';
+            
+            try {
+                const response = await fetch('/api/notifications/test/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                
+                if (response.ok) {
+                    CSU.Toast.success('Test notification sent!');
+                } else {
+                    throw new Error('Failed to send');
+                }
+            } catch (error) {
+                CSU.Toast.error('Failed to send test notification.');
+            }
+            
+            testBtn.disabled = false;
+            testBtn.textContent = 'Send Test Notification';
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

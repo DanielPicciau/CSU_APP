@@ -1,0 +1,344 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Today - CSU Tracker{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/score-selector.css' %}">
+{% endblock %}
+
+{% block header_title %}
+    Today
+{% endblock %}
+
+{% block header_right %}
+<a href="{% url 'accounts:profile' %}" class="btn btn--icon btn--ghost" aria-label="Profile">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="app-content">
+    
+    <!-- Date & Greeting -->
+    <div class="mb-5 fade-in">
+        <p class="text-sm text-secondary">{{ today|date:"l, F j, Y" }}</p>
+        <h1 class="text-2xl font-bold text-primary mt-1">
+            {% now "H" as current_hour %}
+            {% if current_hour|add:0 < 12 %}
+            Good morning{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %}!
+            {% elif current_hour|add:0 < 17 %}
+            Good afternoon{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %}!
+            {% else %}
+            Good evening{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %}!
+            {% endif %}
+        </h1>
+    </div>
+    
+    <!-- Today's Entry Card -->
+    <div class="today-card fade-in mb-5" id="today-card" data-has-entry="{{ today_entry|yesno:'true,false' }}">
+        <div class="today-card__header">
+            <span class="today-card__date">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 4px;">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Today
+            </span>
+            {% if today_entry %}
+            <span class="today-card__status today-card__status--logged">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Logged
+            </span>
+            {% else %}
+            <span class="today-card__status today-card__status--pending">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Pending
+            </span>
+            {% endif %}
+        </div>
+        
+        <div class="today-card__body">
+            {% if today_entry %}
+            <!-- Entry Exists - Show Score -->
+            <div class="today-card__score-display" id="score-display">
+                <div class="today-card__score-ring" id="score-ring" style="--score-color: var(--color-score-{{ today_entry.score }});">
+                    <span class="today-card__score-number" id="score-number">{{ today_entry.score }}</span>
+                </div>
+                <h2 class="today-card__score-label">Today's UAS Score</h2>
+                <p class="today-card__score-detail">
+                    Itch: {{ today_entry.itch_score }}/3 &nbsp;•&nbsp; Hives: {{ today_entry.hive_count_score }}/3
+                </p>
+                
+                {% if today_entry.took_antihistamine %}
+                <p class="mt-3">
+                    <span class="inline-flex items-center gap-1 text-sm text-secondary px-3 py-1 rounded-full" style="background: var(--bg-tertiary);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Took antihistamine
+                    </span>
+                </p>
+                {% endif %}
+                
+                {% if today_entry.notes %}
+                <p class="mt-3 text-sm text-secondary text-left px-4 py-3 rounded-lg" style="background: var(--bg-tertiary);">
+                    {{ today_entry.notes|truncatewords:30 }}
+                </p>
+                {% endif %}
+                
+                <p class="today-card__updated">
+                    Last updated {{ today_entry.updated_at|timesince }} ago
+                </p>
+            </div>
+            {% else %}
+            <!-- No Entry - Show CTA -->
+            <div class="today-card__empty" id="empty-state">
+                <svg class="today-card__empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <line x1="12" y1="14" x2="12" y2="18"/>
+                    <line x1="10" y1="16" x2="14" y2="16"/>
+                </svg>
+                <h2 class="today-card__empty-title">No entry yet</h2>
+                <p class="today-card__empty-text">How are your symptoms today?</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="today-card__footer">
+            {% if today_entry %}
+            <a href="{% url 'tracking:log_entry' %}" class="btn btn--secondary btn--full">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit Today's Entry
+            </a>
+            {% else %}
+            <a href="{% url 'tracking:log_entry' %}" class="btn btn--primary btn--full btn--lg">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Log Today's Score
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Log (if no entry) -->
+    {% if not today_entry %}
+    <div class="card mb-5 slide-up" style="animation-delay: 0.1s;">
+        <div class="card__header">
+            <h3 class="card__title">Quick Log</h3>
+            <span class="text-sm text-secondary">~10 seconds</span>
+        </div>
+        <div class="card__body">
+            <p class="text-sm text-secondary mb-4">
+                Tap a number to quickly log your combined UAS score, or use the full form for detailed tracking.
+            </p>
+            
+            <!-- Quick Score Selector -->
+            <form id="quick-log-form" method="post" action="{% url 'tracking:log_entry' %}">
+                {% csrf_token %}
+                <input type="hidden" name="quick_mode" value="1">
+                
+                <div class="quick-score" role="radiogroup" aria-label="Quick score selection">
+                    {% for score in "0123456" %}
+                    <div class="quick-score__option">
+                        <input 
+                            type="radio" 
+                            name="score" 
+                            value="{{ score }}" 
+                            id="quick-score-{{ score }}"
+                            class="quick-score__input"
+                        >
+                        <label for="quick-score-{{ score }}" class="quick-score__button">
+                            <span class="quick-score__number">{{ score }}</span>
+                            <span class="quick-score__label">
+                                {% if score == "0" %}None{% elif score == "1" %}Mild{% elif score == "2" %}Low{% elif score == "3" %}Mod{% elif score == "4" %}Med{% elif score == "5" %}High{% else %}Max{% endif %}
+                            </span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button type="submit" id="quick-log-btn" class="btn btn--primary btn--full mt-4" disabled>
+                    Save Score
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Week Overview -->
+    <div class="card mb-5 slide-up" style="animation-delay: 0.2s;">
+        <div class="card__header">
+            <h3 class="card__title">This Week</h3>
+            <div class="text-right">
+                <span class="text-2xl font-bold {% if uas7_complete %}text-brand{% else %}text-tertiary{% endif %}">
+                    {{ uas7_score }}
+                </span>
+                <span class="text-xs text-secondary block">UAS7{% if not uas7_complete %}*{% endif %}</span>
+            </div>
+        </div>
+        <div class="card__body">
+            <!-- Weekly Chart -->
+            <div class="flex justify-between items-end gap-1" style="height: 80px;" role="img" aria-label="Weekly score chart">
+                {% for day in chart_data %}
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full flex flex-col justify-end" style="height: 56px;">
+                        {% if day.has_entry %}
+                        <div 
+                            class="w-full rounded-t-md"
+                            style="height: {{ day.score|add:1 }}0px; min-height: 6px; background-color: var(--color-score-{{ day.score }});"
+                            title="{{ day.date|date:'M j' }}: Score {{ day.score }}"
+                            role="img"
+                            aria-label="{{ day.date|date:'l' }}: Score {{ day.score }}"
+                        ></div>
+                        {% else %}
+                        <div 
+                            class="w-full rounded"
+                            style="height: 4px; background: var(--border-default);"
+                            title="{{ day.date|date:'M j' }}: No entry"
+                            role="img"
+                            aria-label="{{ day.date|date:'l' }}: No entry"
+                        ></div>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs {% if day.date == today %}text-brand font-semibold{% else %}text-tertiary{% endif %} mt-2">
+                        {{ day.date|date:"D" }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if not uas7_complete %}
+            <p class="text-xs text-tertiary mt-4 text-center">
+                *Log all 7 days for complete UAS7 score
+            </p>
+            {% else %}
+            <p class="text-xs text-center mt-4" style="color: {% if uas7_score <= 6 %}var(--color-score-0){% elif uas7_score <= 15 %}var(--color-score-2){% elif uas7_score <= 27 %}var(--color-score-4){% else %}var(--color-score-6){% endif %};">
+                {% if uas7_score <= 6 %}✓ Well controlled
+                {% elif uas7_score <= 15 %}Mild activity
+                {% elif uas7_score <= 27 %}Moderate activity
+                {% else %}Severe activity - consider consulting your doctor
+                {% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Stats Row -->
+    <div class="grid grid-cols-2 gap-4 mb-5 slide-up" style="animation-delay: 0.3s;">
+        <div class="card">
+            <div class="card__body card__body--compact text-center">
+                <div class="text-3xl font-bold text-brand">{{ streak }}</div>
+                <div class="text-sm text-secondary mt-1">
+                    {% if streak == 1 %}Day{% else %}Days{% endif %} Streak 🔥
+                </div>
+            </div>
+        </div>
+        <a href="{% url 'tracking:history' %}" class="card card--interactive">
+            <div class="card__body card__body--compact text-center">
+                <div class="text-3xl font-bold text-primary">{{ total_entries|default:0 }}</div>
+                <div class="text-sm text-secondary mt-1">Total Entries</div>
+            </div>
+        </a>
+    </div>
+    
+    <!-- Reminder CTA -->
+    {% if not has_notification_setup and not today_entry %}
+    <div class="card slide-up" style="animation-delay: 0.4s; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));">
+        <div class="card__body">
+            <div class="flex items-start gap-3">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" style="flex-shrink: 0;">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-inverse mb-1">Never forget to log</h3>
+                    <p class="text-sm mb-3" style="color: rgba(255,255,255,0.8);">
+                        Set up daily reminders to build your tracking habit.
+                    </p>
+                    <a href="{% url 'notifications:settings' %}" class="btn btn--secondary btn--sm">
+                        Enable Reminders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+</div>
+
+{% block extra_js %}
+<script src="{% static 'js/score-selector.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Quick log form handling
+    const quickForm = document.getElementById('quick-log-form');
+    const quickBtn = document.getElementById('quick-log-btn');
+    
+    if (quickForm && quickBtn) {
+        const radios = quickForm.querySelectorAll('input[type="radio"]');
+        
+        radios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                quickBtn.disabled = false;
+                quickBtn.textContent = `Save Score: ${this.value}`;
+                
+                // Haptic feedback
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+            });
+        });
+        
+        quickForm.addEventListener('submit', function(e) {
+            const selected = quickForm.querySelector('input[type="radio"]:checked');
+            if (!selected) {
+                e.preventDefault();
+                CSU.Toast.warning('Please select a score first');
+                return;
+            }
+            
+            quickBtn.disabled = true;
+            quickBtn.innerHTML = '<span class="spinner spinner--sm" style="border-top-color: white;"></span> Saving...';
+        });
+    }
+    
+    // Auto-refresh if entry is stale
+    const todayCard = document.getElementById('today-card');
+    if (todayCard) {
+        const hasEntry = todayCard.dataset.hasEntry === 'true';
+        
+        // If no entry and it's late in the day, maybe prompt
+        const hour = new Date().getHours();
+        if (!hasEntry && hour >= 18 && hour < 22) {
+            // Evening reminder (could trigger a toast)
+            setTimeout(() => {
+                CSU.Toast.info('Don\'t forget to log your symptoms before bed!', 'Evening Reminder');
+            }, 3000);
+        }
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}
