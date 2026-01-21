@@ -101,6 +101,31 @@ class RateLimitExceeded(Exception):
     pass
 
 
+# Known private/internal IP ranges (for filtering X-Forwarded-For)
+PRIVATE_IP_PREFIXES = (
+    '10.',
+    '172.16.', '172.17.', '172.18.', '172.19.',
+    '172.20.', '172.21.', '172.22.', '172.23.',
+    '172.24.', '172.25.', '172.26.', '172.27.',
+    '172.28.', '172.29.', '172.30.', '172.31.',
+    '192.168.',
+    '127.',
+    '::1',
+    'fc00:',
+    'fe80:',
+)
+
+
+def is_private_ip(ip: str) -> bool:
+    """Check if an IP address is private/internal."""
+    if not ip:
+        return True
+    ip_lower = ip.lower().strip()
+    if ip_lower in ('localhost', '', 'unknown'):
+        return True
+    return any(ip_lower.startswith(prefix) for prefix in PRIVATE_IP_PREFIXES)
+
+
 def get_client_ip(request) -> str:
     """
     Extract client IP from request, handling proxies securely.
@@ -110,21 +135,28 @@ def get_client_ip(request) -> str:
     1. Strip any existing X-Forwarded-For from client
     2. Add the real client IP as X-Forwarded-For
     
-    For PythonAnywhere/Railway/Heroku, the first IP in X-Forwarded-For
-    is typically set by the platform's load balancer and is trustworthy.
+    Strategy:
+    - For PaaS platforms (PythonAnywhere/Railway/Heroku), the first IP
+      in X-Forwarded-For is set by the platform's load balancer.
+    - We validate IPs and skip private/internal addresses.
+    - Maximum of 5 hops to prevent header injection attacks.
     """
-    # Check if we're behind a trusted proxy (configured in Django settings)
+    # Check if we're behind a trusted proxy
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
-        # Take the rightmost IP that isn't a known private/internal IP
-        # This is the most recently added by a trusted proxy
-        # For most PaaS platforms, take the first (leftmost) IP
-        ips = [ip.strip() for ip in x_forwarded_for.split(',')]
-        # Filter out obviously invalid IPs
+        # Parse and limit to prevent header injection attacks
+        ips = [ip.strip() for ip in x_forwarded_for.split(',')][:5]  # Max 5 hops
+        
+        # Return first non-private IP (usually the client IP set by edge proxy)
         for ip in ips:
-            # Basic validation - skip empty or localhost
-            if ip and ip not in ('127.0.0.1', 'localhost', '::1', ''):
-                return ip
+            if ip and not is_private_ip(ip):
+                # Basic IP format validation
+                if '.' in ip or ':' in ip:  # IPv4 or IPv6
+                    return ip
+        
+        # If all are private, return the first one (internal request)
+        if ips and ips[0]:
+            return ips[0]
     
     # Fallback to REMOTE_ADDR
     return request.META.get('REMOTE_ADDR', 'unknown')

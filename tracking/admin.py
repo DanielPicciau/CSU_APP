@@ -21,7 +21,8 @@ class DailyEntryAdmin(admin.ModelAdmin):
         "created_at",
     ]
     list_filter = ["date", "took_antihistamine", "score"]
-    search_fields = ["user__email", "notes"]
+    # SECURITY: Notes may contain sensitive health information - don't include in search
+    search_fields = ["user__email"]
     date_hierarchy = "date"
     ordering = ["-date", "-created_at"]
     readonly_fields = ["created_at", "updated_at"]

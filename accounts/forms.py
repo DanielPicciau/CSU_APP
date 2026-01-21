@@ -6,6 +6,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 import pytz
 
@@ -215,15 +216,28 @@ class OnboardingAccountForm(forms.Form):
             "autocomplete": "new-password",
         }),
         label="Password",
-        min_length=12,  # Match AUTH_PASSWORD_VALIDATORS requirement
         help_text="Must be at least 12 characters with uppercase, lowercase, number, and special character.",
     )
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if User.objects.filter(email=email).exists():
-            raise forms.ValidationError("An account with this email already exists.")
+            # Use generic error to prevent user enumeration
+            raise forms.ValidationError(
+                "Unable to create account with this email. Please try a different email "
+                "or reset your password if you already have an account."
+            )
         return email
+    
+    def clean_password(self):
+        """Validate password using Django's AUTH_PASSWORD_VALIDATORS."""
+        password = self.cleaned_data.get("password")
+        if password:
+            try:
+                validate_password(password)
+            except ValidationError as e:
+                raise forms.ValidationError(e.messages)
+        return password
 
 
 class OnboardingNameForm(forms.Form):

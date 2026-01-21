@@ -63,17 +63,19 @@ def send_push_notification(
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims=vapid_claims,
         )
-        logger.info(f"Push sent successfully to {subscription.user.email}")
+        # SECURITY: Log user ID instead of email to avoid PII in logs
+        logger.info(f"Push sent successfully to user_id={subscription.user.id}")
         return True
 
     except WebPushException as e:
-        logger.error(f"Push failed for {subscription.user.email}: {e}")
+        # SECURITY: Log user ID instead of email to avoid PII in logs
+        logger.error(f"Push failed for user_id={subscription.user.id}: {e}")
         
         # If subscription is gone (410) or invalid (404), mark as inactive
         if e.response and e.response.status_code in (404, 410):
             subscription.is_active = False
             subscription.save()
-            logger.info(f"Subscription marked inactive for {subscription.user.email}")
+            logger.info(f"Subscription marked inactive for user_id={subscription.user.id}")
         
         return False
 

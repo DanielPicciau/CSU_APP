@@ -11,6 +11,8 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from django.utils import timezone
 
+from core.security import AccountLockout, get_client_ip, audit_logger
+
 from .forms import (
     CustomAuthenticationForm,
     RegisterForm,
@@ -32,13 +34,11 @@ from .forms import (
 
 from .models import COMMON_MEDICATIONS, UserMedication
 
-from core.security import AccountLockout, get_client_ip
-
 User = get_user_model()
 
 
 class CustomLoginView(LoginView):
-    """Custom login view with styled form and account lockout protection."""
+    """Custom login view with styled form and security features."""
 
     template_name = "accounts/login.html"
     authentication_form = CustomAuthenticationForm
@@ -68,15 +68,26 @@ class CustomLoginView(LoginView):
         return super().dispatch(request, *args, **kwargs)
     
     def form_valid(self, form):
-        """Reset lockout on successful login."""
+        """Reset lockout and log successful login."""
         identifier = self.get_lockout_identifier(self.request)
         AccountLockout.reset_attempts(identifier)
+        # Audit log successful login
+        audit_logger.log_login(form.get_user(), self.request, success=True)
         return super().form_valid(form)
     
     def form_invalid(self, form):
-        """Track failed login attempt."""
+        """Track failed login attempt and log it."""
         identifier = self.get_lockout_identifier(self.request)
         attempts, is_locked = AccountLockout.record_failed_attempt(identifier)
+        
+        # Audit log failed login attempt
+        audit_logger.log_action(
+            'LOGIN_FAILED',
+            None,
+            self.request,
+            details={'email_attempted': self.request.POST.get('username', '')[:50]},
+            success=False
+        )
         
         if is_locked:
             remaining = AccountLockout.get_lockout_remaining(identifier)
@@ -96,9 +107,14 @@ class CustomLoginView(LoginView):
 
 
 class CustomLogoutView(LogoutView):
-    """Custom logout view."""
+    """Custom logout view with audit logging."""
 
     next_page = reverse_lazy("accounts:login")
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            audit_logger.log_logout(request.user, request)
+        return super().dispatch(request, *args, **kwargs)
 
 
 class RegisterView(CreateView):
@@ -142,13 +158,28 @@ def profile_view(request):
 
 @login_required
 def change_password_view(request):
-    """Change user password."""
+    """Change user password with rate limiting."""
+    # Rate limit password changes to prevent brute force on current password
+    from django.core.cache import cache
+    user_id = request.user.id
+    rate_key = f"password_change:{user_id}"
+    attempts = cache.get(rate_key, 0)
+    
+    if attempts >= 5:  # Max 5 attempts per 15 minutes
+        messages.error(request, "Too many password change attempts. Please try again later.")
+        return redirect("accounts:profile")
+    
     if request.method == "POST":
+        cache.set(rate_key, attempts + 1, 900)  # 15 minutes
         form = CustomPasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             user = form.save()
+            # Reset rate limit on success
+            cache.delete(rate_key)
             # Keep user logged in after password change
             update_session_auth_hash(request, user)
+            # Audit log the password change
+            audit_logger.log_action('PASSWORD_CHANGE', user, request)
             messages.success(request, "Your password has been changed successfully!")
             return redirect("notifications:settings")
     else:
@@ -161,11 +192,13 @@ def change_password_view(request):
 
 @login_required
 def delete_account_view(request):
-    """Delete user account."""
+    """Delete user account with audit logging."""
     if request.method == "POST":
         form = DeleteAccountForm(request.user, request.POST)
         if form.is_valid():
             user = request.user
+            # Audit log the deletion before it happens
+            audit_logger.log_action('ACCOUNT_DELETION', user, request)
             logout(request)
             user.delete()
             messages.success(request, "Your account has been permanently deleted.")
@@ -242,14 +275,29 @@ def onboarding_welcome(request):
     context = get_onboarding_context(0)
     return render(request, "accounts/onboarding/welcome.html", context)
 
+from core.security import rate_limit
+
 
 def onboarding_account(request):
-    """Step 2: Account creation (email/password)."""
+    """Step 2: Account creation (email/password) with rate limiting."""
     if request.user.is_authenticated:
         # Already logged in, skip to next step
         return redirect("accounts:onboarding_name")
     
+    # Rate limit account creation to prevent abuse
+    from django.core.cache import cache
+    ip = get_client_ip(request)
+    rate_key = f"onboarding_account:{ip}"
+    attempts = cache.get(rate_key, 0)
+    
+    if attempts >= 5:  # Max 5 attempts per 15 minutes
+        messages.error(request, "Too many account creation attempts. Please try again later.")
+        return redirect("accounts:onboarding_welcome")
+    
     if request.method == "POST":
+        # Increment rate limit counter
+        cache.set(rate_key, attempts + 1, 900)  # 15 minutes
+        
         form = OnboardingAccountForm(request.POST)
         if form.is_valid():
             # Create user implicitly in the background
@@ -259,6 +307,9 @@ def onboarding_account(request):
             )
             user.profile.onboarding_step = 2
             user.profile.save()
+            
+            # Audit log the registration
+            audit_logger.log_action('REGISTRATION', user, request)
             
             # Log them in immediately
             login(request, user)

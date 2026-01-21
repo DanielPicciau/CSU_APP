@@ -2,6 +2,8 @@
 API views for the accounts app.
 """
 
+import logging
+
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.sessions.models import Session
 from django.utils import timezone
@@ -9,6 +11,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.security import audit_logger, rate_limit
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
@@ -16,6 +19,7 @@ from .serializers import (
     ProfileUpdateSerializer,
 )
 
+logger = logging.getLogger('security')
 User = get_user_model()
 
 
@@ -63,22 +67,37 @@ class PasswordChangeAPIView(APIView):
             user.save()
             
             # Invalidate all other sessions for this user (security best practice)
-            # Keep current session valid by updating it
-            if hasattr(request, 'session'):
+            sessions_invalidated = 0
+            if hasattr(request, 'session') and request.session.session_key:
                 current_session_key = request.session.session_key
-                # Delete all sessions except current one
-                # Note: This only works with database-backed sessions
+                # Delete all sessions for this user except current one
+                # We need to decode sessions to find those belonging to this user
                 try:
-                    Session.objects.filter(
-                        expire_date__gte=timezone.now()
-                    ).exclude(
-                        session_key=current_session_key
-                    ).delete()
-                except Exception:
-                    pass  # Session backend may not support this
+                    from django.contrib.sessions.backends.db import SessionStore
+                    all_sessions = Session.objects.filter(expire_date__gte=timezone.now())
+                    for session in all_sessions:
+                        if session.session_key == current_session_key:
+                            continue
+                        try:
+                            session_data = session.get_decoded()
+                            if session_data.get('_auth_user_id') == str(user.pk):
+                                session.delete()
+                                sessions_invalidated += 1
+                        except Exception:
+                            continue
+                except Exception as e:
+                    logger.warning(f"Failed to invalidate other sessions: {e}")
                 
                 # Update current session to stay logged in
                 update_session_auth_hash(request, user)
+            
+            # Audit log the password change
+            audit_logger.log_action(
+                'PASSWORD_CHANGE',
+                user,
+                request,
+                details={'sessions_invalidated': sessions_invalidated}
+            )
             
             return Response(
                 {"message": "Password changed successfully. Other sessions have been logged out."},

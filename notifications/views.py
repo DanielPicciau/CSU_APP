@@ -29,7 +29,9 @@ def verify_cron_token(request) -> bool:
     Accepts token via:
     1. Authorization header (preferred): "Bearer <token>"
     2. X-Cron-Token header (alternative)
-    3. Query string (legacy, discouraged)
+    
+    SECURITY: Query string tokens are no longer accepted as they can leak
+    through access logs, browser history, and referrer headers.
     
     Uses constant-time comparison to prevent timing attacks.
     """
@@ -42,17 +44,18 @@ def verify_cron_token(request) -> bool:
     if auth_header.startswith('Bearer '):
         token = auth_header[7:]
     else:
-        # Try X-Cron-Token header
+        # Try X-Cron-Token header (alternative)
         token = request.headers.get('X-Cron-Token', '')
     
-    # Fallback to query string (legacy support, log warning)
-    if not token:
-        token = request.GET.get('token', '')
-        if token:
-            import logging
-            logging.getLogger('security').warning(
-                'Cron token passed via query string - migrate to Authorization header'
-            )
+    # SECURITY: Query string tokens are no longer accepted
+    # If token is still in query string, log security warning but reject
+    if not token and request.GET.get('token', ''):
+        import logging
+        logging.getLogger('security').warning(
+            'Cron token passed via query string - REJECTED for security. '
+            'Migrate to Authorization header: Bearer <token>'
+        )
+        return False
     
     if not token:
         return False
@@ -177,6 +180,11 @@ def cron_send_reminders(request):
             try:
                 user_tz = pytz.timezone(pref.timezone)
             except pytz.UnknownTimeZoneError:
+                # Log invalid timezone for debugging/alerting
+                import logging
+                logging.getLogger('notifications').warning(
+                    f"Invalid timezone '{pref.timezone}' for user_id={user.id}, defaulting to UTC"
+                )
                 user_tz = pytz.timezone('UTC')
             
             user_now = utc_now.astimezone(user_tz)

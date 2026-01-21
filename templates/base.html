@@ -17,7 +17,17 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192x192.png">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
     
-    <!-- Tailwind CSS (CDN for dev, replace with build for production) -->
+    <!-- 
+    SECURITY NOTE: For production, replace CDN scripts with:
+    1. Self-hosted versions, OR
+    2. Add SRI hashes (integrity attribute) - generate at https://www.srihash.org/
+    
+    Tailwind CDN is for development only. For production:
+    - Build Tailwind locally: npx tailwindcss -o static/css/tailwind.min.css --minify
+    - HTMX: Download and serve from /static/js/htmx.min.js
+    -->
+    
+    <!-- Tailwind CSS (CDN for dev - see security note above) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -32,8 +42,10 @@
         }
     </script>
     
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- HTMX with SRI hash -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" 
+            integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHez7Nber6bPLCIHCDHBMQc0lfmjzJgDLCz0w" 
+            crossorigin="anonymous"></script>
     
     <!-- Custom Styles -->
     <style>

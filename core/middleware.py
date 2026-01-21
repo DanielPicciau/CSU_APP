@@ -41,21 +41,16 @@ class RateLimitMiddleware(MiddlewareMixin):
     Global rate limiting middleware.
     
     Different limits for different endpoints:
-    - Admin login: 3 attempts per minute (strict)
     - Login: 5 attempts per minute
-    - Registration: 3 attempts per minute
     - API: 100 requests per minute
     - General: 200 requests per minute
     """
     
     # Rate limit configurations (max_requests, window_seconds)
     LIMITS = {
-        '/admin/login/': (3, 60),  # Strict limit for admin
-        '/admin/': (20, 60),  # General admin access
         '/accounts/login/': (5, 60),
         '/api/accounts/register/': (3, 60),
         '/api/accounts/token/': (10, 60),
-        '/api/accounts/password/': (3, 60),  # Password change
         '/api/': (100, 60),
         'default': (200, 60),
     }
@@ -66,7 +61,7 @@ class RateLimitMiddleware(MiddlewareMixin):
         '/favicon.ico',
         '/manifest.json',
         '/sw.js',
-        '/notifications/cron/',  # External cron service (has its own auth)
+        '/notifications/cron/',  # External cron service (authenticated via headers)
     ]
     
     def process_request(self, request: HttpRequest) -> HttpResponse | None:
@@ -79,11 +74,19 @@ class RateLimitMiddleware(MiddlewareMixin):
             if request.path.startswith(excluded):
                 return None
         
-        # Also skip if cron token is present in query string
-        if 'token=' in request.META.get('QUERY_STRING', ''):
+        # Skip rate limiting for cron endpoints with valid Authorization header
+        # SECURITY: Query string tokens are no longer accepted
+        if request.path.startswith('/notifications/cron/'):
+            auth_header = request.headers.get('Authorization', '')
+            cron_token_header = request.headers.get('X-Cron-Token', '')
             cron_secret = getattr(settings, 'CRON_WEBHOOK_SECRET', '')
-            if cron_secret and cron_secret in request.META.get('QUERY_STRING', ''):
-                return None
+            if cron_secret:
+                import secrets as sec
+                if auth_header.startswith('Bearer '):
+                    if sec.compare_digest(auth_header[7:], cron_secret):
+                        return None
+                elif cron_token_header and sec.compare_digest(cron_token_header, cron_secret):
+                    return None
         
         # Determine rate limit for this path
         max_requests, window = self.LIMITS['default']

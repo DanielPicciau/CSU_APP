@@ -88,9 +88,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-# Database - credentials MUST be provided via environment
+# Database
 DATABASES = {
-    "default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3")
+    "default": env.db("DATABASE_URL", default="postgres://csu_user:csu_password@localhost:5432/csu_tracker")
 }
 
 # Custom User Model
@@ -149,8 +149,18 @@ REST_FRAMEWORK = {
 }
 
 # JWT Settings - Secure configuration
-# Use a separate signing key from SECRET_KEY for defense in depth
-JWT_SIGNING_KEY = env("JWT_SIGNING_KEY", default=SECRET_KEY)
+# SECURITY: Use a separate signing key from SECRET_KEY for defense in depth
+JWT_SIGNING_KEY = env("JWT_SIGNING_KEY", default="")
+if not JWT_SIGNING_KEY:
+    import warnings
+    if not DEBUG:
+        warnings.warn(
+            "JWT_SIGNING_KEY not set! Using SECRET_KEY is insecure in production. "
+            "Generate a separate key with: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\"",
+            SecurityWarning
+        )
+    JWT_SIGNING_KEY = SECRET_KEY
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Shorter for security
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # Shorter for security
@@ -194,25 +204,34 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 # Redis Cloud uses SSL - detect and configure
-# Note: Use CERT_REQUIRED in production for proper security
-# CERT_NONE is only acceptable if the Redis provider doesn't support proper certificates
+# SECURITY: Always require SSL certificate verification in production
 if CELERY_BROKER_URL.startswith("rediss://"):
     import ssl
-    CELERY_BROKER_USE_SSL = {
-        "ssl_cert_reqs": ssl.CERT_REQUIRED if not DEBUG else ssl.CERT_NONE,
-    }
-    CELERY_REDIS_BACKEND_USE_SSL = {
-        "ssl_cert_reqs": ssl.CERT_REQUIRED if not DEBUG else ssl.CERT_NONE,
-    }
+    ssl_cert_reqs = ssl.CERT_NONE if DEBUG else ssl.CERT_REQUIRED
+    CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl_cert_reqs}
+    CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": ssl_cert_reqs}
 
 # Web Push VAPID Configuration
 VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
-# IMPORTANT: Set a real email in production - required for VAPID
 VAPID_ADMIN_EMAIL = env("VAPID_ADMIN_EMAIL", default="")
+
+# Validate VAPID email in production
+if not DEBUG and VAPID_PRIVATE_KEY and not VAPID_ADMIN_EMAIL:
+    import warnings
+    warnings.warn(
+        "VAPID_ADMIN_EMAIL is not set. Push notifications may fail without a valid contact email.",
+        UserWarning
+    )
 
 # Cron Webhook Secret (for external cron services like cron-job.org)
 CRON_WEBHOOK_SECRET = env("CRON_WEBHOOK_SECRET", default="")
+if not DEBUG and not CRON_WEBHOOK_SECRET:
+    import warnings
+    warnings.warn(
+        "CRON_WEBHOOK_SECRET is not set. Cron endpoints will reject all requests.",
+        UserWarning
+    )
 
 # CSU Configuration
 CSU_MAX_SCORE = env("CSU_MAX_SCORE")
@@ -223,8 +242,9 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # Session settings for PWA
-# Note: 7 days is more appropriate for medical-grade app with sensitive health data
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days (reduced from 30 for security)
+# SECURITY: 7 days is appropriate for medical-grade app with sensitive health data
+# Users will need to re-authenticate weekly for enhanced security
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 SESSION_COOKIE_SAMESITE = "Lax"
 
 # =============================================================================
@@ -238,14 +258,10 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    # Cross-Origin protection
-    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 # Cookie Security
 SESSION_COOKIE_HTTPONLY = True
-# CSRF token needs to be readable by JavaScript for AJAX requests
-# The token is still protected by SameSite and the actual validation
-CSRF_COOKIE_HTTPONLY = False  # Allow JS to read CSRF token for AJAX
+CSRF_COOKIE_HTTPONLY = True
 
 # X-Frame-Options
 X_FRAME_OPTIONS = 'DENY'
