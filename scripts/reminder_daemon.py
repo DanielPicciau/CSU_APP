@@ -15,6 +15,14 @@ import time
 import logging
 from datetime import datetime
 
+# Force unbuffered output for PythonAnywhere
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+print("=" * 50, flush=True)
+print("CSU Tracker Reminder Daemon", flush=True)
+print("Initializing Django...", flush=True)
+
 # Setup Django
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
@@ -22,12 +30,16 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 import django
 django.setup()
 
+print("Django initialized successfully", flush=True)
+
 import pytz
 from django.utils import timezone
 
 from notifications.models import ReminderPreferences, ReminderLog, PushSubscription
 from notifications.push import send_push_notification
 from tracking.models import DailyEntry
+
+print("All imports complete", flush=True)
 
 # Configure logging
 logging.basicConfig(
@@ -134,23 +146,23 @@ def process_reminders():
 
 def main():
     """Main loop - runs forever, checking every minute."""
-    logger.info("=" * 50)
-    logger.info("CSU Tracker Reminder Daemon Started")
-    logger.info(f"Checking every {CHECK_INTERVAL} seconds")
-    logger.info(f"Reminder window: {REMINDER_WINDOW} seconds")
-    logger.info("=" * 50)
+    print("=" * 50, flush=True)
+    print("CSU Tracker Reminder Daemon Started", flush=True)
+    print(f"Checking every {CHECK_INTERVAL} seconds", flush=True)
+    print(f"Reminder window: {REMINDER_WINDOW} seconds", flush=True)
+    print("=" * 50, flush=True)
     
     while True:
         try:
             now = datetime.now()
-            logger.info(f"Checking reminders at {now.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Checking reminders...", flush=True)
             
             sent = process_reminders()
             if sent > 0:
-                logger.info(f"Sent {sent} reminder(s)")
+                print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Sent {sent} reminder(s)", flush=True)
             
         except Exception as e:
-            logger.error(f"Error in main loop: {e}")
+            print(f"Error in main loop: {e}", flush=True)
             # Don't crash, just log and continue
         
         # Sleep until next check
