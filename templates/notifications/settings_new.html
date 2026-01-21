@@ -287,6 +287,17 @@
 
 {% block extra_js %}
 <script>
+// Helper function to show toast messages (fallback if CSU not available)
+function showToast(message, type) {
+    if (typeof CSU !== 'undefined' && CSU.Toast) {
+        if (type === 'success') CSU.Toast.success(message);
+        else if (type === 'error') CSU.Toast.error(message);
+        else CSU.Toast.info(message);
+    } else {
+        alert(message);
+    }
+}
+
 // Convert VAPID key from base64 URL format to Uint8Array
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -377,11 +388,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         throw new Error('Server rejected subscription');
                     }
                     
-                    CSU.Toast.success('Notifications enabled successfully!');
+                    showToast('Notifications enabled successfully!', 'success');
                 }
                 updatePushStatus();
             } catch (error) {
-                CSU.Toast.error('Failed to enable notifications.');
+                showToast('Failed to enable notifications.', 'error');
                 console.error(error);
                 enableBtn.disabled = false;
                 enableBtn.textContent = 'Enable Notifications';
@@ -405,12 +416,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 if (response.ok) {
-                    CSU.Toast.success('Test notification sent!');
+                    showToast('Test notification sent!', 'success');
                 } else {
                     throw new Error('Failed to send');
                 }
             } catch (error) {
-                CSU.Toast.error('Failed to send test notification.');
+                showToast('Failed to send test notification.', 'error');
             }
             
             testBtn.disabled = false;
