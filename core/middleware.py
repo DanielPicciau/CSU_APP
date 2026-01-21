@@ -299,15 +299,20 @@ class OnboardingMiddleware(MiddlewareMixin):
             # Determine which onboarding step to redirect to
             step = request.user.profile.onboarding_step
             step_urls = {
-                0: 'accounts:onboarding_name',
-                1: 'accounts:onboarding_name',
-                2: 'accounts:onboarding_name',
-                3: 'accounts:onboarding_age',
+                0: 'accounts:onboarding_welcome',
+                1: 'accounts:onboarding_welcome',
+                2: 'accounts:onboarding_welcome',
+                3: 'accounts:onboarding_gender',
                 4: 'accounts:onboarding_gender',
                 5: 'accounts:onboarding_diagnosis',
-                6: 'accounts:onboarding_complete',
+                6: 'accounts:onboarding_medication_status',
+                7: 'accounts:onboarding_medication_select',
+                8: 'accounts:onboarding_medication_details',
+                9: 'accounts:onboarding_summary',
+                10: 'accounts:onboarding_privacy',
+                11: 'accounts:onboarding_reminders',
             }
-            target = step_urls.get(step, 'accounts:onboarding_name')
+            target = step_urls.get(step, 'accounts:onboarding_welcome')
             return redirect(target)
         
         return None

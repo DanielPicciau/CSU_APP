@@ -23,8 +23,6 @@ urlpatterns = [
     # Onboarding flow
     path("onboarding/", views.onboarding_welcome, name="onboarding_welcome"),
     path("onboarding/account/", views.onboarding_account, name="onboarding_account"),
-    path("onboarding/name/", views.onboarding_name, name="onboarding_name"),
-    path("onboarding/age/", views.onboarding_age, name="onboarding_age"),
     path("onboarding/gender/", views.onboarding_gender, name="onboarding_gender"),
     path("onboarding/diagnosis/", views.onboarding_diagnosis, name="onboarding_diagnosis"),
     # Treatment context (conditional steps)

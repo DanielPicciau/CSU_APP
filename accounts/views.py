@@ -338,65 +338,6 @@ def onboarding_account(request):
     return render(request, "accounts/onboarding/account.html", context)
 
 
-@login_required
-def onboarding_name(request):
-    """Step 3: What's your name?"""
-    profile = request.user.profile
-    
-    if request.method == "POST":
-        action = request.POST.get("action", "next")
-        
-        if action == "skip":
-            profile.onboarding_step = 3
-            profile.save()
-            return redirect("accounts:onboarding_age")
-        
-        form = OnboardingNameForm(request.POST)
-        if form.is_valid():
-            profile.display_name = form.cleaned_data.get("display_name", "")
-            profile.onboarding_step = 3
-            profile.save()
-            return redirect("accounts:onboarding_age")
-    else:
-        form = OnboardingNameForm(initial={"display_name": profile.display_name})
-    
-    context = get_onboarding_context(2)
-    context["form"] = form
-    context["can_skip"] = True
-    return render(request, "accounts/onboarding/name.html", context)
-
-
-@login_required
-def onboarding_age(request):
-    """Step 4: What is your age?"""
-    profile = request.user.profile
-    
-    if request.method == "POST":
-        action = request.POST.get("action", "next")
-        
-        if action == "skip":
-            profile.onboarding_step = 4
-            profile.save()
-            return redirect("accounts:onboarding_gender")
-        
-        if action == "back":
-            return redirect("accounts:onboarding_name")
-        
-        form = OnboardingAgeForm(request.POST)
-        if form.is_valid():
-            profile.age = form.cleaned_data.get("age")
-            profile.onboarding_step = 4
-            profile.save()
-            return redirect("accounts:onboarding_gender")
-    else:
-        form = OnboardingAgeForm(initial={"age": profile.age})
-    
-    context = get_onboarding_context(3)
-    context["form"] = form
-    context["can_skip"] = True
-    context["can_go_back"] = True
-    return render(request, "accounts/onboarding/age.html", context)
-
 
 @login_required
 def onboarding_gender(request):
