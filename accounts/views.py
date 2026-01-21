@@ -887,7 +887,7 @@ def onboarding_reminders(request):
         form = OnboardingReminderForm(initial={
             "enable_reminders": "yes" if reminder_prefs.enabled else "no",
             "reminder_time": reminder_prefs.time_of_day,
-            "timezone": profile.default_timezone or "America/New_York",
+            "timezone": profile.default_timezone or "Europe/London",
         })
     
     context = get_onboarding_context(11)

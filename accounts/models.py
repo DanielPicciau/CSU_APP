@@ -198,7 +198,7 @@ class Profile(models.Model):
     # Tracking preferences
     default_timezone = models.CharField(
         max_length=50,
-        default="America/New_York",
+        default="Europe/London",
         help_text="IANA timezone string for the user",
     )
     

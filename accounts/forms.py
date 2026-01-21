@@ -23,25 +23,26 @@ from .models import (
 
 User = get_user_model()
 
-# Common timezone choices (subset for better UX)
+# Common timezone choices (subset for better UX) - UK default
 TIMEZONE_CHOICES = [
-    ("America/New_York", "Eastern Time (US)"),
-    ("America/Chicago", "Central Time (US)"),
-    ("America/Denver", "Mountain Time (US)"),
-    ("America/Los_Angeles", "Pacific Time (US)"),
-    ("America/Phoenix", "Arizona (US)"),
-    ("America/Anchorage", "Alaska"),
-    ("Pacific/Honolulu", "Hawaii"),
-    ("Europe/London", "London"),
-    ("Europe/Paris", "Paris / Berlin"),
-    ("Europe/Moscow", "Moscow"),
-    ("Asia/Dubai", "Dubai"),
-    ("Asia/Kolkata", "India"),
-    ("Asia/Singapore", "Singapore"),
-    ("Asia/Tokyo", "Tokyo"),
-    ("Asia/Shanghai", "China"),
-    ("Australia/Sydney", "Sydney"),
-    ("Pacific/Auckland", "New Zealand"),
+    ("Europe/London", "UK (GMT/BST)"),
+    ("Europe/Dublin", "Ireland (GMT/IST)"),
+    ("Europe/Paris", "Central Europe (CET/CEST)"),
+    ("Europe/Berlin", "Germany (CET/CEST)"),
+    ("Europe/Moscow", "Moscow (MSK)"),
+    ("America/New_York", "US Eastern (ET)"),
+    ("America/Chicago", "US Central (CT)"),
+    ("America/Denver", "US Mountain (MT)"),
+    ("America/Los_Angeles", "US Pacific (PT)"),
+    ("America/Anchorage", "Alaska (AKT)"),
+    ("Pacific/Honolulu", "Hawaii (HT)"),
+    ("Asia/Dubai", "Dubai (GST)"),
+    ("Asia/Kolkata", "India (IST)"),
+    ("Asia/Singapore", "Singapore (SGT)"),
+    ("Asia/Tokyo", "Japan (JST)"),
+    ("Asia/Shanghai", "China (CST)"),
+    ("Australia/Sydney", "Sydney (AEST/AEDT)"),
+    ("Pacific/Auckland", "New Zealand (NZST/NZDT)"),
 ]
 
 
