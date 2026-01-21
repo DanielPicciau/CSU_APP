@@ -152,12 +152,12 @@
     
     <!-- Reminder Settings -->
     <div class="card mb-5">
-        <form method="post">
+        <form method="post" action="{% url 'notifications:settings' %}">
             {% csrf_token %}
             <div class="card__body">
                 <div class="form-group">
                     <label class="toggle">
-                        {{ form.enabled }}
+                        <input type="checkbox" name="enabled" id="id_enabled" class="toggle__input" {% if preferences.enabled %}checked{% endif %}>
                         <span class="toggle__track">
                             <span class="toggle__thumb"></span>
                         </span>
@@ -168,13 +168,17 @@
                 <div class="form-group">
                     <label class="form-label" for="id_time_of_day">Reminder Time</label>
                     <input type="time" name="time_of_day" id="id_time_of_day" 
-                           class="form-input" value="{{ form.time_of_day.value|default:'20:00' }}">
+                           class="form-input" value="{{ preferences.time_of_day|time:'H:i' }}">
                     <p class="form-helper">We'll remind you if you haven't logged by this time.</p>
                 </div>
                 
                 <div class="form-group mb-0">
                     <label class="form-label" for="id_timezone">Timezone</label>
-                    {{ form.timezone }}
+                    <select name="timezone" id="id_timezone" class="form-input">
+                        {% for value, label in form.timezone.field.choices %}
+                        <option value="{{ value }}" {% if value == preferences.timezone %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             <div class="card__footer">
