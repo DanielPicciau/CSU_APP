@@ -1,7 +1,7 @@
 {% extends 'base_new.html' %}
 {% load static %}
 
-{% block title %}Export Data - CSU Tracker{% endblock %}
+{% block title %}Export Clinical Report - CSU Tracker{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -32,14 +32,15 @@
     color: var(--color-success-600);
 }
 .export-card__icon--pdf {
-    background: var(--color-error-100);
-    color: var(--color-error-600);
+    background: #005EB8;
+    color: white;
 }
 [data-theme="dark"] .export-card__icon--csv {
     background: rgba(34, 197, 94, 0.2);
 }
 [data-theme="dark"] .export-card__icon--pdf {
-    background: rgba(239, 68, 68, 0.2);
+    background: rgba(0, 94, 184, 0.3);
+    color: #41B6E6;
 }
 .export-card__title {
     font-size: var(--text-lg);
@@ -139,6 +140,66 @@
     color: var(--text-tertiary);
 }
 
+.nhs-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #005EB8;
+    color: white;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+}
+
+.feature-list {
+    display: grid;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+}
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+.feature-item svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--color-success-500);
+}
+
+.clinical-info {
+    background: linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%);
+    border: 1px solid #BFDBFE;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+[data-theme="dark"] .clinical-info {
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+.clinical-info__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: #1E40AF;
+    margin-bottom: var(--space-2);
+}
+[data-theme="dark"] .clinical-info__title {
+    color: #60A5FA;
+}
+.clinical-info__text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
 .disclaimer-banner {
     background: var(--color-warning-50);
     border: 1px solid var(--color-warning-200);
@@ -170,7 +231,7 @@
 </a>
 {% endblock %}
 
-{% block header_title %}Export Data{% endblock %}
+{% block header_title %}Export Clinical Report{% endblock %}
 
 {% block content %}
 <div class="app-content">
@@ -191,6 +252,21 @@
         </div>
     </div>
     {% else %}
+    
+    <!-- Clinical Info Banner -->
+    <div class="clinical-info fade-in">
+        <div class="clinical-info__title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            NHS &amp; Healthcare Provider Ready
+        </div>
+        <p class="clinical-info__text">
+            Generate comprehensive clinical reports designed for NHS consultations. 
+            Reports include UAS7 scoring (EAACI/GA²LEN/EuroGuiDerm guidelines), 
+            treatment response analysis, flare identification, and clinical decision support.
+        </p>
+    </div>
     
     <!-- Export Options Form -->
     <form id="export-form" method="get" class="fade-in">
@@ -328,25 +404,68 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="export-card__title">PDF Report</h3>
-                        <p class="export-card__description">Formatted report for healthcare providers</p>
+                        <span class="nhs-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                            NHS Ready
+                        </span>
+                        <h3 class="export-card__title">Clinical PDF Report</h3>
+                        <p class="export-card__description">Comprehensive report for healthcare providers</p>
                     </div>
                 </div>
-                <p class="text-sm text-secondary mb-4">
-                    Professional, print-friendly report with summary statistics, trend chart, 
-                    weekly UAS7 scores, and daily log. Includes disclaimer for clinical use.
-                </p>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Executive summary with disease activity classification</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>UAS7 scoring per EAACI/GA²LEN/EuroGuiDerm guidelines</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Treatment response analysis with clinical interpretation</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Flare episode identification and pattern analysis</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>ICD-10 &amp; SNOMED-CT coding references</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Visual trend chart with severity zones</span>
+                    </div>
+                </div>
+                
                 <button 
                     type="submit" 
                     formaction="{% url 'tracking:export_pdf' %}" 
                     class="btn btn--primary btn--full"
+                    style="background: #005EB8;"
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    Download PDF Report
+                    Download Clinical PDF Report
                 </button>
             </div>
             
@@ -363,14 +482,38 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="export-card__title">CSV Data</h3>
-                        <p class="export-card__description">Raw data for spreadsheets or analysis</p>
+                        <h3 class="export-card__title">Clinical CSV Data</h3>
+                        <p class="export-card__description">Structured data for EHR import or analysis</p>
                     </div>
                 </div>
-                <p class="text-sm text-secondary mb-4">
-                    Comma-separated values file with all selected data fields. 
-                    Import into Excel, Google Sheets, or data analysis tools.
-                </p>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Complete daily symptom log with clinical categorisation</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Weekly UAS7 scores with interpretation guide</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Treatment response statistics and pattern analysis</span>
+                    </div>
+                    <div class="feature-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span>Compatible with Excel, Google Sheets, and EHR systems</span>
+                    </div>
+                </div>
+                
                 <button 
                     type="submit" 
                     formaction="{% url 'tracking:export_csv' %}" 
@@ -381,7 +524,7 @@
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    Download CSV Data
+                    Download Clinical CSV Data
                 </button>
             </div>
             
