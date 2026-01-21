@@ -83,7 +83,7 @@
     </div>
     
     <!-- iPhone Instructions -->
-    <div class="bg-amber-50 rounded-2xl p-6">
+    <div class="bg-amber-50 rounded-2xl p-6 mb-6">
         <h3 class="font-semibold text-amber-800 mb-2">📱 iPhone Users</h3>
         <p class="text-sm text-amber-700 mb-2">For notifications to work on iPhone:</p>
         <ol class="text-sm text-amber-700 list-decimal list-inside space-y-1">
@@ -92,6 +92,14 @@
             <li>Open the app from your Home Screen</li>
             <li>Enable notifications when prompted</li>
         </ol>
+    </div>
+    
+    <!-- Debug Info -->
+    <div class="bg-gray-100 rounded-2xl p-6">
+        <h3 class="font-semibold text-gray-800 mb-2">🔧 Debug Info</h3>
+        <div id="debug-info" class="text-xs text-gray-600 font-mono space-y-1">
+            <p>Loading...</p>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -204,6 +212,58 @@ document.getElementById('test-notification-btn')?.addEventListener('click', asyn
 });
 
 // Initialize
-document.addEventListener('DOMContentLoaded', updatePushUI);
+document.addEventListener('DOMContentLoaded', () => {
+    updatePushUI();
+    updateDebugInfo();
+});
+
+async function updateDebugInfo() {
+    const debugEl = document.getElementById('debug-info');
+    const info = [];
+    
+    // Check standalone mode (PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+        || window.navigator.standalone === true;
+    info.push(`PWA Mode: ${isStandalone ? '✅ YES' : '❌ NO (must open from Home Screen)'}`);
+    
+    // Check Service Worker support
+    const hasSW = 'serviceWorker' in navigator;
+    info.push(`Service Worker: ${hasSW ? '✅ Supported' : '❌ Not supported'}`);
+    
+    // Check Push API
+    const hasPush = 'PushManager' in window;
+    info.push(`Push API: ${hasPush ? '✅ Supported' : '❌ Not supported'}`);
+    
+    // Check Notification API
+    const hasNotif = 'Notification' in window;
+    info.push(`Notification API: ${hasNotif ? '✅ Supported' : '❌ Not supported'}`);
+    
+    // Check permission
+    if (hasNotif) {
+        info.push(`Permission: ${Notification.permission}`);
+    }
+    
+    // Check SW registration
+    if (hasSW) {
+        try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            info.push(`SW Registered: ${reg ? '✅ YES' : '❌ NO'}`);
+            if (reg) {
+                info.push(`SW Scope: ${reg.scope}`);
+            }
+        } catch (e) {
+            info.push(`SW Error: ${e.message}`);
+        }
+    }
+    
+    // VAPID key
+    info.push(`VAPID Key: ${VAPID_PUBLIC_KEY ? VAPID_PUBLIC_KEY.substring(0, 20) + '...' : '❌ MISSING'}`);
+    
+    // iOS version detection
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    info.push(`iOS Device: ${iOS ? 'YES' : 'NO'}`);
+    
+    debugEl.innerHTML = info.map(i => `<p>${i}</p>`).join('');
+}
 </script>
 {% endblock %}
