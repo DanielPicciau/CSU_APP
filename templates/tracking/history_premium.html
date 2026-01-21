@@ -519,23 +519,18 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal" id="delete-modal" role="dialog" aria-labelledby="delete-modal-title" aria-modal="true">
-    <div class="modal__backdrop" data-modal-close></div>
-    <div class="modal__content">
-        <div class="modal__header">
-            <h3 class="modal__title" id="delete-modal-title">Delete Entry?</h3>
-            <button class="modal__close" data-modal-close aria-label="Close">×</button>
-        </div>
-        <div class="modal__body">
-            <p class="text-secondary">
-                Are you sure you want to delete your entry for <strong id="delete-date-text"></strong>? This action cannot be undone.
-            </p>
-        </div>
-        <div class="modal__footer">
+<div id="delete-modal" role="dialog" aria-labelledby="delete-modal-title" aria-modal="true" style="display: none; position: fixed; inset: 0; z-index: 1000;">
+    <div data-modal-close style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-primary); border-radius: var(--radius-xl); padding: var(--space-5); width: 90%; max-width: 400px; box-shadow: var(--shadow-xl);">
+        <h3 id="delete-modal-title" style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-3);">Delete Entry?</h3>
+        <p class="text-secondary" style="margin-bottom: var(--space-4);">
+            Are you sure you want to delete your entry for <strong id="delete-date-text"></strong>? This action cannot be undone.
+        </p>
+        <div style="display: flex; gap: var(--space-3); justify-content: flex-end;">
             <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
             <form id="delete-form" method="post" action="" style="margin: 0;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn--primary" style="background: var(--color-error-600);">Delete</button>
+                <button type="submit" class="btn" style="background: var(--color-error-600); color: white;">Delete</button>
             </form>
         </div>
     </div>
@@ -575,14 +570,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             deleteDateText.textContent = date;
             deleteForm.action = `/tracking/entry/delete/${entryId}/`;
-            deleteModal.classList.add('modal--open');
+            deleteModal.style.display = 'block';
         });
     });
     
     // Close modal handlers
     deleteModal.querySelectorAll('[data-modal-close]').forEach(closeBtn => {
         closeBtn.addEventListener('click', () => {
-            deleteModal.classList.remove('modal--open');
+            deleteModal.style.display = 'none';
         });
     });
 });
