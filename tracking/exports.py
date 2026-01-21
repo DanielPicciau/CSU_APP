@@ -167,8 +167,12 @@ class CSUExporter:
             # Generate anonymous ID from user ID
             return f"Patient #{self.user.id:05d}"
         else:
-            name = f"{self.user.first_name} {self.user.last_name}".strip()
-            return name if name else self.user.username
+            first_name = self.user.first_name or ""
+            last_name = self.user.last_name or ""
+            name = f"{first_name} {last_name}".strip()
+            if not name:
+                name = self.user.username or self.user.email or f"User {self.user.id}"
+            return name
     
     def export_csv(self) -> HttpResponse:
         """Generate CSV export."""
@@ -662,5 +666,7 @@ class CSUExporter:
         if self.anonymize:
             return f"csu_report_{date_range}_anonymized.{extension}"
         else:
-            safe_name = self.user.username.replace(" ", "_")[:20]
+            # Handle cases where username or email might be None
+            name = self.user.username or self.user.email or f"user_{self.user.id}"
+            safe_name = name.replace(" ", "_").replace("@", "_")[:20]
             return f"csu_report_{safe_name}_{date_range}.{extension}"

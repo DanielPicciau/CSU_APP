@@ -661,6 +661,187 @@
 }
 
 /* ==========================================================================
+   QUICK ROW SELECTOR - Horizontal Tappable Options (New Design)
+   Two-row layout for Hives and Itchiness with 0-3 options each
+   ========================================================================== */
+
+.quick-row {
+  margin-bottom: var(--space-4);
+}
+
+.quick-row__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.quick-row__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.quick-row__icon {
+  color: var(--text-brand);
+}
+
+.quick-row__selected {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  transition: var(--transition-all);
+}
+
+.quick-row__selected--active {
+  color: var(--text-brand);
+  background: var(--bg-brand-subtle);
+  font-weight: var(--font-medium);
+}
+
+.quick-row__options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.quick-option {
+  position: relative;
+}
+
+.quick-option__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.quick-option__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-0-5);
+  padding: var(--space-3) var(--space-2);
+  background: var(--surface-primary);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: var(--transition-all);
+  -webkit-touch-callout: none;
+  user-select: none;
+  min-height: 72px;
+}
+
+.quick-option__btn:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.quick-option__btn:active {
+  transform: scale(0.97);
+}
+
+.quick-option__num {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.quick-option__text {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Selected states with severity colors */
+.quick-option__input:checked + .quick-option__btn {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+.quick-option--0 .quick-option__input:checked + .quick-option__btn {
+  border-color: var(--color-score-0);
+  background: color-mix(in srgb, var(--color-score-0) 10%, transparent);
+}
+.quick-option--0 .quick-option__input:checked + .quick-option__btn .quick-option__num {
+  color: var(--color-score-0);
+}
+
+.quick-option--1 .quick-option__input:checked + .quick-option__btn {
+  border-color: var(--color-score-2);
+  background: color-mix(in srgb, var(--color-score-2) 10%, transparent);
+}
+.quick-option--1 .quick-option__input:checked + .quick-option__btn .quick-option__num {
+  color: var(--color-score-2);
+}
+
+.quick-option--2 .quick-option__input:checked + .quick-option__btn {
+  border-color: var(--color-score-4);
+  background: color-mix(in srgb, var(--color-score-4) 10%, transparent);
+}
+.quick-option--2 .quick-option__input:checked + .quick-option__btn .quick-option__num {
+  color: var(--color-score-4);
+}
+
+.quick-option--3 .quick-option__input:checked + .quick-option__btn {
+  border-color: var(--color-score-6);
+  background: color-mix(in srgb, var(--color-score-6) 10%, transparent);
+}
+.quick-option--3 .quick-option__input:checked + .quick-option__btn .quick-option__num {
+  color: var(--color-score-6);
+}
+
+.quick-option__input:focus-visible + .quick-option__btn {
+  box-shadow: var(--shadow-focus);
+}
+
+/* Quick Total Display */
+.quick-total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xl);
+  margin-top: var(--space-4);
+}
+
+.quick-total__label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.quick-total__value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--color-score-0);
+  line-height: 1;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.quick-total__value--score-0 { color: var(--color-score-0); }
+.quick-total__value--score-1 { color: var(--color-score-1); }
+.quick-total__value--score-2 { color: var(--color-score-2); }
+.quick-total__value--score-3 { color: var(--color-score-3); }
+.quick-total__value--score-4 { color: var(--color-score-4); }
+.quick-total__value--score-5 { color: var(--color-score-5); }
+.quick-total__value--score-6 { color: var(--color-score-6); }
+
+.quick-total__max {
+  font-size: var(--text-lg);
+  color: var(--text-tertiary);
+}
+
+/* ==========================================================================
    ANIMATIONS
    ========================================================================== */
 

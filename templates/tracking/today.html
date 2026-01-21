@@ -144,39 +144,113 @@
     
     <!-- Quick Log (if no entry) -->
     {% if not today_entry %}
-    <div class="card mb-5 slide-up" style="animation-delay: 0.1s;">
+    <div class="card mb-5 slide-up" style="animation-delay: 0.1s;" id="quick-log-card">
         <div class="card__header">
             <h3 class="card__title">Quick Log</h3>
-            <span class="text-sm text-secondary">~10 seconds</span>
+            <span class="text-sm text-secondary">~5 seconds</span>
         </div>
         <div class="card__body">
-            <p class="text-sm text-secondary mb-4">
-                Tap a number to quickly log your combined UAS score, or use the full form for detailed tracking.
-            </p>
-            
-            <!-- Quick Score Selector -->
             <form id="quick-log-form" method="post" action="{% url 'tracking:log_entry' %}">
                 {% csrf_token %}
-                <input type="hidden" name="quick_mode" value="1">
+                <input type="hidden" name="structured_quick_mode" value="1">
                 
-                <div class="quick-score" role="radiogroup" aria-label="Quick score selection">
-                    {% for score in "0123456" %}
-                    <div class="quick-score__option">
-                        <input 
-                            type="radio" 
-                            name="score" 
-                            value="{{ score }}" 
-                            id="quick-score-{{ score }}"
-                            class="quick-score__input"
-                        >
-                        <label for="quick-score-{{ score }}" class="quick-score__button">
-                            <span class="quick-score__number">{{ score }}</span>
-                            <span class="quick-score__label">
-                                {% if score == "0" %}None{% elif score == "1" %}Mild{% elif score == "2" %}Low{% elif score == "3" %}Mod{% elif score == "4" %}Med{% elif score == "5" %}High{% else %}Max{% endif %}
+                <!-- Hives Row -->
+                <div class="quick-row mb-4">
+                    <div class="quick-row__header">
+                        <span class="quick-row__label">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="quick-row__icon">
+                                <circle cx="12" cy="12" r="3"/>
+                                <circle cx="6" cy="8" r="2"/>
+                                <circle cx="18" cy="8" r="2"/>
+                                <circle cx="8" cy="16" r="2"/>
+                                <circle cx="16" cy="16" r="2"/>
+                            </svg>
+                            Hives
+                        </span>
+                        <span class="quick-row__selected" id="hives-selected">Select</span>
+                    </div>
+                    <div class="quick-row__options" role="radiogroup" aria-label="Hive severity">
+                        <label class="quick-option quick-option--0">
+                            <input type="radio" name="hive_count_score" value="0" class="quick-option__input" required>
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">0</span>
+                                <span class="quick-option__text">None</span>
+                            </span>
+                        </label>
+                        <label class="quick-option quick-option--1">
+                            <input type="radio" name="hive_count_score" value="1" class="quick-option__input">
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">1</span>
+                                <span class="quick-option__text">Mild</span>
+                            </span>
+                        </label>
+                        <label class="quick-option quick-option--2">
+                            <input type="radio" name="hive_count_score" value="2" class="quick-option__input">
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">2</span>
+                                <span class="quick-option__text">Mod</span>
+                            </span>
+                        </label>
+                        <label class="quick-option quick-option--3">
+                            <input type="radio" name="hive_count_score" value="3" class="quick-option__input">
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">3</span>
+                                <span class="quick-option__text">Severe</span>
                             </span>
                         </label>
                     </div>
-                    {% endfor %}
+                </div>
+                
+                <!-- Itchiness Row -->
+                <div class="quick-row mb-4">
+                    <div class="quick-row__header">
+                        <span class="quick-row__label">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="quick-row__icon">
+                                <path d="M14 4l-4 4 4 4"/>
+                                <path d="M10 8l4 4-4 4"/>
+                                <path d="M6 12h12"/>
+                            </svg>
+                            Itchiness
+                        </span>
+                        <span class="quick-row__selected" id="itch-selected">Select</span>
+                    </div>
+                    <div class="quick-row__options" role="radiogroup" aria-label="Itch severity">
+                        <label class="quick-option quick-option--0">
+                            <input type="radio" name="itch_score" value="0" class="quick-option__input" required>
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">0</span>
+                                <span class="quick-option__text">None</span>
+                            </span>
+                        </label>
+                        <label class="quick-option quick-option--1">
+                            <input type="radio" name="itch_score" value="1" class="quick-option__input">
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">1</span>
+                                <span class="quick-option__text">Mild</span>
+                            </span>
+                        </label>
+                        <label class="quick-option quick-option--2">
+                            <input type="radio" name="itch_score" value="2" class="quick-option__input">
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">2</span>
+                                <span class="quick-option__text">Mod</span>
+                            </span>
+                        </label>
+                        <label class="quick-option quick-option--3">
+                            <input type="radio" name="itch_score" value="3" class="quick-option__input">
+                            <span class="quick-option__btn">
+                                <span class="quick-option__num">3</span>
+                                <span class="quick-option__text">Severe</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Total Score Display -->
+                <div class="quick-total" id="quick-total" style="display: none;">
+                    <span class="quick-total__label">Today's Score</span>
+                    <span class="quick-total__value" id="quick-total-value">0</span>
+                    <span class="quick-total__max">/6</span>
                 </div>
                 
                 <button type="submit" id="quick-log-btn" class="btn btn--primary btn--full mt-4" disabled>
@@ -247,14 +321,14 @@
     
     <!-- Stats Row -->
     <div class="grid grid-cols-2 gap-4 mb-5 slide-up" style="animation-delay: 0.3s;">
-        <div class="card">
+        <a href="{% url 'tracking:insights' %}" class="card card--interactive">
             <div class="card__body card__body--compact text-center">
-                <div class="text-3xl font-bold text-brand">{{ streak }}</div>
+                <div class="text-3xl font-bold text-brand">{{ logged_in_30_days }}</div>
                 <div class="text-sm text-secondary mt-1">
-                    {% if streak == 1 %}Day{% else %}Days{% endif %} Streak 🔥
+                    of last 30 days logged
                 </div>
             </div>
-        </div>
+        </a>
         <a href="{% url 'tracking:history' %}" class="card card--interactive">
             <div class="card__body card__body--compact text-center">
                 <div class="text-3xl font-bold text-primary">{{ total_entries|default:0 }}</div>
@@ -263,9 +337,9 @@
         </a>
     </div>
     
-    <!-- Reminder CTA -->
+    <!-- Reminder CTA - Only show if: 1) notifications not set up AND 2) no entry for today -->
     {% if not has_notification_setup and not today_entry %}
-    <div class="card slide-up" style="animation-delay: 0.4s; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));">
+    <div class="card slide-up" id="reminder-cta-card" style="animation-delay: 0.4s; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));">
         <div class="card__body">
             <div class="flex items-start gap-3">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" style="flex-shrink: 0;">
@@ -292,30 +366,72 @@
 <script src="{% static 'js/score-selector.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Quick log form handling
+    // Structured quick log form handling
     const quickForm = document.getElementById('quick-log-form');
     const quickBtn = document.getElementById('quick-log-btn');
+    const quickTotal = document.getElementById('quick-total');
+    const quickTotalValue = document.getElementById('quick-total-value');
+    const hivesSelected = document.getElementById('hives-selected');
+    const itchSelected = document.getElementById('itch-selected');
     
     if (quickForm && quickBtn) {
-        const radios = quickForm.querySelectorAll('input[type="radio"]');
+        const hivesRadios = quickForm.querySelectorAll('input[name="hive_count_score"]');
+        const itchRadios = quickForm.querySelectorAll('input[name="itch_score"]');
         
-        radios.forEach(radio => {
-            radio.addEventListener('change', function() {
+        const SEVERITY_LABELS = ['None', 'Mild', 'Moderate', 'Severe'];
+        
+        function updateTotal() {
+            const hivesChecked = quickForm.querySelector('input[name="hive_count_score"]:checked');
+            const itchChecked = quickForm.querySelector('input[name="itch_score"]:checked');
+            
+            // Update selection displays
+            if (hivesChecked && hivesSelected) {
+                hivesSelected.textContent = SEVERITY_LABELS[parseInt(hivesChecked.value)];
+                hivesSelected.classList.add('quick-row__selected--active');
+            }
+            if (itchChecked && itchSelected) {
+                itchSelected.textContent = SEVERITY_LABELS[parseInt(itchChecked.value)];
+                itchSelected.classList.add('quick-row__selected--active');
+            }
+            
+            // Enable submit button and show total only when both are selected
+            if (hivesChecked && itchChecked) {
+                const total = parseInt(hivesChecked.value) + parseInt(itchChecked.value);
                 quickBtn.disabled = false;
-                quickBtn.textContent = `Save Score: ${this.value}`;
+                quickBtn.textContent = `Save Score: ${total}/6`;
                 
+                // Show total display
+                if (quickTotal && quickTotalValue) {
+                    quickTotal.style.display = 'flex';
+                    quickTotalValue.textContent = total;
+                    quickTotalValue.className = 'quick-total__value quick-total__value--score-' + total;
+                }
+            } else {
+                quickBtn.disabled = true;
+                quickBtn.textContent = 'Save Score';
+            }
+        }
+        
+        // Add listeners to all radios
+        [...hivesRadios, ...itchRadios].forEach(radio => {
+            radio.addEventListener('change', function() {
                 // Haptic feedback
                 if ('vibrate' in navigator) {
                     navigator.vibrate(10);
                 }
+                updateTotal();
             });
         });
         
         quickForm.addEventListener('submit', function(e) {
-            const selected = quickForm.querySelector('input[type="radio"]:checked');
-            if (!selected) {
+            const hivesChecked = quickForm.querySelector('input[name="hive_count_score"]:checked');
+            const itchChecked = quickForm.querySelector('input[name="itch_score"]:checked');
+            
+            if (!hivesChecked || !itchChecked) {
                 e.preventDefault();
-                CSU.Toast.warning('Please select a score first');
+                if (typeof CSU !== 'undefined' && CSU.Toast) {
+                    CSU.Toast.warning('Please select both Hives and Itchiness');
+                }
                 return;
             }
             
@@ -324,17 +440,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Auto-refresh if entry is stale
+    // Auto-refresh if entry is stale - show toast reminder once (not repeated)
     const todayCard = document.getElementById('today-card');
     if (todayCard) {
         const hasEntry = todayCard.dataset.hasEntry === 'true';
+        const reminderShownKey = 'csu_evening_reminder_' + new Date().toISOString().split('T')[0];
         
-        // If no entry and it's late in the day, maybe prompt
+        // If no entry and it's late in the day, show ONE reminder (check localStorage)
         const hour = new Date().getHours();
-        if (!hasEntry && hour >= 18 && hour < 22) {
-            // Evening reminder (could trigger a toast)
+        if (!hasEntry && hour >= 18 && hour < 22 && !localStorage.getItem(reminderShownKey)) {
             setTimeout(() => {
-                CSU.Toast.info('Don\'t forget to log your symptoms before bed!', 'Evening Reminder');
+                if (typeof CSU !== 'undefined' && CSU.Toast) {
+                    CSU.Toast.info('Don\'t forget to log your symptoms before bed!', 'Evening Reminder');
+                }
+                localStorage.setItem(reminderShownKey, 'true');
             }, 3000);
         }
     }

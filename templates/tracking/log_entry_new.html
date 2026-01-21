@@ -2,6 +2,370 @@
 
 {% block title %}Log Entry - CSU Tracker{% endblock %}
 
+{% block extra_head %}
+<style>
+/* Log Entry Page Styles */
+.log-page {
+    padding-bottom: var(--space-8);
+}
+
+.log-header {
+    text-align: center;
+    padding: var(--space-6) var(--space-4);
+    margin-bottom: var(--space-2);
+}
+
+.log-header__date {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: var(--bg-brand-subtle);
+    color: var(--text-brand);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    margin-bottom: var(--space-3);
+}
+
+.log-header__title {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    color: var(--text-primary);
+    margin: 0 0 var(--space-2);
+}
+
+.log-header__subtitle {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Score Section Card */
+.score-section {
+    background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-2xl);
+    margin: 0 var(--space-4) var(--space-4);
+    overflow: hidden;
+}
+
+.score-section__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+
+.score-section__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.score-section__icon--itch {
+    background: linear-gradient(135deg, #FDA4AF, #FB7185);
+}
+
+.score-section__icon--hives {
+    background: linear-gradient(135deg, #FCD34D, #FBBF24);
+}
+
+.score-section__title {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.score-section__subtitle {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.score-section__body {
+    padding: var(--space-4);
+}
+
+/* Big Touch Buttons */
+.score-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+}
+
+.score-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4) var(--space-2);
+    min-height: 80px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.score-btn:active {
+    transform: scale(0.96);
+}
+
+.score-btn input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.score-btn:has(input:checked) {
+    background: var(--bg-brand-subtle);
+    border-color: var(--border-brand);
+}
+
+.score-btn:has(input:focus-visible) {
+    box-shadow: var(--shadow-focus);
+}
+
+.score-btn__value {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    line-height: 1;
+    margin-bottom: var(--space-1);
+}
+
+.score-btn__label {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.score-btn:has(input:checked) .score-btn__label {
+    color: var(--text-brand);
+    font-weight: var(--font-medium);
+}
+
+/* Score value colors */
+.score-btn[data-score="0"] .score-btn__value { color: var(--color-score-0); }
+.score-btn[data-score="1"] .score-btn__value { color: var(--color-score-2); }
+.score-btn[data-score="2"] .score-btn__value { color: var(--color-score-4); }
+.score-btn[data-score="3"] .score-btn__value { color: var(--color-score-6); }
+
+/* Options Card */
+.options-card {
+    background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-2xl);
+    margin: 0 var(--space-4) var(--space-4);
+    overflow: hidden;
+}
+
+.options-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+
+.options-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #A78BFA, #8B5CF6);
+}
+
+.options-card__body {
+    padding: var(--space-4) var(--space-5);
+}
+
+/* Antihistamine Toggle - Yes/No Selector */
+.antihistamine-selector {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+}
+
+.antihistamine-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    min-height: 60px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-secondary);
+}
+
+.antihistamine-btn input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.antihistamine-btn:active {
+    transform: scale(0.97);
+}
+
+.antihistamine-btn--yes:has(input:checked) {
+    background: var(--color-success-50);
+    border-color: var(--color-success-500);
+    color: var(--color-success-700);
+}
+
+.antihistamine-btn--no:has(input:checked) {
+    background: var(--bg-secondary);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .antihistamine-btn--yes:has(input:checked) {
+    background: rgba(34, 197, 94, 0.15);
+}
+
+/* Notes Section */
+.notes-section {
+    padding: var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.notes-section__label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.notes-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    resize: vertical;
+    transition: var(--transition-colors);
+}
+
+.notes-textarea::placeholder {
+    color: var(--text-tertiary);
+}
+
+.notes-textarea:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: var(--shadow-focus);
+    background-color: var(--surface-primary);
+}
+
+/* Score Preview */
+.score-preview {
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+    border-radius: var(--radius-2xl);
+    margin: 0 var(--space-4) var(--space-4);
+    padding: var(--space-5);
+    text-align: center;
+    color: white;
+    display: none;
+}
+
+.score-preview.is-visible {
+    display: block;
+}
+
+.score-preview__label {
+    font-size: var(--text-sm);
+    opacity: 0.9;
+    margin-bottom: var(--space-2);
+}
+
+.score-preview__value {
+    font-size: var(--text-4xl);
+    font-weight: var(--font-bold);
+    line-height: 1;
+}
+
+.score-preview__hint {
+    font-size: var(--text-xs);
+    opacity: 0.8;
+    margin-top: var(--space-2);
+}
+
+/* Submit Area */
+.submit-area {
+    padding: var(--space-4);
+    padding-bottom: var(--space-8);
+}
+
+.submit-btn {
+    width: 100%;
+    padding: var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: white;
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+    border: none;
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    box-shadow: var(--shadow-md);
+}
+
+.submit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.submit-btn:active {
+    transform: scale(0.98);
+}
+
+/* Delete Link */
+.delete-link {
+    display: block;
+    text-align: center;
+    margin-top: var(--space-4);
+    padding: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-error-600);
+    text-decoration: none;
+}
+
+.delete-link:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}
+
 {% block header %}
 <header class="app-header" role="banner">
     <div class="app-header__inner">
@@ -18,141 +382,178 @@
 {% endblock %}
 
 {% block content %}
-<div class="app-content fade-in">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-primary">
-            {% if is_today %}Log Today's Score{% else %}Log Score{% endif %}
+<div class="log-page fade-in">
+    <!-- Header -->
+    <div class="log-header">
+        <div class="log-header__date">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {{ entry_date|date:"l, M j" }}
+        </div>
+        <h1 class="log-header__title">
+            {% if existing_entry %}Update Entry{% else %}Log Your Day{% endif %}
         </h1>
-        <p class="text-secondary mt-1">
-            {% if existing_entry %}
-            Update your entry for {{ entry_date|date:"M j, Y" }}
-            {% else %}
-            {{ entry_date|date:"l, F j, Y" }}
-            {% endif %}
+        <p class="log-header__subtitle">
+            {% if existing_entry %}Modify your recorded symptoms{% else %}How are your symptoms today?{% endif %}
         </p>
     </div>
     
-    <form method="post" data-validate>
+    <form method="post" id="log-form">
         {% csrf_token %}
         
-        <!-- Itch Score -->
-        <div class="form-group">
-            <label class="form-label form-label--lg" id="itch-label">
-                {{ form.itch_score.label }}
-            </label>
-            <div class="radio-group" role="radiogroup" aria-labelledby="itch-label">
-                {% for choice in form.itch_score %}
-                <label class="radio-card">
-                    <input 
-                        type="radio" 
-                        name="{{ choice.data.name }}" 
-                        value="{{ choice.data.value }}"
-                        class="radio-card__input"
-                        {% if choice.data.selected %}checked{% endif %}
-                        required
-                    >
-                    <span class="radio-card__indicator" aria-hidden="true"></span>
-                    <div class="radio-card__content">
-                        <div class="radio-card__title">{{ choice.choice_label }}</div>
-                    </div>
-                </label>
-                {% endfor %}
+        <!-- Itch Severity Section -->
+        <div class="score-section slide-up">
+            <div class="score-section__header">
+                <div class="score-section__icon score-section__icon--itch">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="score-section__title">Itchiness</h2>
+                    <p class="score-section__subtitle">How intense was your itching?</p>
+                </div>
             </div>
-            {% if form.itch_score.errors %}
-            <p class="form-error" role="alert">{{ form.itch_score.errors.0 }}</p>
-            {% endif %}
-        </div>
-        
-        <!-- Hive Count Score -->
-        <div class="form-group">
-            <label class="form-label form-label--lg" id="hive-label">
-                {{ form.hive_count_score.label }}
-            </label>
-            <div class="radio-group" role="radiogroup" aria-labelledby="hive-label">
-                {% for choice in form.hive_count_score %}
-                <label class="radio-card">
-                    <input 
-                        type="radio" 
-                        name="{{ choice.data.name }}" 
-                        value="{{ choice.data.value }}"
-                        class="radio-card__input"
-                        {% if choice.data.selected %}checked{% endif %}
-                        required
-                    >
-                    <span class="radio-card__indicator" aria-hidden="true"></span>
-                    <div class="radio-card__content">
-                        <div class="radio-card__title">{{ choice.choice_label }}</div>
-                    </div>
-                </label>
-                {% endfor %}
-            </div>
-            {% if form.hive_count_score.errors %}
-            <p class="form-error" role="alert">{{ form.hive_count_score.errors.0 }}</p>
-            {% endif %}
-        </div>
-        
-        <!-- Antihistamine Toggle -->
-        <div class="card mb-5">
-            <div class="card__body card__body--compact">
-                <label class="toggle">
-                    <input 
-                        type="checkbox" 
-                        name="took_antihistamine" 
-                        class="toggle__input"
-                        {% if form.took_antihistamine.value %}checked{% endif %}
-                        id="id_took_antihistamine"
-                    >
-                    <span class="toggle__track">
-                        <span class="toggle__thumb"></span>
-                    </span>
-                    <span class="toggle__label">{{ form.took_antihistamine.label }}</span>
-                </label>
-            </div>
-        </div>
-        
-        <!-- Notes -->
-        <div class="form-group">
-            <label class="form-label" for="id_notes">{{ form.notes.label }}</label>
-            <textarea 
-                name="notes" 
-                id="id_notes" 
-                class="form-input form-textarea"
-                placeholder="Any additional notes about how you're feeling today..."
-                aria-describedby="notes-helper"
-            >{{ form.notes.value|default:'' }}</textarea>
-            <p id="notes-helper" class="form-helper">Optional - track triggers, medications, etc.</p>
-        </div>
-        
-        <!-- Preview Score -->
-        <div class="card mb-5" id="score-preview" style="display: none;">
-            <div class="card__body card__body--compact">
-                <div class="flex items-center justify-between">
-                    <span class="text-secondary">Calculated UAS Score</span>
-                    <span class="text-2xl font-bold text-primary" id="calculated-score">0</span>
+            <div class="score-section__body">
+                <div class="score-buttons" role="radiogroup" aria-label="Itch severity">
+                    <label class="score-btn" data-score="0">
+                        <input type="radio" name="itch_score" value="0" {% if form.itch_score.value == "0" or form.itch_score.value == 0 %}checked{% endif %} required>
+                        <span class="score-btn__value">0</span>
+                        <span class="score-btn__label">None</span>
+                    </label>
+                    <label class="score-btn" data-score="1">
+                        <input type="radio" name="itch_score" value="1" {% if form.itch_score.value == "1" or form.itch_score.value == 1 %}checked{% endif %}>
+                        <span class="score-btn__value">1</span>
+                        <span class="score-btn__label">Mild</span>
+                    </label>
+                    <label class="score-btn" data-score="2">
+                        <input type="radio" name="itch_score" value="2" {% if form.itch_score.value == "2" or form.itch_score.value == 2 %}checked{% endif %}>
+                        <span class="score-btn__value">2</span>
+                        <span class="score-btn__label">Moderate</span>
+                    </label>
+                    <label class="score-btn" data-score="3">
+                        <input type="radio" name="itch_score" value="3" {% if form.itch_score.value == "3" or form.itch_score.value == 3 %}checked{% endif %}>
+                        <span class="score-btn__value">3</span>
+                        <span class="score-btn__label">Severe</span>
+                    </label>
                 </div>
             </div>
         </div>
         
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn--primary btn--lg btn--full">
-            {% if existing_entry %}Update Entry{% else %}Save Entry{% endif %}
-        </button>
+        <!-- Hive Count Section -->
+        <div class="score-section slide-up" style="animation-delay: 0.1s;">
+            <div class="score-section__header">
+                <div class="score-section__icon score-section__icon--hives">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="score-section__title">Hive Count</h2>
+                    <p class="score-section__subtitle">How many hives did you have?</p>
+                </div>
+            </div>
+            <div class="score-section__body">
+                <div class="score-buttons" role="radiogroup" aria-label="Hive count">
+                    <label class="score-btn" data-score="0">
+                        <input type="radio" name="hive_count_score" value="0" {% if form.hive_count_score.value == "0" or form.hive_count_score.value == 0 %}checked{% endif %} required>
+                        <span class="score-btn__value">0</span>
+                        <span class="score-btn__label">None</span>
+                    </label>
+                    <label class="score-btn" data-score="1">
+                        <input type="radio" name="hive_count_score" value="1" {% if form.hive_count_score.value == "1" or form.hive_count_score.value == 1 %}checked{% endif %}>
+                        <span class="score-btn__value">1</span>
+                        <span class="score-btn__label">1-6</span>
+                    </label>
+                    <label class="score-btn" data-score="2">
+                        <input type="radio" name="hive_count_score" value="2" {% if form.hive_count_score.value == "2" or form.hive_count_score.value == 2 %}checked{% endif %}>
+                        <span class="score-btn__value">2</span>
+                        <span class="score-btn__label">7-12</span>
+                    </label>
+                    <label class="score-btn" data-score="3">
+                        <input type="radio" name="hive_count_score" value="3" {% if form.hive_count_score.value == "3" or form.hive_count_score.value == 3 %}checked{% endif %}>
+                        <span class="score-btn__value">3</span>
+                        <span class="score-btn__label">12+</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Options Card (Antihistamine + Notes) -->
+        <div class="options-card slide-up" style="animation-delay: 0.2s;">
+            <div class="options-card__header">
+                <div class="options-card__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="score-section__title">Additional Details</h2>
+                    <p class="score-section__subtitle">Medication and notes</p>
+                </div>
+            </div>
+            <div class="options-card__body">
+                <label class="notes-section__label">Did you take antihistamines today?</label>
+                <div class="antihistamine-selector">
+                    <label class="antihistamine-btn antihistamine-btn--yes">
+                        <input type="radio" name="took_antihistamine" value="yes" {% if form.took_antihistamine.value %}checked{% endif %}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Yes
+                    </label>
+                    <label class="antihistamine-btn antihistamine-btn--no">
+                        <input type="radio" name="took_antihistamine" value="no" {% if not form.took_antihistamine.value %}checked{% endif %}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        No
+                    </label>
+                </div>
+            </div>
+            <div class="notes-section">
+                <label class="notes-section__label" for="id_notes">Notes (optional)</label>
+                <textarea 
+                    name="notes" 
+                    id="id_notes" 
+                    class="notes-textarea"
+                    placeholder="Any triggers, medications, or how you're feeling..."
+                >{{ form.notes.value|default:'' }}</textarea>
+            </div>
+        </div>
+        
+        <!-- Score Preview -->
+        <div class="score-preview" id="score-preview">
+            <div class="score-preview__label">Today's UAS Score</div>
+            <div class="score-preview__value" id="calculated-score">0</div>
+            <div class="score-preview__hint">Itch + Hive Count = UAS</div>
+        </div>
+        
+        <!-- Submit -->
+        <div class="submit-area">
+            <button type="submit" class="submit-btn">
+                {% if existing_entry %}Update Entry{% else %}Save Entry{% endif %}
+            </button>
+            
+            {% if existing_entry %}
+            <a href="{% url 'tracking:delete_entry' entry_date|date:'Y-m-d' %}" class="delete-link">
+                Delete this entry
+            </a>
+            {% endif %}
+        </div>
     </form>
-    
-    {% if existing_entry %}
-    <div class="mt-4 text-center">
-        <a href="{% url 'tracking:delete_entry' entry_date|date:'Y-m-d' %}" class="btn btn--ghost btn--destructive">
-            Delete this entry
-        </a>
-    </div>
-    {% endif %}
 </div>
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    const form = document.getElementById('log-form');
     const preview = document.getElementById('score-preview');
     const calculatedScore = document.getElementById('calculated-score');
     
@@ -163,11 +564,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (itchValue && hiveValue) {
             const score = parseInt(itchValue.value) + parseInt(hiveValue.value);
             calculatedScore.textContent = score;
-            preview.style.display = 'block';
-            
-            // Update color based on score
-            const colors = ['#22C55E', '#4ADE80', '#FACC15', '#FB923C', '#F97316', '#EF4444', '#DC2626'];
-            calculatedScore.style.color = colors[score] || colors[6];
+            preview.classList.add('is-visible');
+        } else {
+            preview.classList.remove('is-visible');
         }
     }
     
@@ -177,6 +576,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial check
     updateScorePreview();
+    
+    // Handle antihistamine - convert to boolean for form submission
+    form.addEventListener('submit', function(e) {
+        const antihistamineYes = document.querySelector('input[name="took_antihistamine"][value="yes"]');
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'took_antihistamine';
+        hiddenInput.value = antihistamineYes.checked ? 'on' : '';
+        
+        // Remove the radio inputs and add hidden
+        document.querySelectorAll('input[name="took_antihistamine"]').forEach(r => r.name = '');
+        form.appendChild(hiddenInput);
+    });
 });
 </script>
 {% endblock %}

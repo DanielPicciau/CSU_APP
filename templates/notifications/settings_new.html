@@ -89,10 +89,11 @@
         Notifications
     </h3>
     
-    <!-- Push Permission Status -->
+    <!-- Push Permission Status - Only one state shown at a time -->
     <div id="push-status-card" class="card mb-4">
         <div class="card__body">
-            <div id="push-not-supported" class="hidden">
+            <!-- Not Supported State -->
+            <div id="push-not-supported" style="display: none;">
                 <div class="flex items-start gap-3">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning-500)" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
@@ -100,13 +101,14 @@
                         <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
                     <div>
-                        <h4 class="font-semibold text-primary">Not Supported</h4>
-                        <p class="text-sm text-secondary mt-1">Push notifications aren't supported in this browser. Add to Home Screen for the best experience.</p>
+                        <h4 class="font-semibold text-primary">Browser Not Supported</h4>
+                        <p class="text-sm text-secondary mt-1">Push notifications aren't available in this browser. For the best experience, add this app to your Home Screen on iOS or use Chrome/Edge on desktop.</p>
                     </div>
                 </div>
             </div>
             
-            <div id="push-prompt" class="hidden">
+            <!-- Prompt State - Can enable -->
+            <div id="push-prompt" style="display: none;">
                 <div class="flex items-start gap-3">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-brand)" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -122,20 +124,22 @@
                 </div>
             </div>
             
-            <div id="push-enabled" class="hidden">
+            <!-- Enabled State -->
+            <div id="push-enabled" style="display: none;">
                 <div class="flex items-center gap-3">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-500)" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
                     <div>
-                        <h4 class="font-semibold text-primary">Notifications Enabled</h4>
-                        <p class="text-sm text-secondary">{{ subscriptions_count }} device(s) registered</p>
+                        <h4 class="font-semibold text-primary">Notifications Active</h4>
+                        <p class="text-sm text-secondary">You'll receive daily reminders on this device.</p>
                     </div>
                 </div>
             </div>
             
-            <div id="push-denied" class="hidden">
+            <!-- Denied/Blocked State -->
+            <div id="push-denied" style="display: none;">
                 <div class="flex items-start gap-3">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-500)" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
@@ -143,7 +147,7 @@
                     </svg>
                     <div>
                         <h4 class="font-semibold text-primary">Notifications Blocked</h4>
-                        <p class="text-sm text-secondary mt-1">Enable notifications in your browser or device settings.</p>
+                        <p class="text-sm text-secondary mt-1">You've blocked notifications. To enable them, go to your browser or device settings and allow notifications for this site.</p>
                     </div>
                 </div>
             </div>
@@ -167,8 +171,13 @@
                 
                 <div class="form-group">
                     <label class="form-label" for="id_time_of_day">Reminder Time</label>
-                    <input type="time" name="time_of_day" id="id_time_of_day" 
-                           class="form-input" value="{{ preferences.time_of_day|time:'H:i' }}">
+                    <div style="display: flex; align-items: center; gap: var(--space-3);">
+                        <input type="time" name="time_of_day" id="id_time_of_day" 
+                               class="form-input" style="flex: 1;" value="{{ preferences.time_of_day|time:'H:i' }}">
+                        <span class="text-sm text-secondary" id="current-time-display">
+                            Currently: <strong>{{ preferences.time_of_day|time:'g:i A' }}</strong>
+                        </span>
+                    </div>
                     <p class="form-helper">We'll remind you if you haven't logged by this time.</p>
                 </div>
                 
@@ -188,7 +197,7 @@
     </div>
     
     <!-- Test Notification -->
-    <div class="card mb-5">
+    <div class="card mb-5" id="test-notification-card">
         <div class="card__body">
             <h4 class="font-semibold text-primary mb-2">Test Notification</h4>
             <p class="text-sm text-secondary mb-3">Verify your notification setup is working.</p>
@@ -203,7 +212,7 @@
         Data & Privacy
     </h3>
     <div class="card mb-5">
-        <a href="{% url 'tracking:export' %}" class="card__body card__body--compact flex items-center justify-between">
+        <a href="{% url 'tracking:export' %}" class="card__body card__body--compact flex items-center justify-between" style="text-decoration: none;">
             <div class="flex items-center gap-3">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -217,7 +226,7 @@
             </svg>
         </a>
         <div style="height: 1px; background: var(--border-subtle);"></div>
-        <a href="{% url 'accounts:privacy' %}" class="card__body card__body--compact flex items-center justify-between">
+        <a href="{% url 'accounts:privacy' %}" class="card__body card__body--compact flex items-center justify-between" style="text-decoration: none;">
             <div class="flex items-center gap-3">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -235,7 +244,7 @@
         Account
     </h3>
     <div class="card mb-5">
-        <a href="{% url 'accounts:change_password' %}" class="card__body card__body--compact flex items-center justify-between">
+        <a href="{% url 'accounts:change_password' %}" class="card__body card__body--compact flex items-center justify-between" style="text-decoration: none;">
             <div class="flex items-center gap-3">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -248,7 +257,7 @@
             </svg>
         </a>
         <div style="height: 1px; background: var(--border-subtle);"></div>
-        <a href="{% url 'accounts:delete_account' %}" class="card__body card__body--compact flex items-center gap-3">
+        <a href="{% url 'accounts:delete_account' %}" class="card__body card__body--compact flex items-center gap-3" style="text-decoration: none;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-500)" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -269,10 +278,10 @@
         </form>
     </div>
     
-    <!-- App Info -->
+    <!-- App Info / Footer -->
     <div class="text-center text-sm text-tertiary mt-8 mb-4">
         <p>CSU Tracker v1.0.0</p>
-        <p class="mt-1">Made with ❤️ for better health tracking</p>
+        <p class="mt-1">Made by and powered by WebFlare</p>
     </div>
 </div>
 
@@ -284,31 +293,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const themeRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
     if (themeRadio) themeRadio.checked = true;
     
-    // Push notification status
+    // Push notification status - shows ONLY ONE state at a time
     function updatePushStatus() {
         const notSupported = document.getElementById('push-not-supported');
         const prompt = document.getElementById('push-prompt');
         const enabled = document.getElementById('push-enabled');
         const denied = document.getElementById('push-denied');
+        const testCard = document.getElementById('test-notification-card');
         
-        // Hide all first
-        [notSupported, prompt, enabled, denied].forEach(el => el.classList.add('hidden'));
+        // Hide all states first
+        notSupported.style.display = 'none';
+        prompt.style.display = 'none';
+        enabled.style.display = 'none';
+        denied.style.display = 'none';
         
-        if (!('PushManager' in window) || !('serviceWorker' in navigator)) {
-            notSupported.classList.remove('hidden');
+        // Check support first
+        if (!('PushManager' in window) || !('serviceWorker' in navigator) || !('Notification' in window)) {
+            notSupported.style.display = 'block';
+            testCard.style.display = 'none';
             return;
         }
         
-        Notification.requestPermission().then(function() {
-            // Don't actually request, just check
-        });
+        // Check permission state
+        const permission = Notification.permission;
         
-        if (Notification.permission === 'granted') {
-            enabled.classList.remove('hidden');
-        } else if (Notification.permission === 'denied') {
-            denied.classList.remove('hidden');
+        if (permission === 'granted') {
+            enabled.style.display = 'block';
+            testCard.style.display = 'block';
+        } else if (permission === 'denied') {
+            denied.style.display = 'block';
+            testCard.style.display = 'none';
         } else {
-            prompt.classList.remove('hidden');
+            // 'default' - can request
+            prompt.style.display = 'block';
+            testCard.style.display = 'none';
         }
     }
     
@@ -318,6 +336,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const enableBtn = document.getElementById('enable-push-btn');
     if (enableBtn) {
         enableBtn.addEventListener('click', async function() {
+            enableBtn.disabled = true;
+            enableBtn.textContent = 'Enabling...';
+            
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
@@ -339,11 +360,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     
                     CSU.Toast.success('Notifications enabled successfully!');
-                    updatePushStatus();
                 }
+                updatePushStatus();
             } catch (error) {
                 CSU.Toast.error('Failed to enable notifications.');
                 console.error(error);
+                enableBtn.disabled = false;
+                enableBtn.textContent = 'Enable Notifications';
             }
         });
     }
@@ -374,6 +397,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
             testBtn.disabled = false;
             testBtn.textContent = 'Send Test Notification';
+        });
+    }
+    
+    // Update time display when input changes
+    const timeInput = document.getElementById('id_time_of_day');
+    const timeDisplay = document.getElementById('current-time-display');
+    if (timeInput && timeDisplay) {
+        timeInput.addEventListener('change', function() {
+            const [hours, minutes] = this.value.split(':');
+            const h = parseInt(hours);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            timeDisplay.innerHTML = `Currently: <strong>${h12}:${minutes} ${ampm}</strong>`;
         });
     }
 });

@@ -6,88 +6,161 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/score-selector.css' %}">
 <style>
-/* History-specific styles */
-.filter-pills {
-    display: flex;
-    gap: var(--space-2);
-    overflow-x: auto;
-    padding-bottom: var(--space-2);
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+/* History Grid Styles */
+.history-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
 }
-.filter-pills::-webkit-scrollbar { display: none; }
 
-.filter-pill {
-    flex-shrink: 0;
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-full);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-subtle);
+.day-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    border: 2px solid var(--border-subtle);
+    text-decoration: none;
+    color: inherit;
     transition: all var(--transition-fast);
-    cursor: pointer;
+    min-height: 100px;
 }
-.filter-pill:hover { background: var(--bg-tertiary); }
-.filter-pill--active {
-    background: var(--color-primary-600);
-    color: white;
+
+.day-card:hover, .day-card:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.day-card--logged {
+    border-color: transparent;
+}
+
+.day-card--missing {
+    background: var(--bg-secondary);
+    border-style: dashed;
+    border-color: var(--border-default);
+}
+
+.day-card--missing:hover {
+    background: var(--color-primary-50);
+    border-color: var(--color-primary-400);
+}
+
+[data-theme="dark"] .day-card--missing:hover {
+    background: var(--color-primary-900);
     border-color: var(--color-primary-600);
 }
 
-.entry-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: var(--bg-primary);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-subtle);
-    transition: all var(--transition-fast);
-    text-decoration: none;
-    color: inherit;
-}
-.entry-row:hover, .entry-row:focus-visible {
-    background: var(--bg-secondary);
-    border-color: var(--border-default);
-}
-.entry-row--missing {
-    background: var(--bg-secondary);
-    border-style: dashed;
-}
-.entry-row--missing:hover {
-    background: var(--color-primary-50);
-    border-color: var(--color-primary-300);
-}
-[data-theme="dark"] .entry-row--missing:hover {
-    background: var(--color-primary-900);
-    border-color: var(--color-primary-700);
+.day-card--today {
+    box-shadow: 0 0 0 2px var(--color-primary-500);
 }
 
-.entry-score {
-    width: 44px;
-    height: 44px;
+.day-card__date {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-1);
+}
+
+.day-card__day {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.day-card--logged .day-card__day {
+    color: var(--text-primary);
+}
+
+.day-card__score {
+    width: 48px;
+    height: 48px;
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--text-lg);
+    font-size: var(--text-xl);
     font-weight: 700;
     color: white;
-    flex-shrink: 0;
-}
-.entry-score--missing {
-    background: var(--bg-tertiary);
-    color: var(--text-tertiary);
-    border: 2px dashed var(--border-default);
 }
 
+.day-card__score--missing {
+    width: 40px;
+    height: 40px;
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--border-default);
+    color: var(--text-tertiary);
+}
+
+.day-card__details {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-top: var(--space-2);
+}
+
+/* Minimal Summary Bar */
+.summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+}
+
+.summary-bar__stat {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.summary-bar__value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.summary-bar__value--success {
+    color: var(--color-success-600);
+}
+
+.summary-bar__value--warning {
+    color: var(--color-warning-600);
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.section-header__title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.section-header__subtitle {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Calendar View Styles */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: var(--space-1);
 }
+
 .calendar-header {
     text-align: center;
     font-size: var(--text-xs);
@@ -95,6 +168,7 @@
     color: var(--text-tertiary);
     padding: var(--space-2) 0;
 }
+
 .calendar-day {
     aspect-ratio: 1;
     display: flex;
@@ -109,10 +183,9 @@
     text-decoration: none;
     color: inherit;
 }
+
 .calendar-day--empty { visibility: hidden; }
-.calendar-day--today {
-    border: 2px solid var(--color-primary-500);
-}
+.calendar-day--today { border: 2px solid var(--color-primary-500); }
 .calendar-day--has-entry { color: white; }
 .calendar-day--missing {
     background: var(--bg-tertiary);
@@ -129,44 +202,20 @@
 .calendar-day__number { font-size: var(--text-xs); }
 .calendar-day__score { font-size: var(--text-lg); font-weight: 700; }
 
-.inline-edit-form {
-    display: none;
-    padding: var(--space-3);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-default);
-    margin-top: var(--space-2);
-}
-.inline-edit-form.active { display: block; }
-
-.stat-card {
-    text-align: center;
-    padding: var(--space-4);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-}
-.stat-card__value {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    color: var(--color-primary-600);
-}
-.stat-card__label {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    margin-top: var(--space-1);
-}
-
+/* Month Navigation */
 .month-nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: var(--space-3) 0;
 }
+
 .month-nav__title {
     font-size: var(--text-lg);
     font-weight: 600;
     color: var(--text-primary);
 }
+
 .month-nav__btn {
     width: 40px;
     height: 40px;
@@ -179,8 +228,68 @@
     cursor: pointer;
     transition: all var(--transition-fast);
 }
+
 .month-nav__btn:hover { background: var(--bg-tertiary); }
 .month-nav__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* View older button */
+.view-older-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-4);
+    margin-top: var(--space-4);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.view-older-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* View Toggle Tabs */
+.view-tabs {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+}
+
+.view-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.view-tab:hover {
+    color: var(--text-primary);
+}
+
+.view-tab--active {
+    background: var(--surface-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+}
 </style>
 {% endblock %}
 
@@ -194,73 +303,45 @@
 
 {% block header_title %}History{% endblock %}
 
-{% block header_right %}
-<button 
-    class="btn btn--icon btn--ghost" 
-    aria-label="More options"
-    id="history-menu-btn"
->
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-    </svg>
-</button>
-{% endblock %}
-
 {% block content %}
 <div class="app-content">
     
-    <!-- Quick Stats Row -->
-    <div class="grid grid-cols-3 gap-3 mb-5 fade-in">
-        <div class="stat-card">
-            <div class="stat-card__value">{{ entries_count }}</div>
-            <div class="stat-card__label">Entries</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card__value">{{ missing_count }}</div>
-            <div class="stat-card__label">Missing</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card__value">{{ adherence_pct|floatformat:0 }}%</div>
-            <div class="stat-card__label">Logged</div>
-        </div>
-    </div>
-    
-    <!-- Filter Pills -->
-    <div class="filter-pills mb-5 fade-in">
-        <a href="?days=7&view={{ view }}" class="filter-pill {% if days == 7 %}filter-pill--active{% endif %}">
-            Last 7 days
-        </a>
-        <a href="?days=30&view={{ view }}" class="filter-pill {% if days == 30 %}filter-pill--active{% endif %}">
-            Last 30 days
-        </a>
-        <a href="?days=90&view={{ view }}" class="filter-pill {% if days == 90 %}filter-pill--active{% endif %}">
-            Last 90 days
-        </a>
-        <button class="filter-pill" onclick="CSU.BottomSheet.open('filter-sheet')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    <!-- Minimal Summary Bar -->
+    <div class="summary-bar fade-in">
+        <div class="summary-bar__stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
             </svg>
-            Filters
-        </button>
+            <span><span class="summary-bar__value summary-bar__value--success">{{ entries_count }}</span> logged</span>
+        </div>
+        <div class="summary-bar__stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span><span class="summary-bar__value {% if missing_count > 0 %}summary-bar__value--warning{% endif %}">{{ missing_count }}</span> missing</span>
+        </div>
     </div>
     
     <!-- View Toggle -->
-    <div class="flex gap-2 mb-5 fade-in" role="tablist">
+    <div class="view-tabs fade-in" role="tablist">
         <a 
-            href="?days={{ days }}&view=list" 
-            class="btn btn--sm flex-1 {% if view == 'list' %}btn--primary{% else %}btn--secondary{% endif %}"
+            href="?days=10&view=grid" 
+            class="view-tab {% if view == 'grid' %}view-tab--active{% endif %}"
             role="tab"
-            aria-selected="{% if view == 'list' %}true{% else %}false{% endif %}"
+            aria-selected="{% if view == 'grid' %}true{% else %}false{% endif %}"
         >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
             </svg>
-            List
+            Grid
         </a>
         <a 
             href="?days={{ days }}&view=calendar" 
-            class="btn btn--sm flex-1 {% if view == 'calendar' %}btn--primary{% else %}btn--secondary{% endif %}"
+            class="view-tab {% if view == 'calendar' %}view-tab--active{% endif %}"
             role="tab"
             aria-selected="{% if view == 'calendar' %}true{% else %}false{% endif %}"
         >
@@ -271,7 +352,7 @@
             Calendar
         </a>
     </div>
-    
+
     {% if view == 'calendar' %}
     <!-- Calendar View -->
     <div class="card mb-5 slide-up">
@@ -338,7 +419,7 @@
                     title="{{ day_data.date|date:'M j' }}: Missing - tap to log"
                 >
                     <span class="calendar-day__number">{{ day_data.day }}</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                 </a>
@@ -369,215 +450,103 @@
     </div>
     
     {% else %}
-    <!-- List View -->
-    <div class="space-y-2 slide-up">
+    <!-- Grid View (Default) - 2×5 layout for last 10 days -->
+    <div class="section-header slide-up">
+        <div>
+            <h2 class="section-header__title">Last {{ days }} Days</h2>
+            <p class="section-header__subtitle">Tap any day to view or log</p>
+        </div>
+    </div>
+    
+    <div class="history-grid slide-up">
         {% for day_data in list_data %}
         {% if day_data.entry %}
-        <!-- Entry Row -->
-        <div class="entry-row" data-entry-id="{{ day_data.entry.id }}" data-date="{{ day_data.date|date:'Y-m-d' }}">
-            <div 
-                class="entry-score"
-                style="background: var(--color-score-{{ day_data.entry.score }});"
-            >
+        <!-- Logged Day -->
+        <a 
+            href="{% url 'tracking:log_entry_date' day_data.date|date:'Y-m-d' %}" 
+            class="day-card day-card--logged {% if day_data.is_today %}day-card--today{% endif %}"
+            style="background: color-mix(in srgb, var(--color-score-{{ day_data.entry.score }}) 15%, transparent);"
+        >
+            <span class="day-card__date">{{ day_data.date|date:"M j" }}</span>
+            <span class="day-card__day">{% if day_data.is_today %}Today{% else %}{{ day_data.date|date:"l" }}{% endif %}</span>
+            <div class="day-card__score" style="background: var(--color-score-{{ day_data.entry.score }});">
                 {{ day_data.entry.score }}
             </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                    <h3 class="font-semibold text-primary">
-                        {% if day_data.is_today %}Today{% else %}{{ day_data.date|date:"l" }}{% endif %}
-                    </h3>
-                    <span class="text-sm text-secondary">{{ day_data.date|date:"M j" }}</span>
-                </div>
-                <p class="text-sm text-secondary">
-                    Itch: {{ day_data.entry.itch_score }}/3 • Hives: {{ day_data.entry.hive_count_score }}/3
-                    {% if day_data.entry.took_antihistamine %}
-                    <span class="ml-1" title="Took antihistamine">💊</span>
-                    {% endif %}
-                </p>
-                {% if day_data.entry.notes %}
-                <p class="text-xs text-tertiary mt-1 truncate">{{ day_data.entry.notes|truncatewords:12 }}</p>
-                {% endif %}
-            </div>
-            <a href="{% url 'tracking:log_entry_date' day_data.date|date:'Y-m-d' %}" class="btn btn--ghost btn--sm" aria-label="Edit entry">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-            </a>
-            <button type="button" class="btn btn--ghost btn--sm delete-entry-btn" data-entry-id="{{ day_data.entry.id }}" data-date="{{ day_data.date|date:'M j, Y' }}" aria-label="Delete entry" style="color: var(--color-error-600);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                </svg>
-            </button>
-        </div>
+            <span class="day-card__details">
+                Itch {{ day_data.entry.itch_score }} • Hives {{ day_data.entry.hive_count_score }}
+            </span>
+        </a>
         {% else %}
-        <!-- Missing Day Row -->
-        <a href="{% url 'tracking:log_entry_date' day_data.date|date:'Y-m-d' %}" class="entry-row entry-row--missing">
-            <div class="entry-score entry-score--missing">
+        <!-- Missing Day -->
+        <a 
+            href="{% url 'tracking:log_entry_date' day_data.date|date:'Y-m-d' %}" 
+            class="day-card day-card--missing {% if day_data.is_today %}day-card--today{% endif %}"
+        >
+            <span class="day-card__date">{{ day_data.date|date:"M j" }}</span>
+            <span class="day-card__day">{% if day_data.is_today %}Today{% else %}{{ day_data.date|date:"l" }}{% endif %}</span>
+            <div class="day-card__score day-card__score--missing">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
             </div>
-            <div class="flex-1">
-                <div class="flex items-center justify-between">
-                    <h3 class="font-semibold text-secondary">
-                        {% if day_data.is_today %}Today{% else %}{{ day_data.date|date:"l" }}{% endif %}
-                    </h3>
-                    <span class="text-sm text-tertiary">{{ day_data.date|date:"M j" }}</span>
-                </div>
-                <p class="text-sm text-tertiary">No entry - tap to log</p>
-            </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" stroke-width="2">
-                <path d="M9 18l6-6-6-6"/>
-            </svg>
+            <span class="day-card__details">Tap to log</span>
         </a>
         {% endif %}
         {% endfor %}
     </div>
+    
+    <!-- View Older Entries Button -->
+    {% if days <= 10 %}
+    <a href="?days=30&view=grid" class="view-older-btn slide-up">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        View older entries (last 30 days)
+    </a>
+    {% elif days <= 30 %}
+    <a href="?days=90&view=grid" class="view-older-btn slide-up">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        View more (last 90 days)
+    </a>
+    {% elif days <= 90 %}
+    <a href="?view=calendar" class="view-older-btn slide-up">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Switch to calendar view
+    </a>
     {% endif %}
     
-    <!-- Load More / Pagination -->
-    {% if has_more %}
-    <div class="text-center mt-6">
-        <a href="?days={{ next_days }}&view={{ view }}" class="btn btn--secondary">
-            Load More
-        </a>
-    </div>
+    <!-- Back to recent when viewing older -->
+    {% if days > 10 %}
+    <a href="?days=10&view=grid" class="view-older-btn slide-up" style="margin-top: var(--space-2); background: transparent; border: none; color: var(--text-tertiary);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to last 10 days
+    </a>
+    {% endif %}
+    
     {% endif %}
     
 </div>
-
-<!-- Filter Bottom Sheet -->
-<div id="filter-sheet-backdrop" class="bottom-sheet-backdrop" onclick="CSU.BottomSheet.close('filter-sheet')"></div>
-<div id="filter-sheet" class="bottom-sheet" role="dialog" aria-labelledby="filter-title" aria-modal="true">
-    <div class="bottom-sheet__handle">
-        <div class="bottom-sheet__handle-bar"></div>
-    </div>
-    <div class="bottom-sheet__header">
-        <h2 id="filter-title" class="bottom-sheet__title">Filter Entries</h2>
-        <button class="btn btn--ghost btn--sm" onclick="CSU.BottomSheet.close('filter-sheet')">Done</button>
-    </div>
-    <div class="bottom-sheet__body">
-        <form method="get" action="{% url 'tracking:history' %}" id="filter-form">
-            <input type="hidden" name="view" value="{{ view }}">
-            
-            <div class="mb-5">
-                <label class="input-label mb-2">Score Range</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs text-tertiary" for="min-score">Minimum</label>
-                        <select id="min-score" name="min_score" class="input mt-1">
-                            <option value="">Any</option>
-                            {% for i in "0123456" %}
-                            <option value="{{ i }}" {% if filter_min == i %}selected{% endif %}>{{ i }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-tertiary" for="max-score">Maximum</label>
-                        <select id="max-score" name="max_score" class="input mt-1">
-                            <option value="">Any</option>
-                            {% for i in "0123456" %}
-                            <option value="{{ i }}" {% if filter_max == i %}selected{% endif %}>{{ i }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mb-5">
-                <label class="input-label mb-2">Show</label>
-                <div class="space-y-2">
-                    <label class="flex items-center gap-3 p-3 rounded-lg bg-secondary cursor-pointer">
-                        <input type="radio" name="show" value="all" class="radio" {% if filter_show != 'missing' and filter_show != 'logged' %}checked{% endif %}>
-                        <span class="text-primary">All days</span>
-                    </label>
-                    <label class="flex items-center gap-3 p-3 rounded-lg bg-secondary cursor-pointer">
-                        <input type="radio" name="show" value="logged" class="radio" {% if filter_show == 'logged' %}checked{% endif %}>
-                        <span class="text-primary">Logged only</span>
-                    </label>
-                    <label class="flex items-center gap-3 p-3 rounded-lg bg-secondary cursor-pointer">
-                        <input type="radio" name="show" value="missing" class="radio" {% if filter_show == 'missing' %}checked{% endif %}>
-                        <span class="text-primary">Missing only</span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="mb-5">
-                <label class="flex items-center gap-3">
-                    <input type="checkbox" name="antihistamine" class="toggle__input" style="width: 20px; height: 20px;" {% if filter_antihistamine %}checked{% endif %}>
-                    <span class="text-primary">Only with antihistamine</span>
-                </label>
-            </div>
-            
-            <div class="flex gap-3">
-                <a href="{% url 'tracking:history' %}?view={{ view }}&days={{ days }}" class="btn btn--secondary flex-1">Reset</a>
-                <button type="submit" class="btn btn--primary flex-1">Apply Filters</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="delete-modal" role="dialog" aria-labelledby="delete-modal-title" aria-modal="true" style="display: none; position: fixed; inset: 0; z-index: 1000;">
-    <div data-modal-close style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-primary); border-radius: var(--radius-xl); padding: var(--space-5); width: 90%; max-width: 400px; box-shadow: var(--shadow-xl);">
-        <h3 id="delete-modal-title" style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-3);">Delete Entry?</h3>
-        <p class="text-secondary" style="margin-bottom: var(--space-4);">
-            Are you sure you want to delete your entry for <strong id="delete-date-text"></strong>? This action cannot be undone.
-        </p>
-        <div style="display: flex; gap: var(--space-3); justify-content: flex-end;">
-            <button type="button" class="btn btn--secondary" data-modal-close>Cancel</button>
-            <form id="delete-form" method="post" action="" style="margin: 0;">
-                {% csrf_token %}
-                <button type="submit" class="btn" style="background: var(--color-error-600); color: white;">Delete</button>
-            </form>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/components.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize bottom sheet
-    if (typeof CSU !== 'undefined' && CSU.BottomSheet) {
-        // Already initialized
-    }
-    
-    // Haptic feedback on entry row tap
-    document.querySelectorAll('.entry-row, .calendar-day').forEach(el => {
+    // Haptic feedback on day card tap
+    document.querySelectorAll('.day-card, .calendar-day').forEach(el => {
         el.addEventListener('click', () => {
             if ('vibrate' in navigator) {
                 navigator.vibrate(10);
             }
-        });
-    });
-    
-    // Delete button handling
-    const deleteModal = document.getElementById('delete-modal');
-    const deleteForm = document.getElementById('delete-form');
-    const deleteDateText = document.getElementById('delete-date-text');
-    
-    document.querySelectorAll('.delete-entry-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const entryId = this.dataset.entryId;
-            const date = this.dataset.date;
-            
-            deleteDateText.textContent = date;
-            deleteForm.action = `/tracking/entry/delete/${entryId}/`;
-            deleteModal.style.display = 'block';
-        });
-    });
-    
-    // Close modal handlers
-    deleteModal.querySelectorAll('[data-modal-close]').forEach(closeBtn => {
-        closeBtn.addEventListener('click', () => {
-            deleteModal.style.display = 'none';
         });
     });
 });

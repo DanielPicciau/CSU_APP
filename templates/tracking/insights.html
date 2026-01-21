@@ -152,34 +152,6 @@
     font-size: 10px;
 }
 
-.streak-display {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-4);
-    padding: var(--space-4);
-}
-.streak-flame {
-    font-size: 3rem;
-    animation: flame-pulse 1.5s ease-in-out infinite;
-}
-@keyframes flame-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-.streak-info {
-    text-align: left;
-}
-.streak-info__value {
-    font-size: var(--text-3xl);
-    font-weight: 800;
-    color: var(--text-primary);
-}
-.streak-info__label {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-}
-
 .average-bars {
     display: flex;
     flex-direction: column;
@@ -369,30 +341,20 @@
         {% endif %}
     </div>
     
-    <!-- Streak Card -->
+    <!-- Logging Stats Card -->
     <div class="insight-card slide-up" style="animation-delay: 0.1s;">
         <div class="insight-card__header">
-            <h2 class="insight-card__title">Streak</h2>
+            <h2 class="insight-card__title">Your Logging</h2>
         </div>
         
-        <div class="streak-display">
-            <span class="streak-flame">🔥</span>
-            <div class="streak-info">
-                <div class="streak-info__value">{{ current_streak }}</div>
-                <div class="streak-info__label">
-                    {% if current_streak == 1 %}day{% else %}days{% endif %} in a row
-                </div>
-            </div>
-        </div>
-        
-        <div class="stat-grid mt-4">
-            <div class="stat-item">
-                <div class="stat-item__value">{{ longest_streak }}</div>
-                <div class="stat-item__label">Longest Streak</div>
+        <div class="stat-grid">
+            <div class="stat-item stat-item--highlight">
+                <div class="stat-item__value">{{ logged_days }}</div>
+                <div class="stat-item__label">Days in Period</div>
             </div>
             <div class="stat-item">
                 <div class="stat-item__value">{{ total_entries }}</div>
-                <div class="stat-item__label">Total Entries</div>
+                <div class="stat-item__label">All-Time Entries</div>
             </div>
         </div>
     </div>
@@ -438,8 +400,14 @@
                 {% endfor %}
                 {% else %}
                 <!-- No data message -->
-                <text x="{{ chart_width|divisibleby:2 }}" y="75" text-anchor="middle" fill="var(--text-tertiary)" font-size="12">
+                <text x="150" y="75" text-anchor="middle" fill="var(--text-tertiary)" font-size="12">
+                    {% if logged_days == 0 %}
+                    No entries yet - log your first day!
+                    {% elif logged_days == 1 %}
+                    Log one more day to see trends
+                    {% else %}
                     Not enough data to show trend
+                    {% endif %}
                 </text>
                 {% endif %}
             </svg>

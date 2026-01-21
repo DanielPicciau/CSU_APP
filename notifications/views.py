@@ -96,8 +96,8 @@ def test_notification_view(request):
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 CRON_WEBHOOK_SECRET = getattr(settings, 'CRON_WEBHOOK_SECRET', None)
 
-# Window for sending reminders (in seconds)
-REMINDER_WINDOW = 90  # 1.5 minutes
+# Window for sending reminders (in seconds) - reduced to prevent overlap
+REMINDER_WINDOW = 60  # 1 minute (cron runs every minute)
 
 
 @csrf_exempt
@@ -110,6 +110,11 @@ def cron_send_reminders(request):
     URL: https://yoursite.pythonanywhere.com/notifications/cron/send-reminders/?token=YOUR_SECRET
     
     Add ?force=1 to bypass all checks and send immediately (for testing).
+    
+    IMPORTANT: This function ensures exactly ONE reminder per user per day:
+    1. Checks ReminderLog for existing reminder on this date
+    2. Checks ReminderPreferences.last_reminder_date as a secondary guard
+    3. Updates both after sending to prevent duplicates
     """
     # Verify the secret token
     token = request.GET.get('token') or request.headers.get('X-Cron-Token')
@@ -168,6 +173,13 @@ def cron_send_reminders(request):
             
             # Skip checks if force mode
             if not force:
+                # PRIMARY GUARD: Check if already reminded today via preferences field
+                # This is the most reliable check since it's on the same record we're processing
+                if pref.last_reminder_date == user_today:
+                    debug_info["skip_reason"] = "already_reminded_today_pref_guard"
+                    results.append(debug_info)
+                    continue
+                
                 # Check if within the window (just passed, not too long ago)
                 if time_since < 0:
                     debug_info["skip_reason"] = "reminder_time_not_yet"
@@ -178,13 +190,16 @@ def cron_send_reminders(request):
                     results.append(debug_info)
                     continue
                 
-                # Check if already reminded today
+                # SECONDARY GUARD: Check ReminderLog (for redundancy)
                 if ReminderLog.objects.filter(user=user, date=user_today).exists():
-                    debug_info["skip_reason"] = "already_reminded_today"
+                    debug_info["skip_reason"] = "already_reminded_today_log"
+                    # Also update pref guard to stay in sync
+                    pref.last_reminder_date = user_today
+                    pref.save(update_fields=['last_reminder_date'])
                     results.append(debug_info)
                     continue
                 
-                # Check if already logged today
+                # Check if already logged today (no need to remind)
                 if DailyEntry.objects.filter(user=user, date=user_today).exists():
                     debug_info["skip_reason"] = "already_logged_today"
                     results.append(debug_info)
@@ -218,7 +233,7 @@ def cron_send_reminders(request):
                 except Exception as e:
                     pass
             
-            # Log the reminder
+            # Log the reminder in ReminderLog table
             ReminderLog.objects.create(
                 user=user,
                 date=user_today,
@@ -226,12 +241,21 @@ def cron_send_reminders(request):
                 subscriptions_notified=success_count
             )
             
+            # Update the guard fields on ReminderPreferences to prevent re-sending
+            pref.last_reminder_date = user_today
+            pref.last_reminder_sent_at = utc_now
+            pref.save(update_fields=['last_reminder_date', 'last_reminder_sent_at'])
+            
             if success_count > 0:
                 sent_count += 1
-                results.append(f"Sent to {user.email}")
+                debug_info["status"] = "sent"
+                results.append(debug_info)
+            else:
+                debug_info["status"] = "failed_to_send"
+                results.append(debug_info)
             
         except Exception as e:
-            results.append(f"Error for {user.email}: {str(e)}")
+            results.append({"user": user.email, "error": str(e)})
     
     return JsonResponse({
         "status": "ok",

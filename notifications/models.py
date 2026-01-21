@@ -100,6 +100,19 @@ class ReminderPreferences(models.Model):
         help_text="IANA timezone string",
     )
     
+    # Guard field to prevent duplicate reminders
+    last_reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the last reminder sent (for spam prevention)",
+    )
+    
+    last_reminder_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="The date (in user's timezone) for which last reminder was sent",
+    )
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

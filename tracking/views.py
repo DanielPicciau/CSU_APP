@@ -58,21 +58,21 @@ def today_view(request):
     uas7_score = sum(e.score for e in recent_entries)
     uas7_complete = len(recent_entries) == 7
     
-    # Streak calculation
-    streak = 0
-    check_date = today
-    while True:
-        if DailyEntry.objects.filter(user=request.user, date=check_date).exists():
-            streak += 1
-            check_date -= timedelta(days=1)
-        else:
-            break
+    # Calculate adherence over last 30 days (non-judgmental metric)
+    thirty_days_ago = today - timedelta(days=29)
+    logged_in_30_days = DailyEntry.objects.filter(
+        user=request.user,
+        date__gte=thirty_days_ago,
+        date__lte=today,
+    ).count()
     
     # Total entries count
     total_entries = DailyEntry.objects.filter(user=request.user).count()
     
-    # Check notification setup
-    has_notification_setup = hasattr(request.user, 'notification_preferences')
+    # Check if notifications are actually enabled (not just if preferences exist)
+    has_notification_setup = False
+    if hasattr(request.user, 'reminder_preferences'):
+        has_notification_setup = request.user.reminder_preferences.enabled
     
     return render(request, "tracking/today.html", {
         "today": today,
@@ -80,7 +80,7 @@ def today_view(request):
         "chart_data": chart_data,
         "uas7_score": uas7_score,
         "uas7_complete": uas7_complete,
-        "streak": streak,
+        "logged_in_30_days": logged_in_30_days,
         "total_entries": total_entries,
         "has_notification_setup": has_notification_setup,
     })
@@ -111,7 +111,38 @@ def log_entry_view(request, date_str=None):
         date=entry_date,
     ).first()
     
-    # Handle quick mode (score only, auto-split to itch/hives)
+    # Handle structured quick mode (itch_score + hive_count_score)
+    if request.method == "POST" and request.POST.get("structured_quick_mode"):
+        try:
+            itch = int(request.POST.get("itch_score", 0))
+            hives = int(request.POST.get("hive_count_score", 0))
+            
+            # Validate ranges
+            itch = max(0, min(3, itch))
+            hives = max(0, min(3, hives))
+            score = itch + hives
+            
+            if existing_entry:
+                existing_entry.itch_score = itch
+                existing_entry.hive_count_score = hives
+                existing_entry.score = score
+                existing_entry.save()
+            else:
+                DailyEntry.objects.create(
+                    user=request.user,
+                    date=entry_date,
+                    score=score,
+                    itch_score=itch,
+                    hive_count_score=hives,
+                )
+            
+            messages.success(request, "Score logged successfully!")
+            return redirect("tracking:today")
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid score values.")
+            return redirect("tracking:today")
+    
+    # Handle legacy quick mode (score only, auto-split to itch/hives)
     if request.method == "POST" and request.POST.get("quick_mode"):
         score = int(request.POST.get("score", 0))
         itch = min(3, (score + 1) // 2)
@@ -154,7 +185,7 @@ def log_entry_view(request, date_str=None):
         )
     
     # Determine which template to use (check for new design preference)
-    template = "tracking/log_entry_premium.html"
+    template = "tracking/log_entry_new.html"
     
     return render(request, template, {
         "form": form,
@@ -174,9 +205,9 @@ def history_view(request):
     """View entry history with filters and calendar view."""
     today = get_user_today(request.user)
     
-    # Get filter parameters
-    days = int(request.GET.get("days", 30))
-    view = request.GET.get("view", "list")
+    # Get filter parameters - default to 10 days for the new grid view
+    days = int(request.GET.get("days", 10))
+    view = request.GET.get("view", "grid")  # Default to grid view
     show = request.GET.get("show", "all")
     min_score = request.GET.get("min_score")
     max_score = request.GET.get("max_score")
@@ -337,30 +368,8 @@ def insights_view(request):
     adherence_pct = (logged_days / period * 100) if period > 0 else 0
     adherence_offset = 327 - (327 * adherence_pct / 100)  # For SVG circle
     
-    # Calculate streak
-    current_streak = 0
-    check_date = today
-    while True:
-        if DailyEntry.objects.filter(user=request.user, date=check_date).exists():
-            current_streak += 1
-            check_date -= timedelta(days=1)
-        else:
-            break
-    
-    # Calculate longest streak
-    all_entries = DailyEntry.objects.filter(user=request.user).order_by("date")
-    longest_streak = 0
-    temp_streak = 0
-    prev_date = None
-    for entry in all_entries:
-        if prev_date is None or entry.date == prev_date + timedelta(days=1):
-            temp_streak += 1
-        else:
-            temp_streak = 1
-        longest_streak = max(longest_streak, temp_streak)
-        prev_date = entry.date
-    
-    total_entries = all_entries.count()
+    # Total entries count (non-judgmental lifetime metric)
+    total_entries = DailyEntry.objects.filter(user=request.user).count()
     
     # Calculate averages
     if entries:
@@ -443,8 +452,6 @@ def insights_view(request):
         "missing_days": missing_days,
         "adherence_pct": adherence_pct,
         "adherence_offset": adherence_offset,
-        "current_streak": current_streak,
-        "longest_streak": longest_streak,
         "total_entries": total_entries,
         "avg_score": avg_score,
         "avg_itch": avg_itch,
@@ -605,8 +612,15 @@ def export_csv_view(request):
         "include_breakdown": request.GET.get("breakdown", "1") == "1",
     }
     
-    exporter = CSUExporter(request.user, start_date, end_date, options)
-    return exporter.export_csv()
+    try:
+        exporter = CSUExporter(request.user, start_date, end_date, options)
+        return exporter.export_csv()
+    except Exception as e:
+        # Log the error for debugging but don't expose details to user
+        import logging
+        logging.error(f"CSV export failed for user {request.user.id}: {e}")
+        messages.error(request, "Export failed. Please try again or contact support if the problem persists.")
+        return redirect("tracking:export")
 
 
 @login_required
@@ -640,6 +654,13 @@ def export_pdf_view(request):
         "include_breakdown": request.GET.get("breakdown", "1") == "1",
     }
     
-    exporter = CSUExporter(request.user, start_date, end_date, options)
-    return exporter.export_pdf()
+    try:
+        exporter = CSUExporter(request.user, start_date, end_date, options)
+        return exporter.export_pdf()
+    except Exception as e:
+        # Log the error for debugging but don't expose details to user
+        import logging
+        logging.error(f"PDF export failed for user {request.user.id}: {e}")
+        messages.error(request, "Export failed. Please try again or contact support if the problem persists.")
+        return redirect("tracking:export")
 
