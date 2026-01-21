@@ -69,6 +69,8 @@ def process_reminders():
         enabled=True,
     ).select_related('user')
     
+    print(f"  Found {preferences.count()} user(s) with reminders enabled", flush=True)
+    
     for pref in preferences:
         user = pref.user
         
@@ -90,16 +92,27 @@ def process_reminders():
             # Calculate time since reminder
             time_since = (user_now - reminder_datetime).total_seconds()
             
+            print(f"  User: {user.email}", flush=True)
+            print(f"    Reminder time: {pref.time_of_day} ({pref.timezone})", flush=True)
+            print(f"    Current time:  {user_now.strftime('%H:%M:%S')}", flush=True)
+            print(f"    Time since:    {int(time_since)}s", flush=True)
+            
             # Check if within the window (just passed, not too long ago)
-            if time_since < 0 or time_since > REMINDER_WINDOW:
+            if time_since < 0:
+                print(f"    SKIP: Reminder time not yet reached", flush=True)
+                continue
+            if time_since > REMINDER_WINDOW:
+                print(f"    SKIP: Outside window (>{REMINDER_WINDOW}s ago)", flush=True)
                 continue
             
             # Check if already reminded today
             if ReminderLog.objects.filter(user=user, date=user_today).exists():
+                print(f"    SKIP: Already reminded today", flush=True)
                 continue
             
             # Check if already logged today
             if DailyEntry.objects.filter(user=user, date=user_today).exists():
+                print(f"    SKIP: Already logged today", flush=True)
                 continue
             
             # Get active subscriptions
@@ -109,22 +122,27 @@ def process_reminders():
             )
             
             if not subscriptions.exists():
+                print(f"    SKIP: No active push subscriptions", flush=True)
                 continue
+            
+            print(f"    SENDING to {subscriptions.count()} device(s)...", flush=True)
             
             # Send notifications
             success_count = 0
             for subscription in subscriptions:
                 try:
-                    if send_push_notification(
+                    result = send_push_notification(
                         subscription=subscription,
                         title="CSU Tracker Reminder",
                         body="Time to log your CSU score for today!",
                         url="/tracking/today/",
                         tag=f"reminder-{user_today.isoformat()}"
-                    ):
+                    )
+                    print(f"    Push result: {result}", flush=True)
+                    if result:
                         success_count += 1
                 except Exception as e:
-                    logger.error(f"Push failed for {user.email}: {e}")
+                    print(f"    Push ERROR: {e}", flush=True)
             
             # Log the reminder
             ReminderLog.objects.create(
