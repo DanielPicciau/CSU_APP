@@ -269,5 +269,12 @@ function updateDebugInfo() {
     
     debugEl.innerHTML = info.map(i => '<p>' + i + '</p>').join('');
 }
+
+// Run immediately and also on DOMContentLoaded
+try {
+    updateDebugInfo();
+} catch(e) {
+    console.error('Debug error:', e);
+}
 </script>
 {% endblock %}
