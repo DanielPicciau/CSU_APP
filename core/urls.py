@@ -3,10 +3,21 @@ URL configuration for CSU Tracker project.
 """
 
 from django.contrib import admin
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.urls import include, path
 from django.views.generic import TemplateView
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+
+def service_worker_view(request):
+    """Serve service worker with proper headers for root scope."""
+    sw_content = render_to_string('pwa/sw.js')
+    response = HttpResponse(sw_content, content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    return response
+
 
 urlpatterns = [
     # Admin
@@ -29,10 +40,7 @@ urlpatterns = [
         template_name="pwa/manifest.json",
         content_type="application/json"
     ), name="manifest"),
-    path("sw.js", TemplateView.as_view(
-        template_name="pwa/sw.js",
-        content_type="application/javascript"
-    ), name="service_worker"),
+    path("sw.js", service_worker_view, name="service_worker"),
     path("offline/", TemplateView.as_view(template_name="pwa/offline.html"), name="offline"),
     
     # Home

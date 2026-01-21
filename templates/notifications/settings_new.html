@@ -311,10 +311,21 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Update theme radio based on current setting
-    const currentTheme = CSU.ThemeManager.getTheme();
-    const themeRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
-    if (themeRadio) themeRadio.checked = true;
+    // Update theme radio based on current setting (with fallback if CSU not loaded)
+    try {
+        if (typeof CSU !== 'undefined' && CSU.ThemeManager) {
+            const currentTheme = CSU.ThemeManager.getTheme();
+            const themeRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
+            if (themeRadio) themeRadio.checked = true;
+        } else {
+            // Fallback: get theme from localStorage or default to 'system'
+            const currentTheme = localStorage.getItem('csu-theme') || 'system';
+            const themeRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
+            if (themeRadio) themeRadio.checked = true;
+        }
+    } catch (e) {
+        console.warn('Theme manager not available:', e);
+    }
     
     // Push notification status - shows ONLY ONE state at a time
     function updatePushStatus() {
