@@ -199,6 +199,9 @@ VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
 VAPID_ADMIN_EMAIL = env("VAPID_ADMIN_EMAIL", default="admin@example.com")
 
+# Cron Webhook Secret (for external cron services like cron-job.org)
+CRON_WEBHOOK_SECRET = env("CRON_WEBHOOK_SECRET", default="")
+
 # CSU Configuration
 CSU_MAX_SCORE = env("CSU_MAX_SCORE")
 
