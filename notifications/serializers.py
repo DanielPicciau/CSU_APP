@@ -2,6 +2,9 @@
 Serializers for the notifications app.
 """
 
+import time
+
+from django.db import OperationalError
 from rest_framework import serializers
 
 from .models import PushSubscription, ReminderPreferences
@@ -35,17 +38,26 @@ class PushSubscriptionCreateSerializer(serializers.Serializer):
         keys = validated_data.pop("keys")
         user_agent = self.context["request"].META.get("HTTP_USER_AGENT", "")
         
-        subscription, created = PushSubscription.objects.update_or_create(
-            user=user,
-            endpoint=validated_data["endpoint"],
-            defaults={
-                "p256dh": keys["p256dh"],
-                "auth": keys["auth"],
-                "user_agent": user_agent[:300],
-                "is_active": True,
-            },
-        )
-        return subscription
+        # Retry logic for SQLite database locks
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                subscription, created = PushSubscription.objects.update_or_create(
+                    user=user,
+                    endpoint=validated_data["endpoint"],
+                    defaults={
+                        "p256dh": keys["p256dh"],
+                        "auth": keys["auth"],
+                        "user_agent": user_agent[:300],
+                        "is_active": True,
+                    },
+                )
+                return subscription
+            except OperationalError as e:
+                if "database is locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                    continue
+                raise
 
 
 class ReminderPreferencesSerializer(serializers.ModelSerializer):
