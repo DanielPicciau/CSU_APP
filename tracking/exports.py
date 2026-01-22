@@ -114,12 +114,36 @@ class CSUExporter:
         },
     }
     
-    # Quality of life impact thresholds
+    # Quality of life impact thresholds (based on CU-Q2oL correlation with UAS7)
     QOL_THRESHOLDS = {
         "minimal": (0, 6),
         "mild": (7, 15),
         "moderate": (16, 27),
         "severe": (28, 42),
+    }
+    
+    # QOL impact descriptions
+    QOL_DESCRIPTIONS = {
+        "minimal": {
+            "impact": "Minimal Impact",
+            "description": "Disease has minimal impact on daily activities and quality of life.",
+            "domains": ["Sleep: Likely unaffected", "Daily activities: Minimal disruption", "Emotional wellbeing: Generally stable"],
+        },
+        "mild": {
+            "impact": "Mild Impact",
+            "description": "Some impact on quality of life, particularly during symptom flares.",
+            "domains": ["Sleep: Occasionally disturbed", "Daily activities: Minor adjustments needed", "Emotional wellbeing: Mild frustration possible"],
+        },
+        "moderate": {
+            "impact": "Moderate Impact",
+            "description": "Noticeable impact on daily life. May affect work, social activities, and sleep.",
+            "domains": ["Sleep: Frequently disturbed", "Daily activities: Regular modifications required", "Emotional wellbeing: Anxiety or stress common"],
+        },
+        "severe": {
+            "impact": "Severe Impact",
+            "description": "Significant burden on quality of life. Substantial interference with daily functioning.",
+            "domains": ["Sleep: Severely impaired", "Daily activities: Major limitations", "Emotional wellbeing: High psychological burden"],
+        },
     }
     
     def __init__(self, user, start_date: date, end_date: date, options: dict = None):
@@ -134,12 +158,14 @@ class CSUExporter:
         self.include_antihistamine = self.options.get("include_antihistamine", True)
         self.include_breakdown = self.options.get("include_breakdown", True)
         self.include_clinical_guidance = self.options.get("include_clinical_guidance", True)
+        self.report_type = self.options.get("report_type", "quick")  # 'quick' or 'detailed'
         
         # Fetch data
         self.entries = self._fetch_entries()
         self.stats = self._calculate_stats()
         self.patterns = self._analyze_patterns()
         self.treatment_analysis = self._analyze_treatment_response()
+        self.qol_assessment = self._assess_quality_of_life()
     
     def _fetch_entries(self):
         """Fetch entries for the date range."""
@@ -394,6 +420,82 @@ class CSUExporter:
             "adherence_rate": adherence_rate,
         }
     
+    def _assess_quality_of_life(self) -> dict:
+        """
+        Assess quality of life impact based on symptom data.
+        
+        This is an estimated QoL assessment based on UAS7 correlation with validated
+        QoL instruments (CU-Q2oL, DLQI). For accurate QoL measurement, validated
+        questionnaires should be administered.
+        """
+        if not self.entries:
+            return None
+        
+        # Calculate average weekly UAS7 for QoL estimation
+        complete_weeks = [w for w in self.stats.get("weekly_uas7", []) if w.get("complete")]
+        if complete_weeks:
+            avg_uas7 = sum(w["uas7"] for w in complete_weeks) / len(complete_weeks)
+        else:
+            # Estimate from daily average
+            avg_uas7 = self.stats["avg_score"] * 7
+        
+        # Determine QoL category
+        qol_category = "minimal"
+        for category, (min_val, max_val) in self.QOL_THRESHOLDS.items():
+            if min_val <= avg_uas7 <= max_val:
+                qol_category = category
+                break
+        else:
+            if avg_uas7 > 42:
+                qol_category = "severe"
+        
+        qol_info = self.QOL_DESCRIPTIONS.get(qol_category, self.QOL_DESCRIPTIONS["minimal"])
+        
+        # Calculate specific impact indicators
+        sleep_impact = "Unknown"
+        activity_impact = "Unknown"
+        if self.patterns:
+            severe_pct = self.patterns.get("severe_pct", 0)
+            if severe_pct >= 30:
+                sleep_impact = "Severely affected"
+                activity_impact = "Major limitations"
+            elif severe_pct >= 15:
+                sleep_impact = "Frequently disturbed"
+                activity_impact = "Moderate limitations"
+            elif severe_pct >= 5:
+                sleep_impact = "Occasionally disturbed"
+                activity_impact = "Minor adjustments"
+            else:
+                sleep_impact = "Generally unaffected"
+                activity_impact = "Minimal impact"
+        
+        # Estimate DLQI-equivalent score (rough correlation)
+        # DLQI correlates ~0.6 with UAS7; rough estimation: DLQI ≈ UAS7 * 0.5
+        estimated_dlqi = min(30, avg_uas7 * 0.5)
+        
+        if estimated_dlqi <= 1:
+            dlqi_interpretation = "No effect on quality of life"
+        elif estimated_dlqi <= 5:
+            dlqi_interpretation = "Small effect on quality of life"
+        elif estimated_dlqi <= 10:
+            dlqi_interpretation = "Moderate effect on quality of life"
+        elif estimated_dlqi <= 20:
+            dlqi_interpretation = "Very large effect on quality of life"
+        else:
+            dlqi_interpretation = "Extremely large effect on quality of life"
+        
+        return {
+            "category": qol_category,
+            "impact": qol_info["impact"],
+            "description": qol_info["description"],
+            "domains": qol_info["domains"],
+            "avg_uas7": avg_uas7,
+            "sleep_impact": sleep_impact,
+            "activity_impact": activity_impact,
+            "estimated_dlqi": estimated_dlqi,
+            "dlqi_interpretation": dlqi_interpretation,
+        }
+    
     def _get_current_disease_category(self) -> Tuple[str, str]:
         """Get current disease activity category based on most recent complete week."""
         complete_weeks = [w for w in self.stats["weekly_uas7"] if w["complete"]]
@@ -631,10 +733,191 @@ class CSUExporter:
         return response
     
     def export_pdf(self) -> HttpResponse:
-        """Generate comprehensive clinical PDF report for NHS/healthcare providers."""
+        """Generate clinical PDF report for NHS/healthcare providers."""
+        if self.report_type == "detailed":
+            return self._export_detailed_pdf()
+        else:
+            return self._export_quick_pdf()
+    
+    def _export_quick_pdf(self) -> HttpResponse:
+        """Generate quick summary PDF - 1-page overview for routine check-ups."""
         response = HttpResponse(content_type="application/pdf")
         
-        filename = self._generate_filename("pdf")
+        filename = self._generate_filename("pdf").replace("data_export", "quick_summary")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=15*mm,
+            leftMargin=15*mm,
+            topMargin=15*mm,
+            bottomMargin=20*mm,
+        )
+        
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Colors
+        NHS_BLUE = colors.HexColor("#005EB8")
+        CLINICAL_GREEN = colors.HexColor("#22C55E")
+        CLINICAL_GREY = colors.HexColor("#6B7280")
+        
+        # Styles
+        title_style = ParagraphStyle(
+            "QuickTitle", parent=styles["Heading1"],
+            fontSize=20, spaceAfter=4, textColor=NHS_BLUE, fontName="Helvetica-Bold",
+        )
+        section_style = ParagraphStyle(
+            "QuickSection", parent=styles["Heading2"],
+            fontSize=12, spaceBefore=12, spaceAfter=6, textColor=NHS_BLUE, fontName="Helvetica-Bold",
+        )
+        normal_style = ParagraphStyle(
+            "QuickNormal", parent=styles["Normal"], fontSize=10, spaceAfter=4,
+        )
+        small_style = ParagraphStyle(
+            "QuickSmall", parent=styles["Normal"], fontSize=8, textColor=CLINICAL_GREY,
+        )
+        
+        # Header
+        elements.append(Paragraph("CSU SYMPTOM SUMMARY", title_style))
+        elements.append(Paragraph("Quick Overview for Healthcare Provider", small_style))
+        elements.append(Spacer(1, 8))
+        elements.append(HRFlowable(width="100%", thickness=2, color=NHS_BLUE))
+        elements.append(Spacer(1, 12))
+        
+        # Patient & Period Info
+        info_text = f"<b>Patient:</b> {self._get_patient_identifier()} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Period:</b> {self.start_date.strftime('%d %b %Y')} – {self.end_date.strftime('%d %b %Y')} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Generated:</b> {timezone.now().strftime('%d %b %Y')}"
+        elements.append(Paragraph(info_text, normal_style))
+        elements.append(Spacer(1, 16))
+        
+        # Key Metrics Box
+        category, _ = self._get_current_disease_category()
+        
+        metrics_data = [
+            ["Disease Activity", "Mean Daily Score", "Days Tracked", "Adherence"],
+            [category, f"{self.stats['avg_score']:.1f}/6", f"{self.stats['logged_days']}", f"{self.stats['adherence_pct']:.0f}%"],
+        ]
+        metrics_table = Table(metrics_data, colWidths=[120, 120, 100, 100])
+        metrics_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), NHS_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 11),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("GRID", (0, 0), (-1, -1), 1, colors.HexColor("#D1D5DB")),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#F8FAFC")),
+        ]))
+        elements.append(metrics_table)
+        elements.append(Spacer(1, 16))
+        
+        # UAS7 Summary
+        if self.stats["weekly_uas7"]:
+            elements.append(Paragraph("Weekly UAS7 Scores", section_style))
+            uas7_data = [["Week", "UAS7", "Status"]]
+            for week in self.stats["weekly_uas7"][-4:]:  # Last 4 weeks
+                status = "Complete" if week["complete"] else f"Partial ({week.get('days_logged', 0)}/7)"
+                activity = "Unknown"
+                if week["complete"]:
+                    for min_val, max_val, label, _ in self.UAS7_CATEGORIES:
+                        if min_val <= week["uas7"] <= max_val:
+                            activity = label
+                            break
+                uas7_data.append([
+                    f"{week['week_start'].strftime('%d %b')} – {week['week_end'].strftime('%d %b')}",
+                    str(week["uas7"]),
+                    f"{activity}" if week["complete"] else status,
+                ])
+            
+            uas7_table = Table(uas7_data, colWidths=[160, 60, 150])
+            uas7_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]))
+            elements.append(uas7_table)
+            elements.append(Spacer(1, 12))
+        
+        # Simple trend chart
+        if len(self.entries) >= 2:
+            elements.append(Paragraph("Symptom Trend", section_style))
+            chart = self._create_simple_trend_chart()
+            elements.append(chart)
+            elements.append(Spacer(1, 12))
+        
+        # Footer
+        elements.append(Spacer(1, 20))
+        elements.append(HRFlowable(width="100%", thickness=1, color=CLINICAL_GREY))
+        elements.append(Spacer(1, 6))
+        footer_style = ParagraphStyle("Footer", parent=styles["Normal"], fontSize=7, textColor=CLINICAL_GREY, alignment=TA_CENTER)
+        elements.append(Paragraph(
+            f"CSU Tracker Quick Summary • Patient-recorded data • Not verified by healthcare professional • "
+            f"For full analysis, generate In-Depth Report",
+            footer_style
+        ))
+        
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+        response.write(pdf)
+        return response
+    
+    def _create_simple_trend_chart(self):
+        """Create a simple trend chart for quick summary."""
+        drawing = Drawing(480, 120)
+        
+        if len(self.entries) < 2:
+            return drawing
+        
+        chart_left = 40
+        chart_bottom = 25
+        chart_width = 400
+        chart_height = 80
+        
+        # Background
+        drawing.add(Rect(chart_left, chart_bottom, chart_width, chart_height, 
+                        fillColor=colors.HexColor("#F8FAFC"), strokeColor=colors.HexColor("#E5E7EB")))
+        
+        # Plot points
+        max_entries = min(len(self.entries), 30)
+        recent_entries = self.entries[-max_entries:]
+        x_step = chart_width / max(1, len(recent_entries) - 1)
+        
+        for i, entry in enumerate(recent_entries):
+            x = chart_left + i * x_step
+            y = chart_bottom + (entry.score / 6) * chart_height
+            
+            # Line to next point
+            if i < len(recent_entries) - 1:
+                next_entry = recent_entries[i + 1]
+                next_x = chart_left + (i + 1) * x_step
+                next_y = chart_bottom + (next_entry.score / 6) * chart_height
+                drawing.add(Line(x, y, next_x, next_y, strokeColor=colors.HexColor("#005EB8"), strokeWidth=1.5))
+            
+            # Point
+            drawing.add(Circle(x, y, 3, fillColor=colors.HexColor("#005EB8"), strokeColor=None))
+        
+        # Y-axis labels
+        for i in range(7):
+            y = chart_bottom + (i / 6) * chart_height
+            drawing.add(String(chart_left - 15, y - 3, str(i), fontSize=7, fillColor=colors.HexColor("#6B7280")))
+        
+        return drawing
+    
+    def _export_detailed_pdf(self) -> HttpResponse:
+        """Generate comprehensive in-depth clinical PDF report for NHS/healthcare providers."""
+        response = HttpResponse(content_type="application/pdf")
+        
+        filename = self._generate_filename("pdf").replace("data_export", "detailed_report")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         
         # Create PDF document
@@ -848,6 +1131,63 @@ class CSUExporter:
             """
             elements.append(Paragraph(guidance_text.strip(), clinical_note_style))
             elements.append(Spacer(1, 6))
+        
+        # ========== QUALITY OF LIFE ASSESSMENT ==========
+        if self.qol_assessment:
+            elements.append(Paragraph("QUALITY OF LIFE ASSESSMENT", section_style))
+            elements.append(Paragraph(
+                "Estimated QoL impact based on symptom severity correlation with validated instruments (CU-Q2oL, DLQI). "
+                "For accurate QoL measurement, validated questionnaires should be administered.",
+                small_style
+            ))
+            elements.append(Spacer(1, 4))
+            
+            qol = self.qol_assessment
+            
+            # QoL Impact box
+            qol_data = [
+                ["Overall QoL Impact", "Estimated DLQI", "Sleep Impact", "Daily Activity Impact"],
+                [qol["impact"], f"{qol['estimated_dlqi']:.0f}/30", qol["sleep_impact"], qol["activity_impact"]],
+            ]
+            qol_table = Table(qol_data, colWidths=[120, 100, 130, 130])
+            
+            # Color code based on impact level
+            if qol["category"] == "minimal":
+                impact_color = colors.HexColor("#DCFCE7")
+            elif qol["category"] == "mild":
+                impact_color = colors.HexColor("#FEF9C3")
+            elif qol["category"] == "moderate":
+                impact_color = colors.HexColor("#FED7AA")
+            else:
+                impact_color = colors.HexColor("#FECACA")
+            
+            qol_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7C3AED")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("BACKGROUND", (0, 1), (-1, 1), impact_color),
+            ]))
+            elements.append(qol_table)
+            elements.append(Spacer(1, 4))
+            
+            # QoL interpretation
+            qol_note_style = ParagraphStyle(
+                "QoLNote", parent=styles["Normal"], fontSize=9,
+                textColor=colors.HexColor("#7C3AED"), backgroundColor=colors.HexColor("#F5F3FF"),
+                borderPadding=6, spaceAfter=6,
+            )
+            elements.append(Paragraph(
+                f"<b>Assessment:</b> {qol['description']}<br/>"
+                f"<b>DLQI Interpretation:</b> {qol['dlqi_interpretation']}",
+                qol_note_style
+            ))
+            elements.append(Spacer(1, 8))
         
         # ========== UAS7 WEEKLY SCORES ==========
         if self.stats["weekly_uas7"]:
@@ -1214,7 +1554,7 @@ class CSUExporter:
         )
         
         elements.append(Paragraph(
-            f"CSU Tracker Clinical Report • Generated: {timezone.now().strftime('%d %B %Y at %H:%M')} • "
+            f"CSU Tracker In-Depth Report • Generated: {timezone.now().strftime('%d %B %Y at %H:%M')} • "
             f"Verification: {self._generate_report_hash()} • For Healthcare Provider Use Only",
             footer_style
         ))
@@ -1379,9 +1719,9 @@ class CSUExporter:
         date_range = f"{self.start_date.strftime('%Y%m%d')}-{self.end_date.strftime('%Y%m%d')}"
         
         if self.anonymize:
-            return f"csu_clinical_report_{date_range}_anonymized.{extension}"
+            return f"csu_data_export_{date_range}_anonymized.{extension}"
         else:
             # Handle cases where username or email might be None
             name = self.user.username or self.user.email or f"user_{self.user.id}"
             safe_name = name.replace(" ", "_").replace("@", "_")[:20]
-            return f"csu_clinical_report_{safe_name}_{date_range}.{extension}"
+            return f"csu_data_export_{safe_name}_{date_range}.{extension}"

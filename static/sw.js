@@ -1,5 +1,5 @@
 // CSU Tracker Service Worker - Optimized for Performance
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `csu-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `csu-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline/';
@@ -76,7 +76,8 @@ async function staleWhileRevalidate(request) {
     
     // Fetch fresh copy in background
     const fetchPromise = fetch(request).then((networkResponse) => {
-        if (networkResponse.ok) {
+        // Only cache successful, non-redirect responses
+        if (networkResponse.ok && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
             cache.put(request, networkResponse.clone());
             trimCache(DYNAMIC_CACHE, MAX_DYNAMIC_CACHE_SIZE);
         }
@@ -96,7 +97,8 @@ async function cacheFirst(request) {
     
     try {
         const networkResponse = await fetch(request);
-        if (networkResponse.ok) {
+        // Only cache successful, non-redirect responses
+        if (networkResponse.ok && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
             const cache = await caches.open(STATIC_CACHE);
             cache.put(request, networkResponse.clone());
         }
@@ -114,7 +116,8 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
     try {
         const networkResponse = await fetch(request);
-        if (networkResponse.ok) {
+        // Only cache successful, non-redirect responses
+        if (networkResponse.ok && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
             const cache = await caches.open(DYNAMIC_CACHE);
             cache.put(request, networkResponse.clone());
         }

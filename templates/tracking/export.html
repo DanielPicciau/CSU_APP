@@ -1,7 +1,7 @@
 {% extends 'base_new.html' %}
 {% load static %}
 
-{% block title %}Export Clinical Report - CSU Tracker{% endblock %}
+{% block title %}Export Data - CSU Tracker{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -220,6 +220,113 @@
     color: var(--text-secondary);
     line-height: 1.5;
 }
+
+/* Report Type Selector */
+.report-type-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+.report-type-option {
+    position: relative;
+    cursor: pointer;
+}
+.report-type-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.report-type-card {
+    background: var(--bg-primary);
+    border: 2px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    transition: all var(--transition-fast);
+    height: 100%;
+}
+.report-type-option input:checked + .report-type-card {
+    border-color: var(--color-primary-500);
+    background: var(--color-primary-50);
+}
+[data-theme="dark"] .report-type-option input:checked + .report-type-card {
+    background: rgba(59, 130, 246, 0.1);
+}
+.report-type-option:hover .report-type-card {
+    border-color: var(--color-primary-300);
+}
+.report-type-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-3);
+}
+.report-type-card__icon--quick {
+    background: var(--color-success-100);
+    color: var(--color-success-600);
+}
+.report-type-card__icon--detailed {
+    background: #005EB8;
+    color: white;
+}
+[data-theme="dark"] .report-type-card__icon--quick {
+    background: rgba(34, 197, 94, 0.2);
+}
+[data-theme="dark"] .report-type-card__icon--detailed {
+    background: rgba(0, 94, 184, 0.3);
+    color: #41B6E6;
+}
+.report-type-card__title {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+.report-type-card__desc {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+}
+.report-type-card__features {
+    display: grid;
+    gap: var(--space-1);
+}
+.report-type-card__feature {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+.report-type-card__feature svg {
+    flex-shrink: 0;
+    color: var(--color-success-500);
+}
+.report-type-card__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+.report-type-card__badge--quick {
+    background: var(--color-success-100);
+    color: var(--color-success-700);
+}
+.report-type-card__badge--detailed {
+    background: #005EB8;
+    color: white;
+}
+[data-theme="dark"] .report-type-card__badge--quick {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ADE80;
+}
 </style>
 {% endblock %}
 
@@ -231,7 +338,7 @@
 </a>
 {% endblock %}
 
-{% block header_title %}Export Clinical Report{% endblock %}
+{% block header_title %}Export Data{% endblock %}
 
 {% block content %}
 <div class="app-content">
@@ -262,7 +369,7 @@
             NHS &amp; Healthcare Provider Ready
         </div>
         <p class="clinical-info__text">
-            Generate comprehensive clinical reports designed for NHS consultations. 
+            Generate comprehensive data exports designed for NHS consultations. 
             Reports include UAS7 scoring (EAACI/GA²LEN/EuroGuiDerm guidelines), 
             treatment response analysis, flare identification, and clinical decision support.
         </p>
@@ -335,6 +442,82 @@
             </div>
         </div>
         
+        <!-- Report Type Section -->
+        <div class="export-card slide-up" style="animation-delay: 0.05s;">
+            <h2 class="option-group__label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 6px;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Report Type
+            </h2>
+            
+            <div class="report-type-selector">
+                <label class="report-type-option">
+                    <input type="radio" name="report_type" value="quick" checked>
+                    <div class="report-type-card">
+                        <span class="report-type-card__badge report-type-card__badge--quick">Quick</span>
+                        <div class="report-type-card__icon report-type-card__icon--quick">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                        </div>
+                        <div class="report-type-card__title">Quick Summary</div>
+                        <div class="report-type-card__desc">1-page overview for routine check-ups</div>
+                        <div class="report-type-card__features">
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Key metrics summary</span>
+                            </div>
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>UAS7 scores &amp; activity level</span>
+                            </div>
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Simple trend chart</span>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+                
+                <label class="report-type-option">
+                    <input type="radio" name="report_type" value="detailed">
+                    <div class="report-type-card">
+                        <span class="report-type-card__badge report-type-card__badge--detailed">NHS Ready</span>
+                        <div class="report-type-card__icon report-type-card__icon--detailed">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="report-type-card__title">In-Depth Report</div>
+                        <div class="report-type-card__desc">Comprehensive analysis for specialist consultations</div>
+                        <div class="report-type-card__features">
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Full clinical analysis</span>
+                            </div>
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Quality of Life (QoL) assessment</span>
+                            </div>
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Treatment response &amp; flare analysis</span>
+                            </div>
+                            <div class="report-type-card__feature">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Daily symptom log &amp; clinical guidance</span>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+        
         <!-- Export Options -->
         <div class="export-card slide-up" style="animation-delay: 0.1s;">
             <h2 class="option-group__label">
@@ -389,145 +572,46 @@
             </div>
         </div>
         
-        <!-- Export Buttons -->
-        <div class="space-y-3 slide-up" style="animation-delay: 0.2s;">
+        <!-- Download Buttons -->
+        <div class="export-card slide-up" style="animation-delay: 0.2s;">
+            <h2 class="option-group__label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 6px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download Format
+            </h2>
             
-            <!-- PDF Export Card -->
-            <div class="export-card">
-                <div class="export-card__header">
-                    <div class="export-card__icon export-card__icon--pdf">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <span class="nhs-badge">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                            </svg>
-                            NHS Ready
-                        </span>
-                        <h3 class="export-card__title">Clinical PDF Report</h3>
-                        <p class="export-card__description">Comprehensive report for healthcare providers</p>
-                    </div>
-                </div>
-                
-                <div class="feature-list">
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Executive summary with disease activity classification</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>UAS7 scoring per EAACI/GA²LEN/EuroGuiDerm guidelines</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Treatment response analysis with clinical interpretation</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Flare episode identification and pattern analysis</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>ICD-10 &amp; SNOMED-CT coding references</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Visual trend chart with severity zones</span>
-                    </div>
-                </div>
-                
+            <div style="display: grid; gap: var(--space-3);">
                 <button 
                     type="submit" 
                     formaction="{% url 'tracking:export_pdf' %}" 
                     class="btn btn--primary btn--full"
-                    style="background: #005EB8;"
+                    style="background: #005EB8; padding: var(--space-4);"
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
                     </svg>
-                    Download Clinical PDF Report
+                    Download PDF Report
                 </button>
-            </div>
-            
-            <!-- CSV Export Card -->
-            <div class="export-card">
-                <div class="export-card__header">
-                    <div class="export-card__icon export-card__icon--csv">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="8" y1="13" x2="16" y2="13"/>
-                            <line x1="8" y1="17" x2="16" y2="17"/>
-                            <line x1="10" y1="9" x2="10" y2="21"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="export-card__title">Clinical CSV Data</h3>
-                        <p class="export-card__description">Structured data for EHR import or analysis</p>
-                    </div>
-                </div>
-                
-                <div class="feature-list">
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Complete daily symptom log with clinical categorisation</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Weekly UAS7 scores with interpretation guide</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Treatment response statistics and pattern analysis</span>
-                    </div>
-                    <div class="feature-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span>Compatible with Excel, Google Sheets, and EHR systems</span>
-                    </div>
-                </div>
                 
                 <button 
                     type="submit" 
                     formaction="{% url 'tracking:export_csv' %}" 
                     class="btn btn--secondary btn--full"
+                    style="padding: var(--space-4);"
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="8" y1="13" x2="16" y2="13"/>
+                        <line x1="8" y1="17" x2="16" y2="17"/>
                     </svg>
-                    Download Clinical CSV Data
+                    Download CSV Data
                 </button>
             </div>
-            
         </div>
         
         <!-- Disclaimer -->

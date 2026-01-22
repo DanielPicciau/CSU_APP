@@ -640,6 +640,7 @@ def export_csv_view(request):
         "include_notes": request.GET.get("notes", "1") == "1",
         "include_antihistamine": request.GET.get("antihistamine", "1") == "1",
         "include_breakdown": request.GET.get("breakdown", "1") == "1",
+        "report_type": request.GET.get("report_type", "quick"),
     }
     
     try:
@@ -682,6 +683,7 @@ def export_pdf_view(request):
         "include_notes": request.GET.get("notes", "1") == "1",
         "include_antihistamine": request.GET.get("antihistamine", "1") == "1",
         "include_breakdown": request.GET.get("breakdown", "1") == "1",
+        "report_type": request.GET.get("report_type", "quick"),
     }
     
     try:

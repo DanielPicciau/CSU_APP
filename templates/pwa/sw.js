@@ -1,5 +1,5 @@
 // CSU Tracker Service Worker
-const CACHE_NAME = 'csu-tracker-v2';
+const CACHE_NAME = 'csu-tracker-v3';
 const OFFLINE_URL = '/offline/';
 
 // Assets to cache on install
@@ -45,8 +45,8 @@ self.addEventListener('fetch', (event) => {
             caches.match(event.request).then((cachedResponse) => {
                 // Start network fetch in background
                 const networkFetch = fetch(event.request).then((networkResponse) => {
-                    // Cache the fresh response
-                    if (networkResponse.status === 200) {
+                    // Only cache successful, non-redirect responses (Safari compatibility)
+                    if (networkResponse.status === 200 && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
                         const responseClone = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => {
                             cache.put(event.request, responseClone);
@@ -66,8 +66,8 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Clone and cache successful responses
-                if (response.status === 200) {
+                // Only cache successful, non-redirect responses (Safari compatibility)
+                if (response.status === 200 && !response.redirected && response.type !== 'opaqueredirect') {
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseClone);
