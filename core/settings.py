@@ -191,6 +191,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://webflareuk.pythonanywhere.com",
 ])
 
 # In debug mode, also trust the current request's origin for CSRF
@@ -253,13 +254,14 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # Users will need to re-authenticate weekly for enhanced security
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_NAME = "__Host-sessionid" if not DEBUG else "sessionid"  # __Host- prefix for extra security
+SESSION_COOKIE_NAME = "sessionid"  # Avoid __Host- prefix for Safari PWA compatibility
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Allow persistent sessions for PWA
 SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
 
-# CSRF Cookie settings
-CSRF_COOKIE_NAME = "__Host-csrftoken" if not DEBUG else "csrftoken"
+# CSRF Cookie settings - Safari PWA compatible
+CSRF_COOKIE_NAME = "csrftoken"  # Avoid __Host- prefix for Safari PWA compatibility
 CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 
 # =============================================================================
 # SECURITY SETTINGS - Medical Grade
