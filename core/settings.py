@@ -381,9 +381,6 @@ else:
                 'BACKEND': 'django.core.cache.backends.redis.RedisCache',
                 'LOCATION': REDIS_URL,
                 'TIMEOUT': 300,
-                'OPTIONS': {
-                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                }
             }
         }
     else:
