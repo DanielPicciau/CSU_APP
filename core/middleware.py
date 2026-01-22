@@ -324,7 +324,11 @@ class AdminMFAEnforcementMiddleware(MiddlewareMixin):
         if any(request.path.startswith(path) for path in self.ALLOWED_PATH_PREFIXES):
             return None
 
-        mfa = getattr(user, 'mfa', None)
+        try:
+            mfa = getattr(user, 'mfa', None)
+        except Exception:
+            # Migration not applied yet or table missing
+            return None
         if not mfa or not mfa.enabled:
             return redirect('accounts:mfa_setup')
 
