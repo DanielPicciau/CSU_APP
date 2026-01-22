@@ -48,6 +48,7 @@ parso==0.8.5
 pexpect==4.9.0
 pillow==12.1.0
 pluggy==1.6.0
+stripe==11.5.0
 prompt_toolkit==3.0.52
 propcache==0.4.1
 psycopg==3.3.2

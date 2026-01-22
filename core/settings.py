@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "tracking.apps.TrackingConfig",
     "notifications.apps.NotificationsConfig",
+    "subscriptions.apps.SubscriptionsConfig",
 ]
 
 MIDDLEWARE = [
@@ -229,6 +230,22 @@ if not DEBUG and VAPID_PRIVATE_KEY and not VAPID_ADMIN_EMAIL:
     import warnings
     warnings.warn(
         "VAPID_ADMIN_EMAIL is not set. Push notifications may fail without a valid contact email.",
+        UserWarning
+    )
+
+# =============================================================================
+# STRIPE CONFIGURATION - Cura Premium Subscriptions
+# =============================================================================
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+STRIPE_PRICE_ID = env("STRIPE_PRICE_ID", default="")  # Monthly £2.99 price ID
+
+# Validate Stripe in production
+if not DEBUG and not STRIPE_SECRET_KEY:
+    import warnings
+    warnings.warn(
+        "STRIPE_SECRET_KEY is not set. Subscription features will be disabled.",
         UserWarning
     )
 

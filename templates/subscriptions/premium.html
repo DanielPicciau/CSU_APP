@@ -1,0 +1,521 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Cura Premium - CSU Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+.premium-hero {
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    margin-bottom: var(--space-6);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.premium-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer {
+    0%, 100% { transform: translateX(-50%) translateY(-50%); }
+    50% { transform: translateX(-30%) translateY(-30%); }
+}
+.premium-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    position: relative;
+}
+.premium-badge svg {
+    width: 16px;
+    height: 16px;
+}
+.premium-title {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    margin-bottom: var(--space-2);
+    position: relative;
+}
+.premium-subtitle {
+    font-size: var(--text-lg);
+    opacity: 0.9;
+    position: relative;
+}
+.premium-price {
+    margin-top: var(--space-6);
+    position: relative;
+}
+.premium-price__amount {
+    font-size: var(--text-4xl);
+    font-weight: 800;
+}
+.premium-price__period {
+    font-size: var(--text-lg);
+    opacity: 0.8;
+}
+
+.feature-list {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+.feature-list__title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+}
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.feature-item:last-child {
+    border-bottom: none;
+}
+.feature-item__icon {
+    width: 24px;
+    height: 24px;
+    background: var(--color-success-100);
+    color: var(--color-success-600);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .feature-item__icon {
+    background: rgba(34, 197, 94, 0.2);
+}
+.feature-item__icon svg {
+    width: 14px;
+    height: 14px;
+}
+.feature-item__content {
+    flex: 1;
+}
+.feature-item__name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.feature-item__desc {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+.feature-item--locked .feature-item__icon {
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+}
+.feature-item--coming-soon {
+    opacity: 0.6;
+}
+.coming-soon-badge {
+    display: inline-block;
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    margin-left: 8px;
+}
+
+.subscribe-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+    color: white;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+.subscribe-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+}
+.subscribe-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.subscription-status {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+.subscription-status__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+.subscription-status__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+.subscription-status__badge--active {
+    background: var(--color-success-100);
+    color: var(--color-success-700);
+}
+[data-theme="dark"] .subscription-status__badge--active {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+.subscription-status__badge--canceled {
+    background: var(--color-warning-100);
+    color: var(--color-warning-700);
+}
+[data-theme="dark"] .subscription-status__badge--canceled {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+.subscription-status__info {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+.subscription-status__actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+.subscription-action-btn {
+    flex: 1;
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: none;
+    font-size: var(--text-sm);
+}
+.subscription-action-btn--primary {
+    background: var(--color-primary-500);
+    color: white;
+}
+.subscription-action-btn--secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+}
+.subscription-action-btn--danger {
+    background: var(--color-error-50);
+    color: var(--color-error-600);
+}
+[data-theme="dark"] .subscription-action-btn--danger {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.guarantee-box {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    text-align: center;
+    margin-top: var(--space-4);
+}
+.guarantee-box__icon {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-2);
+}
+.guarantee-box__text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.faq-section {
+    margin-top: var(--space-6);
+}
+.faq-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+}
+.faq-item {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-3);
+}
+.faq-item__question {
+    padding: var(--space-4);
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.faq-item__answer {
+    padding: 0 var(--space-4) var(--space-4);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    display: none;
+}
+.faq-item.open .faq-item__answer {
+    display: block;
+}
+.faq-item__toggle {
+    transition: transform 0.2s;
+}
+.faq-item.open .faq-item__toggle {
+    transform: rotate(180deg);
+}
+</style>
+{% endblock %}
+
+{% block header_title %}Cura Premium{% endblock %}
+
+{% block content %}
+<div class="page-content fade-in">
+    <div class="container">
+        {% if is_premium and subscription %}
+        <!-- Active Subscription Status -->
+        <div class="subscription-status">
+            <div class="subscription-status__header">
+                <h2 style="font-size: var(--text-xl); font-weight: 700; color: var(--text-primary);">Your Subscription</h2>
+                {% if subscription.cancel_at_period_end %}
+                <span class="subscription-status__badge subscription-status__badge--canceled">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    Canceling
+                </span>
+                {% else %}
+                <span class="subscription-status__badge subscription-status__badge--active">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Active
+                </span>
+                {% endif %}
+            </div>
+            
+            <div class="subscription-status__info">
+                {% if subscription.cancel_at_period_end %}
+                    <p>Your subscription will end on <strong>{{ subscription.current_period_end|date:"F j, Y" }}</strong>.</p>
+                    <p style="margin-top: var(--space-2);">You'll continue to have access until then.</p>
+                {% else %}
+                    <p>Your next billing date is <strong>{{ subscription.current_period_end|date:"F j, Y" }}</strong>.</p>
+                    <p style="margin-top: var(--space-2);">£2.99 will be charged to your payment method.</p>
+                {% endif %}
+            </div>
+            
+            <div class="subscription-status__actions">
+                {% if subscription.cancel_at_period_end %}
+                <form method="post" action="{% url 'subscriptions:reactivate' %}" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" class="subscription-action-btn subscription-action-btn--primary" style="width: 100%;">
+                        Reactivate Subscription
+                    </button>
+                </form>
+                {% else %}
+                <a href="{% url 'subscriptions:billing' %}" class="subscription-action-btn subscription-action-btn--secondary">
+                    Manage Billing
+                </a>
+                <form method="post" action="{% url 'subscriptions:cancel' %}" style="flex: 1;" onsubmit="return confirm('Are you sure you want to cancel? You will still have access until the end of your billing period.');">
+                    {% csrf_token %}
+                    <button type="submit" class="subscription-action-btn subscription-action-btn--danger" style="width: 100%;">
+                        Cancel Subscription
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- Premium Hero -->
+        <div class="premium-hero">
+            <div class="premium-badge">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                Cura Premium
+            </div>
+            <h1 class="premium-title">Unlock Full Potential</h1>
+            <p class="premium-subtitle">Export your data, share with doctors, and take control of your health journey</p>
+            <div class="premium-price">
+                <span class="premium-price__amount">£2.99</span>
+                <span class="premium-price__period">/month</span>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Features List -->
+        <div class="feature-list">
+            <h3 class="feature-list__title">Premium Features</h3>
+            
+            <div class="feature-item">
+                <div class="feature-item__icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="feature-item__content">
+                    <div class="feature-item__name">Export to CSV</div>
+                    <div class="feature-item__desc">Download your symptom data in spreadsheet format for analysis</div>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-item__icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="feature-item__content">
+                    <div class="feature-item__name">NHS-Style PDF Reports</div>
+                    <div class="feature-item__desc">Generate professional reports to share with your healthcare team</div>
+                </div>
+            </div>
+            
+            <div class="feature-item feature-item--coming-soon">
+                <div class="feature-item__icon feature-item--locked">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="feature-item__content">
+                    <div class="feature-item__name">
+                        Advanced Insights
+                        <span class="coming-soon-badge">Coming Soon</span>
+                    </div>
+                    <div class="feature-item__desc">Detailed trend analysis and pattern detection</div>
+                </div>
+            </div>
+            
+            <div class="feature-item feature-item--coming-soon">
+                <div class="feature-item__icon feature-item--locked">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="feature-item__content">
+                    <div class="feature-item__name">
+                        Photo Tracking
+                        <span class="coming-soon-badge">Coming Soon</span>
+                    </div>
+                    <div class="feature-item__desc">Attach photos to your daily entries for visual tracking</div>
+                </div>
+            </div>
+        </div>
+        
+        {% if not is_premium %}
+        <!-- Subscribe Button -->
+        {% if stripe_configured %}
+        <form method="post" action="{% url 'subscriptions:checkout' %}">
+            {% csrf_token %}
+            <button type="submit" class="subscribe-btn">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                Subscribe Now – £2.99/month
+            </button>
+        </form>
+        {% else %}
+        <button class="subscribe-btn" disabled>
+            Subscriptions Coming Soon
+        </button>
+        {% endif %}
+        
+        <div class="guarantee-box">
+            <div class="guarantee-box__icon">🔒</div>
+            <div class="guarantee-box__text">
+                Secure payment via Stripe. Cancel anytime.<br>
+                Your health data always stays private.
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- FAQ Section -->
+        <div class="faq-section">
+            <h3 class="faq-title">Frequently Asked Questions</h3>
+            
+            <div class="faq-item" onclick="this.classList.toggle('open')">
+                <div class="faq-item__question">
+                    Can I cancel anytime?
+                    <svg class="faq-item__toggle" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </div>
+                <div class="faq-item__answer">
+                    Yes! You can cancel your subscription at any time. You'll continue to have access until the end of your current billing period.
+                </div>
+            </div>
+            
+            <div class="faq-item" onclick="this.classList.toggle('open')">
+                <div class="faq-item__question">
+                    What payment methods are accepted?
+                    <svg class="faq-item__toggle" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </div>
+                <div class="faq-item__answer">
+                    We accept all major credit and debit cards through our secure payment provider, Stripe.
+                </div>
+            </div>
+            
+            <div class="faq-item" onclick="this.classList.toggle('open')">
+                <div class="faq-item__question">
+                    What happens to my data if I cancel?
+                    <svg class="faq-item__toggle" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </div>
+                <div class="faq-item__answer">
+                    Your symptom tracking data is always yours. If you cancel, you'll still be able to log entries and view your history – you just won't have access to premium export features.
+                </div>
+            </div>
+            
+            <div class="faq-item" onclick="this.classList.toggle('open')">
+                <div class="faq-item__question">
+                    Is my health data secure?
+                    <svg class="faq-item__toggle" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </div>
+                <div class="faq-item__answer">
+                    Absolutely. Your health data is encrypted and stored securely. We never share your personal information with third parties. Payment is handled by Stripe – we never see your card details.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

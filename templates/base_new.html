@@ -122,6 +122,15 @@
                 </svg>
                 Export Data
             </a>
+            
+            <div class="desktop-nav-divider"></div>
+            
+            <a href="{% url 'subscriptions:premium' %}" class="desktop-nav-item {% if 'subscriptions' in request.path %}active{% endif %}" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%); border: 1px solid rgba(99, 102, 241, 0.2);">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="color: #8B5CF6;">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 600;">Cura Premium</span>
+            </a>
         </nav>
         
         <!-- User Section -->
@@ -245,7 +254,7 @@
                         <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                 </a>
-                <span class="bottom-nav__label" style="margin-top: 8px;">Log</span>
+                <span class="bottom-nav__label">Log</span>
             </div>
             
             <!-- Insights -->

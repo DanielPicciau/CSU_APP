@@ -593,7 +593,10 @@ def chart_data_view(request):
 @login_required
 def export_page_view(request):
     """Render the export options page."""
+    from subscriptions.models import user_is_premium
+    
     today = get_user_today(request.user)
+    is_premium = user_is_premium(request.user)
     
     # Get first and last entry dates for the user
     first_entry = DailyEntry.objects.filter(user=request.user).order_by("date").first()
@@ -608,13 +611,20 @@ def export_page_view(request):
         "last_entry_date": last_entry.date if last_entry else today,
         "total_entries": total_entries,
         "has_entries": total_entries > 0,
+        "is_premium": is_premium,
     })
 
 
 @login_required
 def export_csv_view(request):
     """Generate and download CSV export."""
+    from subscriptions.models import user_is_premium
     from .exports import CSUExporter
+    
+    # Check premium access
+    if not user_is_premium(request.user):
+        messages.error(request, "CSV export is a Cura Premium feature. Upgrade to access this feature.")
+        return redirect("subscriptions:premium")
     
     today = get_user_today(request.user)
     
@@ -657,7 +667,13 @@ def export_csv_view(request):
 @login_required
 def export_pdf_view(request):
     """Generate and download PDF export."""
+    from subscriptions.models import user_is_premium
     from .exports import CSUExporter
+    
+    # Check premium access
+    if not user_is_premium(request.user):
+        messages.error(request, "PDF export is a Cura Premium feature. Upgrade to access this feature.")
+        return redirect("subscriptions:premium")
     
     today = get_user_today(request.user)
     

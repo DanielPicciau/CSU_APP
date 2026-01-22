@@ -315,6 +315,10 @@
   .mobile-nav,
   .bottom-nav,
   nav.bottom-nav {
+    display: block !important;
+  }
+  
+  .bottom-nav__inner {
     display: flex !important;
   }
 

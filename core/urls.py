@@ -34,6 +34,7 @@ urlpatterns = [
     path("api/tracking/", include("tracking.api_urls")),
     path("notifications/", include("notifications.urls")),
     path("api/notifications/", include("notifications.api_urls")),
+    path("subscriptions/", include("subscriptions.urls")),
     
     # PWA
     path("manifest.json", TemplateView.as_view(
