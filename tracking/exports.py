@@ -422,15 +422,105 @@ class CSUExporter:
     
     def _assess_quality_of_life(self) -> dict:
         """
-        Assess quality of life impact based on symptom data.
+        Assess quality of life impact based on actual QoL data if available,
+        otherwise estimate from symptom data.
         
-        This is an estimated QoL assessment based on UAS7 correlation with validated
-        QoL instruments (CU-Q2oL, DLQI). For accurate QoL measurement, validated
-        questionnaires should be administered.
+        Uses actual QoL survey responses (qol_sleep, qol_daily_activities, 
+        qol_appearance, qol_mood) when available. Falls back to UAS7 correlation
+        with validated QoL instruments (CU-Q2oL, DLQI) for estimation.
         """
         if not self.entries:
             return None
         
+        # Check for actual QoL data
+        qol_entries = [e for e in self.entries if e.qol_score is not None]
+        has_actual_qol_data = len(qol_entries) > 0
+        
+        if has_actual_qol_data:
+            # Use actual QoL data
+            avg_qol_score = sum(e.qol_score for e in qol_entries) / len(qol_entries)
+            qol_percentage = (avg_qol_score / 16) * 100  # 16 is max score (4 questions x 4 max each)
+            
+            # Individual domain averages
+            sleep_scores = [e.qol_sleep for e in qol_entries if e.qol_sleep is not None]
+            activity_scores = [e.qol_daily_activities for e in qol_entries if e.qol_daily_activities is not None]
+            appearance_scores = [e.qol_appearance for e in qol_entries if e.qol_appearance is not None]
+            mood_scores = [e.qol_mood for e in qol_entries if e.qol_mood is not None]
+            
+            avg_sleep = sum(sleep_scores) / len(sleep_scores) if sleep_scores else None
+            avg_activity = sum(activity_scores) / len(activity_scores) if activity_scores else None
+            avg_appearance = sum(appearance_scores) / len(appearance_scores) if appearance_scores else None
+            avg_mood = sum(mood_scores) / len(mood_scores) if mood_scores else None
+            
+            # Determine QoL category from actual score (0-16 scale)
+            if avg_qol_score <= 3:
+                qol_category = "minimal"
+            elif avg_qol_score <= 7:
+                qol_category = "mild"
+            elif avg_qol_score <= 11:
+                qol_category = "moderate"
+            else:
+                qol_category = "severe"
+            
+            # Map scores to descriptive impact
+            def score_to_impact(score):
+                if score is None:
+                    return "Not assessed"
+                if score <= 0.5:
+                    return "Not affected"
+                elif score <= 1.5:
+                    return "Slightly affected"
+                elif score <= 2.5:
+                    return "Moderately affected"
+                elif score <= 3.5:
+                    return "Significantly affected"
+                else:
+                    return "Extremely affected"
+            
+            sleep_impact = score_to_impact(avg_sleep)
+            activity_impact = score_to_impact(avg_activity)
+            appearance_impact = score_to_impact(avg_appearance)
+            mood_impact = score_to_impact(avg_mood)
+            
+            qol_info = self.QOL_DESCRIPTIONS.get(qol_category, self.QOL_DESCRIPTIONS["minimal"])
+            
+            # Estimate DLQI-equivalent score from actual QoL data
+            # Our QoL scale is 0-16, DLQI is 0-30; rough linear mapping
+            estimated_dlqi = min(30, avg_qol_score * 1.875)
+            
+            if estimated_dlqi <= 1:
+                dlqi_interpretation = "No effect on quality of life"
+            elif estimated_dlqi <= 5:
+                dlqi_interpretation = "Small effect on quality of life"
+            elif estimated_dlqi <= 10:
+                dlqi_interpretation = "Moderate effect on quality of life"
+            elif estimated_dlqi <= 20:
+                dlqi_interpretation = "Very large effect on quality of life"
+            else:
+                dlqi_interpretation = "Extremely large effect on quality of life"
+            
+            return {
+                "category": qol_category,
+                "impact": qol_info["impact"],
+                "description": qol_info["description"],
+                "data_source": "actual",
+                "entries_with_qol": len(qol_entries),
+                "total_entries": len(self.entries),
+                "avg_qol_score": avg_qol_score,
+                "qol_percentage": qol_percentage,
+                "domains": {
+                    "sleep": {"score": avg_sleep, "impact": sleep_impact},
+                    "daily_activities": {"score": avg_activity, "impact": activity_impact},
+                    "appearance": {"score": avg_appearance, "impact": appearance_impact},
+                    "mood": {"score": avg_mood, "impact": mood_impact},
+                },
+                "sleep_impact": sleep_impact,
+                "activity_impact": activity_impact,
+                "estimated_dlqi": estimated_dlqi,
+                "dlqi_interpretation": dlqi_interpretation,
+            }
+        
+        # Fall back to estimation from UAS7 correlation
         # Calculate average weekly UAS7 for QoL estimation
         complete_weeks = [w for w in self.stats.get("weekly_uas7", []) if w.get("complete")]
         if complete_weeks:
@@ -488,6 +578,7 @@ class CSUExporter:
             "category": qol_category,
             "impact": qol_info["impact"],
             "description": qol_info["description"],
+            "data_source": "estimated",
             "domains": qol_info["domains"],
             "avg_uas7": avg_uas7,
             "sleep_impact": sleep_impact,
@@ -573,6 +664,8 @@ class CSUExporter:
             headers.extend(["Itch Score (0-3)", "Itch Severity", "Hive Score (0-3)", "Hive Count Category"])
         if self.include_antihistamine:
             headers.append("Antihistamine Taken")
+        # Add QoL columns
+        headers.extend(["QoL Sleep (0-4)", "QoL Activities (0-4)", "QoL Appearance (0-4)", "QoL Mood (0-4)", "QoL Total (0-16)"])
         if self.include_notes:
             headers.append("Patient Notes")
         
@@ -607,6 +700,15 @@ class CSUExporter:
             
             if self.include_antihistamine:
                 row.append("Yes" if entry.took_antihistamine else "No")
+            
+            # Add QoL data
+            row.extend([
+                entry.qol_sleep if entry.qol_sleep is not None else "",
+                entry.qol_daily_activities if entry.qol_daily_activities is not None else "",
+                entry.qol_appearance if entry.qol_appearance is not None else "",
+                entry.qol_mood if entry.qol_mood is not None else "",
+                entry.qol_score if entry.qol_score is not None else "",
+            ])
             
             if self.include_notes:
                 row.append(entry.notes or "")
@@ -1135,21 +1237,45 @@ class CSUExporter:
         # ========== QUALITY OF LIFE ASSESSMENT ==========
         if self.qol_assessment:
             elements.append(Paragraph("QUALITY OF LIFE ASSESSMENT", section_style))
-            elements.append(Paragraph(
-                "Estimated QoL impact based on symptom severity correlation with validated instruments (CU-Q2oL, DLQI). "
-                "For accurate QoL measurement, validated questionnaires should be administered.",
-                small_style
-            ))
-            elements.append(Spacer(1, 4))
             
             qol = self.qol_assessment
             
-            # QoL Impact box
-            qol_data = [
-                ["Overall QoL Impact", "Estimated DLQI", "Sleep Impact", "Daily Activity Impact"],
-                [qol["impact"], f"{qol['estimated_dlqi']:.0f}/30", qol["sleep_impact"], qol["activity_impact"]],
-            ]
-            qol_table = Table(qol_data, colWidths=[120, 100, 130, 130])
+            # Show different description based on data source
+            if qol.get("data_source") == "actual":
+                elements.append(Paragraph(
+                    f"QoL assessment based on patient-reported outcomes. "
+                    f"Data collected from {qol.get('entries_with_qol', 0)} of {qol.get('total_entries', 0)} logged entries.",
+                    small_style
+                ))
+            else:
+                elements.append(Paragraph(
+                    "Estimated QoL impact based on symptom severity correlation with validated instruments (CU-Q2oL, DLQI). "
+                    "For accurate QoL measurement, validated questionnaires should be administered.",
+                    small_style
+                ))
+            elements.append(Spacer(1, 4))
+            
+            # QoL Impact box - different layout for actual vs estimated data
+            if qol.get("data_source") == "actual" and isinstance(qol.get("domains"), dict):
+                # Show detailed domain breakdown for actual data
+                qol_data = [
+                    ["Overall Impact", "Sleep", "Daily Activities", "Appearance", "Mood"],
+                    [
+                        qol["impact"],
+                        qol["domains"]["sleep"]["impact"],
+                        qol["domains"]["daily_activities"]["impact"],
+                        qol["domains"]["appearance"]["impact"],
+                        qol["domains"]["mood"]["impact"],
+                    ],
+                ]
+                qol_table = Table(qol_data, colWidths=[100, 90, 100, 90, 90])
+            else:
+                # Use estimated data layout
+                qol_data = [
+                    ["Overall QoL Impact", "Estimated DLQI", "Sleep Impact", "Daily Activity Impact"],
+                    [qol["impact"], f"{qol['estimated_dlqi']:.0f}/30", qol["sleep_impact"], qol["activity_impact"]],
+                ]
+                qol_table = Table(qol_data, colWidths=[120, 100, 130, 130])
             
             # Color code based on impact level
             if qol["category"] == "minimal":
@@ -1182,11 +1308,21 @@ class CSUExporter:
                 textColor=colors.HexColor("#7C3AED"), backgroundColor=colors.HexColor("#F5F3FF"),
                 borderPadding=6, spaceAfter=6,
             )
-            elements.append(Paragraph(
-                f"<b>Assessment:</b> {qol['description']}<br/>"
-                f"<b>DLQI Interpretation:</b> {qol['dlqi_interpretation']}",
-                qol_note_style
-            ))
+            
+            if qol.get("data_source") == "actual":
+                qol_score_text = f"Average QoL Score: {qol.get('avg_qol_score', 0):.1f}/16 ({qol.get('qol_percentage', 0):.0f}% impact)"
+                elements.append(Paragraph(
+                    f"<b>Assessment:</b> {qol['description']}<br/>"
+                    f"<b>{qol_score_text}</b><br/>"
+                    f"<b>DLQI Equivalent:</b> {qol['dlqi_interpretation']}",
+                    qol_note_style
+                ))
+            else:
+                elements.append(Paragraph(
+                    f"<b>Assessment:</b> {qol['description']}<br/>"
+                    f"<b>DLQI Interpretation:</b> {qol['dlqi_interpretation']}",
+                    qol_note_style
+                ))
             elements.append(Spacer(1, 8))
         
         # ========== UAS7 WEEKLY SCORES ==========

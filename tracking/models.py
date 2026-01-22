@@ -64,6 +64,35 @@ class DailyEntry(models.Model):
         help_text="Whether antihistamine was taken",
     )
     
+    # Quality of Life questions (0-4 scale: Not at all, A little, Moderately, A lot, Extremely)
+    qol_sleep = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(4)],
+        help_text="Sleep impact: 0=Not at all, 4=Extremely",
+    )
+    
+    qol_daily_activities = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(4)],
+        help_text="Daily activities impact: 0=Not at all, 4=Extremely",
+    )
+    
+    qol_appearance = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(4)],
+        help_text="Appearance/embarrassment impact: 0=Not at all, 4=Extremely",
+    )
+    
+    qol_mood = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(4)],
+        help_text="Mood/emotional impact: 0=Not at all, 4=Extremely",
+    )
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -86,6 +115,37 @@ class DailyEntry(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.email} - {self.date}: {self.score}"
+
+    @property
+    def qol_score(self) -> int | None:
+        """Calculate total QoL score (0-16 scale, higher = worse quality of life)."""
+        qol_fields = [self.qol_sleep, self.qol_daily_activities, self.qol_appearance, self.qol_mood]
+        valid_scores = [s for s in qol_fields if s is not None]
+        if not valid_scores:
+            return None
+        return sum(valid_scores)
+    
+    @property
+    def qol_percentage(self) -> float | None:
+        """Calculate QoL as percentage (0-100%, higher = worse)."""
+        score = self.qol_score
+        if score is None:
+            return None
+        return (score / 16) * 100
+    
+    def get_qol_severity(self) -> str | None:
+        """Get QoL severity label based on score."""
+        score = self.qol_score
+        if score is None:
+            return None
+        if score <= 3:
+            return "Minimal impact"
+        elif score <= 7:
+            return "Mild impact"
+        elif score <= 11:
+            return "Moderate impact"
+        else:
+            return "Severe impact"
 
     def save(self, *args, **kwargs):
         """Auto-calculate combined score if component scores are provided."""

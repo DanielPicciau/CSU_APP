@@ -24,6 +24,14 @@ HIVE_CHOICES = [
     (3, "3 - Severe (more than 50 hives or large confluent areas)"),
 ]
 
+QOL_CHOICES = [
+    (0, "Not at all"),
+    (1, "A little"),
+    (2, "Moderately"),
+    (3, "A lot"),
+    (4, "Extremely"),
+]
+
 
 class DailyEntryForm(forms.ModelForm):
     """Form for logging daily CSU entry."""
@@ -64,10 +72,48 @@ class DailyEntryForm(forms.ModelForm):
         }),
         label="I took antihistamine today",
     )
+    
+    # Quality of Life questions
+    qol_sleep = forms.ChoiceField(
+        choices=QOL_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            "class": "sr-only peer",
+        }),
+        required=False,
+        label="How much did your hives affect your sleep?",
+    )
+    
+    qol_daily_activities = forms.ChoiceField(
+        choices=QOL_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            "class": "sr-only peer",
+        }),
+        required=False,
+        label="How much did your hives affect your daily activities?",
+    )
+    
+    qol_appearance = forms.ChoiceField(
+        choices=QOL_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            "class": "sr-only peer",
+        }),
+        required=False,
+        label="How embarrassed or self-conscious did you feel?",
+    )
+    
+    qol_mood = forms.ChoiceField(
+        choices=QOL_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            "class": "sr-only peer",
+        }),
+        required=False,
+        label="How much did your hives affect your mood?",
+    )
 
     class Meta:
         model = DailyEntry
-        fields = ["itch_score", "hive_count_score", "notes", "took_antihistamine"]
+        fields = ["itch_score", "hive_count_score", "notes", "took_antihistamine", 
+                  "qol_sleep", "qol_daily_activities", "qol_appearance", "qol_mood"]
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
@@ -82,6 +128,15 @@ class DailyEntryForm(forms.ModelForm):
         instance.itch_score = int(self.cleaned_data["itch_score"])
         instance.hive_count_score = int(self.cleaned_data["hive_count_score"])
         instance.score = instance.itch_score + instance.hive_count_score
+        
+        # Handle QoL fields (convert empty strings to None)
+        for qol_field in ["qol_sleep", "qol_daily_activities", "qol_appearance", "qol_mood"]:
+            value = self.cleaned_data.get(qol_field)
+            if value is not None and value != "":
+                setattr(instance, qol_field, int(value))
+            else:
+                setattr(instance, qol_field, None)
+        
         if commit:
             instance.save()
         return instance
