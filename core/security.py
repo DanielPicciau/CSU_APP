@@ -446,18 +446,31 @@ SECURITY_HEADERS = {
     # Prevent MIME type sniffing
     'X-Content-Type-Options': 'nosniff',
     
-    # Enable XSS filter
+    # Enable XSS filter (legacy but still helps older browsers)
     'X-XSS-Protection': '1; mode=block',
     
-    # Referrer policy
+    # Referrer policy - strict for health data privacy
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     
-    # Permissions policy (formerly Feature-Policy)
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+    # Permissions policy - disable unnecessary browser features
+    'Permissions-Policy': (
+        'geolocation=(), '
+        'microphone=(), '
+        'camera=(), '
+        'payment=(), '
+        'usb=(), '
+        'magnetometer=(), '
+        'gyroscope=(), '
+        'accelerometer=()'
+    ),
+    
+    # Cross-Origin policies for additional isolation
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
     
     # Content Security Policy
     # Note: 'unsafe-inline' is required for inline scripts and styles in templates
-    # For better security, consider implementing nonce-based CSP in the future
+    # TODO: Implement nonce-based CSP for better security
     'Content-Security-Policy': (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; "
@@ -465,6 +478,9 @@ SECURITY_HEADERS = {
         "img-src 'self' data: https:; "
         "font-src 'self' data:; "
         "connect-src 'self' https:; "
-        "frame-ancestors 'none';"
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "upgrade-insecure-requests;"
     ),
 }

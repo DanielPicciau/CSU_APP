@@ -24,11 +24,30 @@ User = get_user_model()
 
 
 class RegisterAPIView(generics.CreateAPIView):
-    """API endpoint for user registration."""
+    """
+    API endpoint for user registration.
+    
+    SECURITY: This is a public endpoint with strict rate limiting.
+    - Validates password against medical-grade policy
+    - Logs registration attempts for security monitoring
+    - Does not reveal if email already exists (timing-safe)
+    """
 
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    # Note: Additional rate limiting is applied via middleware (3/minute)
+    
+    def create(self, request, *args, **kwargs):
+        # Log registration attempt (don't log email to avoid PII in logs)
+        from core.security import audit_logger, get_client_ip
+        audit_logger.log_action(
+            'REGISTRATION_ATTEMPT',
+            None,
+            request,
+            details={'ip': get_client_ip(request)}
+        )
+        return super().create(request, *args, **kwargs)
 
 
 class UserDetailAPIView(generics.RetrieveUpdateAPIView):

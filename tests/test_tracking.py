@@ -26,7 +26,7 @@ def create_user(db):
     """Factory fixture to create users."""
     def _create_user(
         email="test@example.com",
-        password="SecureP@ssw0rd123!",
+        password="XkT9$mNq@2rSvW#4pLz!",
         **kwargs
     ):
         return User.objects.create_user(

@@ -44,9 +44,12 @@ class PushSubscriptionCreateView(APIView):
                 )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            import traceback
+            # SECURITY: Never expose tracebacks to clients in production
+            import logging
+            logger = logging.getLogger('security')
+            logger.exception("Push subscription creation failed")
             return Response(
-                {"error": str(e), "traceback": traceback.format_exc()},
+                {"error": "Failed to create push subscription"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

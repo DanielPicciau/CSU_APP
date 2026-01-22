@@ -3,7 +3,7 @@
 {% block title %}History - CSU Tracker{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6 max-w-md mx-auto fade-in">
+<div class="px-4 py-6 max-w-md mx-auto animate-fade-in-up">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -11,17 +11,17 @@
             <p class="text-gray-600 mt-1">Last {{ days }} days</p>
         </div>
         <div class="flex gap-2">
-            <a href="?days=7" class="px-3 py-1 rounded-full text-sm {% if days == 7 %}bg-indigo-600 text-white{% else %}bg-gray-100 text-gray-600{% endif %}">7d</a>
-            <a href="?days=30" class="px-3 py-1 rounded-full text-sm {% if days == 30 %}bg-indigo-600 text-white{% else %}bg-gray-100 text-gray-600{% endif %}">30d</a>
-            <a href="?days=90" class="px-3 py-1 rounded-full text-sm {% if days == 90 %}bg-indigo-600 text-white{% else %}bg-gray-100 text-gray-600{% endif %}">90d</a>
+            <a href="?days=7" class="px-3 py-1 rounded-full text-sm btn-press transition-all duration-200 {% if days == 7 %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">7d</a>
+            <a href="?days=30" class="px-3 py-1 rounded-full text-sm btn-press transition-all duration-200 {% if days == 30 %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">30d</a>
+            <a href="?days=90" class="px-3 py-1 rounded-full text-sm btn-press transition-all duration-200 {% if days == 90 %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">90d</a>
         </div>
     </div>
     
     <!-- Stats Summary -->
-    <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
-        <div class="grid grid-cols-3 gap-4 text-center">
+    <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 card-lift">
+        <div class="grid grid-cols-3 gap-4 text-center stagger-animation stagger-fast">
             <div>
-                <div class="text-2xl font-bold text-indigo-600">{{ entries|length }}</div>
+                <div class="text-2xl font-bold text-indigo-600" data-count="{{ entries|length }}" data-duration="600">{{ entries|length }}</div>
                 <div class="text-xs text-gray-500">Entries</div>
             </div>
             <div>
@@ -40,7 +40,7 @@
     </div>
     
     <!-- Calendar View -->
-    <div class="bg-white rounded-2xl shadow-sm p-4 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 card-lift scroll-animate">
         <h3 class="font-semibold text-gray-900 mb-4">Daily Scores</h3>
         
         <div class="grid grid-cols-7 gap-1">
@@ -53,13 +53,14 @@
             {% for day in calendar_data %}
             {% if day.entry %}
             <a href="{% url 'tracking:log_entry_date' day.date|date:'Y-m-d' %}" 
-               class="aspect-square rounded-lg flex items-center justify-center text-xs font-medium text-white score-{{ day.entry.score }}"
-               title="{{ day.date|date:'M j' }}: Score {{ day.entry.score }}">
+               class="aspect-square rounded-lg flex items-center justify-center text-xs font-medium text-white score-{{ day.entry.score }} btn-press transition-all duration-200 hover:scale-110 hover:shadow-lg"
+               title="{{ day.date|date:'M j' }}: Score {{ day.entry.score }}"
+               style="animation: fadeInScale 0.3s ease forwards; animation-delay: {{ forloop.counter|divisibleby:7 }}0ms;">
                 {{ day.entry.score }}
             </a>
             {% elif day.date <= today %}
             <a href="{% url 'tracking:log_entry_date' day.date|date:'Y-m-d' %}" 
-               class="aspect-square rounded-lg flex items-center justify-center text-xs bg-gray-100 text-gray-400 hover:bg-gray-200"
+               class="aspect-square rounded-lg flex items-center justify-center text-xs bg-gray-100 text-gray-400 btn-press transition-all duration-200 hover:bg-gray-200 hover:scale-105"
                title="{{ day.date|date:'M j' }}: No entry">
                 ·
             </a>
@@ -75,25 +76,25 @@
         <div class="flex justify-center items-center gap-2 mt-4 text-xs text-gray-500">
             <span>Low</span>
             <div class="flex gap-1">
-                <div class="w-4 h-4 rounded score-0"></div>
-                <div class="w-4 h-4 rounded score-2"></div>
-                <div class="w-4 h-4 rounded score-4"></div>
-                <div class="w-4 h-4 rounded score-6"></div>
+                <div class="w-4 h-4 rounded score-0 transition-transform hover:scale-125"></div>
+                <div class="w-4 h-4 rounded score-2 transition-transform hover:scale-125"></div>
+                <div class="w-4 h-4 rounded score-4 transition-transform hover:scale-125"></div>
+                <div class="w-4 h-4 rounded score-6 transition-transform hover:scale-125"></div>
             </div>
             <span>High</span>
         </div>
     </div>
     
     <!-- Entry List -->
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden scroll-animate" style="animation-delay: 0.2s;">
         <h3 class="font-semibold text-gray-900 p-4 border-b">Recent Entries</h3>
         
         {% if entries %}
-        <div class="divide-y">
+        <div class="divide-y stagger-animation">
             {% for entry in entries %}
-            <a href="{% url 'tracking:log_entry_date' entry.date|date:'Y-m-d' %}" class="flex items-center justify-between p-4 hover:bg-gray-50">
+            <a href="{% url 'tracking:log_entry_date' entry.date|date:'Y-m-d' %}" class="flex items-center justify-between p-4 tap-highlight transition-all duration-200 hover:bg-gray-50 group">
                 <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white score-{{ entry.score }}">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white score-{{ entry.score }} transition-transform duration-200 group-hover:scale-110">
                         {{ entry.score }}
                     </div>
                     <div class="ml-3">
@@ -104,7 +105,7 @@
                         </div>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                 </svg>
             </a>
@@ -113,7 +114,7 @@
         {% else %}
         <div class="p-8 text-center text-gray-500">
             <p>No entries yet</p>
-            <a href="{% url 'tracking:log_entry' %}" class="inline-block mt-4 text-indigo-600 font-medium">Log your first entry →</a>
+            <a href="{% url 'tracking:log_entry' %}" class="inline-block mt-4 text-indigo-600 font-medium btn-press transition-colors hover:text-indigo-800">Log your first entry →</a>
         </div>
         {% endif %}
     </div>

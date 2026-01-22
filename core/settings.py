@@ -110,6 +110,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
     {"NAME": "core.validators.MedicalGradePasswordValidator"},
     {"NAME": "core.validators.NoPersonalInfoValidator"},
+    {"NAME": "core.validators.PwnedPasswordValidator"},  # Check against known data breaches
 ]
 
 # Internationalization
@@ -252,6 +253,13 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # Users will need to re-authenticate weekly for enhanced security
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_NAME = "__Host-sessionid" if not DEBUG else "sessionid"  # __Host- prefix for extra security
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Allow persistent sessions for PWA
+SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
+
+# CSRF Cookie settings
+CSRF_COOKIE_NAME = "__Host-csrftoken" if not DEBUG else "csrftoken"
+CSRF_COOKIE_SAMESITE = "Lax"
 
 # =============================================================================
 # SECURITY SETTINGS - Medical Grade
@@ -347,3 +355,62 @@ os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 
 # Testing flag
 TESTING = 'test' in sys.argv or 'pytest' in sys.modules
+
+# =============================================================================
+# CACHING CONFIGURATION - Performance Optimization
+# =============================================================================
+
+# Use local memory cache for development, Redis for production
+if DEBUG:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+            'TIMEOUT': 300,  # 5 minutes default
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000
+            }
+        }
+    }
+else:
+    # Production: Use Redis if available, otherwise use database cache
+    REDIS_URL = env("REDIS_URL", default="")
+    if REDIS_URL:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': REDIS_URL,
+                'TIMEOUT': 300,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                }
+            }
+        }
+    else:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+                'LOCATION': 'django_cache_table',
+                'TIMEOUT': 300,
+            }
+        }
+
+# Cache timeouts for different content types
+CACHE_TIMEOUTS = {
+    'user_profile': 60 * 5,      # 5 minutes
+    'dashboard_stats': 60 * 2,    # 2 minutes - updates frequently
+    'entry_list': 60 * 5,         # 5 minutes
+    'static_pages': 60 * 60,      # 1 hour
+}
+
+# =============================================================================
+# DATABASE QUERY OPTIMIZATION
+# =============================================================================
+
+# Enable persistent database connections (reduces connection overhead)
+CONN_MAX_AGE = 60 if not DEBUG else 0  # Keep connections alive for 60 seconds
+
+# For PostgreSQL: enable connection health checks
+if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
+    DATABASES['default'].setdefault('CONN_HEALTH_CHECKS', True)
+

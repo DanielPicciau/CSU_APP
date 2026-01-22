@@ -30,7 +30,7 @@ def create_user(db):
     """Factory fixture to create users."""
     def _create_user(
         email="test@example.com",
-        password="SecureP@ssw0rd123!",
+        password="XkT9$mNq@2rSvW#4pLz!",
         **kwargs
     ):
         return User.objects.create_user(
@@ -82,8 +82,8 @@ class TestInputValidation:
         url = reverse("accounts_api:register")
         data = {
             "email": "a" * 1000 + "@example.com",  # Very long email
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         # Email validation should reject this very long email
@@ -96,8 +96,8 @@ class TestInputValidation:
         url = reverse("accounts_api:register")
         data = {
             "email": "test\x00user@example.com",
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         # Should be rejected or sanitized
@@ -109,8 +109,8 @@ class TestInputValidation:
         url = reverse("accounts_api:register")
         data = {
             "email": "tëstüsér@example.com",
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         # Should either accept or reject cleanly
@@ -136,13 +136,13 @@ class TestAuthenticationSecurity:
         response = api_client.get(url)
         
         assert "password" not in response.data
-        assert "SecureP@ssw0rd123!" not in str(response.content)
+        assert "XkT9$mNq@2rSvW#4pLz!" not in str(response.content)
     
     def test_token_in_header_only(self, api_client, create_user):
         """Test authentication works via header only."""
         user = create_user()
         url = reverse("token_obtain_pair")
-        data = {"email": user.email, "password": "SecureP@ssw0rd123!"}
+        data = {"email": user.email, "password": "XkT9$mNq@2rSvW#4pLz!"}
         response = api_client.post(url, data, format="json")
         
         # Token should be in response body for obtaining
@@ -165,7 +165,7 @@ class TestAuthenticationSecurity:
         user = create_user()
         response = client.post(
             "/accounts/login/",
-            {"email": user.email, "password": "SecureP@ssw0rd123!"},
+            {"email": user.email, "password": "XkT9$mNq@2rSvW#4pLz!"},
         )
         
         if "sessionid" in response.cookies:

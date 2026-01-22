@@ -2,10 +2,69 @@
 Enhanced password validator for medical-grade security.
 """
 
+import hashlib
+import logging
+
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
 from core.security import PasswordPolicy
+
+logger = logging.getLogger('security')
+
+
+class PwnedPasswordValidator:
+    """
+    Check if password has been exposed in known data breaches.
+    Uses the Have I Been Pwned API with k-anonymity (only sends first 5 chars of hash).
+    """
+    
+    def validate(self, password, user=None):
+        # Check against HIBP API using k-anonymity
+        sha1_hash = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
+        prefix = sha1_hash[:5]
+        suffix = sha1_hash[5:]
+        
+        try:
+            import urllib.request
+            import urllib.error
+            
+            url = f'https://api.pwnedpasswords.com/range/{prefix}'
+            req = urllib.request.Request(
+                url,
+                headers={
+                    'User-Agent': 'CSU-Tracker-PasswordCheck',
+                    'Add-Padding': 'true',  # Prevent response length timing attacks
+                }
+            )
+            
+            with urllib.request.urlopen(req, timeout=3) as response:
+                hash_suffixes = response.read().decode('utf-8')
+                
+            for line in hash_suffixes.splitlines():
+                if ':' in line:
+                    hash_suffix, count = line.split(':')
+                    if hash_suffix == suffix:
+                        breach_count = int(count)
+                        if breach_count > 0:
+                            logger.warning(
+                                f"Password found in {breach_count} breaches (hash prefix: {prefix})"
+                            )
+                            raise ValidationError(
+                                _(
+                                    "This password has appeared in known data breaches. "
+                                    "Please choose a different password for your security."
+                                ),
+                                code='password_pwned',
+                            )
+        except (urllib.error.URLError, TimeoutError, OSError):
+            # If API is unavailable, allow password (fail open for availability)
+            # but log the failure for monitoring
+            logger.warning("HIBP API unavailable - password breach check skipped")
+            pass
+    
+    def get_help_text(self):
+        return _("Your password cannot be one that has appeared in known data breaches.")
 
 
 class MedicalGradePasswordValidator:

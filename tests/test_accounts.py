@@ -23,7 +23,8 @@ def create_user(db):
     """Factory fixture to create users."""
     def _create_user(
         email="test@example.com",
-        password="SecureP@ssw0rd123!",
+        # Use a unique password unlikely to be in breach databases
+        password="XkT9$mNq@2rSvW#4pLz!",
         **kwargs
     ):
         return User.objects.create_user(
@@ -55,8 +56,9 @@ class TestRegistration:
         url = reverse("accounts_api:register")
         data = {
             "email": "newuser@example.com",
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            # Unique password unlikely to be in breach databases
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
@@ -67,8 +69,8 @@ class TestRegistration:
         url = reverse("accounts_api:register")
         data = {
             "email": "newuser@example.com",
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "DifferentPassword1!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "DifferentPassword1!xyz",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -90,8 +92,8 @@ class TestRegistration:
         url = reverse("accounts_api:register")
         data = {
             "email": "existing@example.com",
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -111,7 +113,7 @@ class TestAuthentication:
         url = reverse("token_obtain_pair")
         data = {
             "email": user.email,
-            "password": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_200_OK
@@ -144,7 +146,7 @@ class TestAuthentication:
         user = create_user()
         # First, get tokens
         url = reverse("token_obtain_pair")
-        data = {"email": user.email, "password": "SecureP@ssw0rd123!"}
+        data = {"email": user.email, "password": "XkT9$mNq@2rSvW#4pLz!"}
         response = api_client.post(url, data, format="json")
         refresh_token = response.data["refresh"]
         
@@ -228,7 +230,7 @@ class TestPasswordManagement:
         client, user = authenticated_client
         url = reverse("accounts_api:password_change")
         data = {
-            "old_password": "SecureP@ssw0rd123!",
+            "old_password": "XkT9$mNq@2rSvW#4pLz!",
             "new_password": "NewSecureP@ss456!",
             "new_password_confirm": "NewSecureP@ss456!",
         }
@@ -261,8 +263,8 @@ class TestInputValidation:
         url = reverse("accounts_api:register")
         data = {
             "email": "a" * 500 + "@example.com",  # Very long email
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -272,8 +274,8 @@ class TestInputValidation:
         url = reverse("accounts_api:register")
         data = {
             "email": "notanemail",
-            "password": "SecureP@ssw0rd123!",
-            "password_confirm": "SecureP@ssw0rd123!",
+            "password": "XkT9$mNq@2rSvW#4pLz!",
+            "password_confirm": "XkT9$mNq@2rSvW#4pLz!",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST

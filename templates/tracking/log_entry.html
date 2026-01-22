@@ -3,11 +3,11 @@
 {% block title %}Log Entry - CSU Tracker{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6 max-w-md mx-auto fade-in">
+<div class="px-4 py-6 max-w-md mx-auto animate-fade-in-up">
     <!-- Header -->
     <div class="mb-6">
-        <a href="{% url 'home' %}" class="inline-flex items-center text-gray-600 mb-2">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <a href="{% url 'home' %}" class="inline-flex items-center text-gray-600 mb-2 btn-press transition-colors hover:text-indigo-600">
+            <svg class="w-5 h-5 mr-1 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
             Back
@@ -20,15 +20,15 @@
         </p>
     </div>
     
-    <form method="post" class="space-y-6">
+    <form method="post" class="space-y-6 stagger-animation" id="log-form">
         {% csrf_token %}
         
         <!-- Itch Score -->
-        <div>
+        <div class="scroll-animate">
             <label class="block text-lg font-semibold text-gray-900 mb-3">{{ form.itch_score.label }}</label>
             <div class="space-y-2">
                 {% for choice in form.itch_score %}
-                <label class="radio-card block border-gray-200 hover:border-gray-300">
+                <label class="radio-card radio-card-animated block border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-md cursor-pointer">
                     <div class="flex items-start">
                         {{ choice.tag }}
                         <div class="ml-3">
@@ -39,16 +39,16 @@
                 {% endfor %}
             </div>
             {% if form.itch_score.errors %}
-            <p class="mt-2 text-sm text-red-600">{{ form.itch_score.errors.0 }}</p>
+            <p class="mt-2 text-sm text-red-600 animate-shake">{{ form.itch_score.errors.0 }}</p>
             {% endif %}
         </div>
         
         <!-- Hive Count Score -->
-        <div>
+        <div class="scroll-animate" style="animation-delay: 0.1s;">
             <label class="block text-lg font-semibold text-gray-900 mb-3">{{ form.hive_count_score.label }}</label>
             <div class="space-y-2">
                 {% for choice in form.hive_count_score %}
-                <label class="radio-card block border-gray-200 hover:border-gray-300">
+                <label class="radio-card radio-card-animated block border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-md cursor-pointer">
                     <div class="flex items-start">
                         {{ choice.tag }}
                         <div class="ml-3">
@@ -59,12 +59,12 @@
                 {% endfor %}
             </div>
             {% if form.hive_count_score.errors %}
-            <p class="mt-2 text-sm text-red-600">{{ form.hive_count_score.errors.0 }}</p>
+            <p class="mt-2 text-sm text-red-600 animate-shake">{{ form.hive_count_score.errors.0 }}</p>
             {% endif %}
         </div>
         
         <!-- Antihistamine -->
-        <div class="bg-gray-50 rounded-xl p-4">
+        <div class="bg-gray-50 rounded-xl p-4 scroll-animate transition-all duration-200 hover:bg-gray-100" style="animation-delay: 0.2s;">
             <label class="flex items-center cursor-pointer">
                 {{ form.took_antihistamine }}
                 <span class="ml-3 font-medium text-gray-900">{{ form.took_antihistamine.label }}</span>
@@ -72,20 +72,20 @@
         </div>
         
         <!-- Notes -->
-        <div>
+        <div class="scroll-animate" style="animation-delay: 0.3s;">
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.notes.label }}</label>
             {{ form.notes }}
         </div>
         
         <!-- Submit -->
-        <button type="submit" class="w-full bg-indigo-600 text-white py-4 px-4 rounded-xl font-semibold text-lg hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        <button type="submit" class="w-full bg-indigo-600 text-white py-4 px-4 rounded-xl font-semibold text-lg btn-press transition-all duration-200 hover:bg-indigo-700 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
             {% if existing_entry %}Update Entry{% else %}Save Entry{% endif %}
         </button>
     </form>
     
     {% if existing_entry %}
-    <div class="mt-4 text-center">
-        <a href="{% url 'tracking:delete_entry' entry_date|date:'Y-m-d' %}" class="text-red-600 text-sm">Delete this entry</a>
+    <div class="mt-4 text-center animate-fade-in-up" style="animation-delay: 0.4s;">
+        <a href="{% url 'tracking:delete_entry' entry_date|date:'Y-m-d' %}" class="text-red-600 text-sm btn-press transition-colors hover:text-red-800">Delete this entry</a>
     </div>
     {% endif %}
 </div>
