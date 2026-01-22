@@ -174,6 +174,16 @@ class DeleteAccountForm(forms.Form):
         }),
         help_text="Type your email address to confirm account deletion.",
     )
+
+    current_password = forms.CharField(
+        label="Current Password",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-input",
+            "placeholder": "Enter your password",
+            "autocomplete": "current-password",
+        }),
+        help_text="Enter your password to confirm account deletion.",
+    )
     
     understand = forms.BooleanField(
         required=True,
@@ -192,6 +202,12 @@ class DeleteAccountForm(forms.Form):
         if email != self.user.email:
             raise forms.ValidationError("Email does not match your account email.")
         return email
+
+    def clean_current_password(self):
+        password = self.cleaned_data.get("current_password")
+        if not password or not self.user.check_password(password):
+            raise forms.ValidationError("Password is incorrect.")
+        return password
 
 
 class PasswordResetRequestForm(forms.Form):

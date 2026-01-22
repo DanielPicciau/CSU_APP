@@ -23,7 +23,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from django.utils import timezone
 
-from core.security import AccountLockout, get_client_ip, audit_logger, rate_limit
+from core.security import AccountLockout, get_client_ip, audit_logger, rate_limit, hash_sensitive_data
 
 from .forms import (
     CustomAuthenticationForm,
@@ -115,7 +115,13 @@ class CustomLoginView(LoginView):
             'LOGIN_FAILED',
             None,
             self.request,
-            details={'email_attempted': self.request.POST.get('username', '')[:50]},
+            details={
+                'email_attempted_hash': (
+                    hash_sensitive_data(self.request.POST.get('username', '').strip().lower())
+                    if self.request.POST.get('username')
+                    else None
+                )
+            },
             success=False
         )
         

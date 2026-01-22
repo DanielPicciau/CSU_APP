@@ -4,6 +4,7 @@ API views for the notifications app.
 
 import hashlib
 import hmac
+import logging
 from datetime import datetime
 
 import pytz
@@ -22,6 +23,8 @@ from .serializers import (
 )
 from .tasks import send_test_notification
 from tracking.models import DailyEntry
+
+logger = logging.getLogger("security")
 
 
 class PushSubscriptionCreateView(APIView):
@@ -105,10 +108,12 @@ class TestNotificationView(APIView):
         try:
             result = send_test_notification(request.user.id)
             return Response({"status": "sent", "result": result})
-        except Exception as e:
-            import traceback
-            return Response({
-                "status": "error",
-                "error": str(e),
-                "traceback": traceback.format_exc()
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as exc:
+            logger.exception(
+                "Test notification failed for user_id=%s",
+                request.user.id,
+            )
+            payload = {"status": "error", "error": "Failed to send test notification."}
+            if settings.DEBUG:
+                payload["detail"] = str(exc)
+            return Response(payload, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

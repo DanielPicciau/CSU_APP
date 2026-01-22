@@ -184,6 +184,13 @@
                        placeholder="{{ user.email }}" required>
                 <p class="form-helper">Type <strong>{{ user.email }}</strong> to confirm</p>
             </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_current_password">Confirm Your Password</label>
+                <input type="password" name="current_password" id="id_current_password" class="form-input"
+                       placeholder="Enter your password" autocomplete="current-password" required>
+                <p class="form-helper">Enter your current password to continue</p>
+            </div>
             
             <label class="confirm-checkbox">
                 <input type="checkbox" name="understand" required>

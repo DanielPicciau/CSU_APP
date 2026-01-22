@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     # Third party
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_celery_beat",
     # Local apps
@@ -363,6 +364,8 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 # =============================================================================
 # LOGGING CONFIGURATION - Audit Compliance
 # =============================================================================
+
+AUDIT_LOG_PII = env.bool("AUDIT_LOG_PII", default=DEBUG)
 
 LOGGING = {
     'version': 1,

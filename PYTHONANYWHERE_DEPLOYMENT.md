@@ -14,8 +14,9 @@ Complete deployment guide for **CSU-WebFlareUK.pythonanywhere.com**
 7. [Set Up Database](#7-set-up-database)
 8. [Configure Web App Settings](#8-configure-web-app-settings)
 9. [Push Notifications Setup](#9-push-notifications-setup)
-10. [Reload and Test](#10-reload-and-test)
-11. [Troubleshooting](#11-troubleshooting)
+10. [Secure Backups](#10-secure-backups)
+11. [Reload and Test](#11-reload-and-test)
+12. [Troubleshooting](#12-troubleshooting)
 
 ---
 
@@ -98,6 +99,13 @@ CSU_MAX_SCORE=42
 
 # Security
 CSRF_TRUSTED_ORIGINS=https://csu-webflareuk.pythonanywhere.com
+
+# Backups (optional but recommended)
+# BACKUP_ENCRYPTION_KEY should be a Fernet key
+# Example: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+BACKUP_ENCRYPTION_KEY=your-backup-fernet-key
+CSU_BACKUP_DIR=/home/WebFlareUK/CSU_backups
+CSU_BACKUP_RETENTION_DAYS=30
 ```
 
 Save with `Ctrl+O`, Enter, then `Ctrl+X` to exit.
@@ -229,7 +237,32 @@ Push notifications require HTTPS (which PythonAnywhere provides).
 
 ---
 
-## 10. Reload and Test
+## 10. Secure Backups
+
+PythonAnywhere Scheduled Tasks can run the secure backup script without Celery.
+
+### Create the backup directory (one-time):
+
+```bash
+mkdir -p /home/WebFlareUK/CSU_backups
+chmod 700 /home/WebFlareUK/CSU_backups
+```
+
+### Add a Scheduled Task (Tasks tab):
+
+Daily backups (free tier):
+
+```bash
+/home/WebFlareUK/CSU_APP/.venv/bin/python /home/WebFlareUK/CSU_APP/scripts/secure_backup.py --mode full --retention-days 30
+```
+
+If you want more frequent backups (paid tier), schedule hourly with the same command.
+
+Notes:
+- Backups are encrypted on disk with `BACKUP_ENCRYPTION_KEY` (falls back to `FERNET_KEYS` if unset).
+- Keep `/media/` and `/home/WebFlareUK/CSU_backups` **unmapped** from public static files.
+
+## 11. Reload and Test
 
 1. Go to the **Web** tab
 2. Click the big green **"Reload"** button
@@ -242,7 +275,7 @@ Push notifications require HTTPS (which PythonAnywhere provides).
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### "ModuleNotFoundError: No module named 'XXX'"
 

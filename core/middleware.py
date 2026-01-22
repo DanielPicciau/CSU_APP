@@ -87,8 +87,18 @@ class RateLimitMiddleware(MiddlewareMixin):
         '/favicon.ico',
         '/manifest.json',
         '/sw.js',
-        '/notifications/cron/',  # External cron service (authenticated via headers)
     ]
+
+    NORMALIZED_PATH_PREFIXES = {
+        '/accounts/password-reset/confirm/': '/accounts/password-reset/confirm/',
+    }
+
+    @classmethod
+    def normalize_rate_limit_path(cls, path: str) -> str:
+        for prefix, normalized in cls.NORMALIZED_PATH_PREFIXES.items():
+            if path.startswith(prefix):
+                return normalized
+        return path
     
     def process_request(self, request: HttpRequest) -> HttpResponse | None:
         # Skip rate limiting in tests
@@ -130,7 +140,8 @@ class RateLimitMiddleware(MiddlewareMixin):
         # Create cache key
         ip = get_client_ip(request)
         user_id = request.user.id if hasattr(request, 'user') and request.user.is_authenticated else 'anon'
-        cache_key = f"ratelimit:global:{request.path}:{ip}:{user_id}"
+        rate_limit_path = self.normalize_rate_limit_path(request.path)
+        cache_key = f"ratelimit:global:{rate_limit_path}:{ip}:{user_id}"
         
         # Check rate limit - gracefully handle cache failures
         try:
@@ -142,17 +153,17 @@ class RateLimitMiddleware(MiddlewareMixin):
         
         if current >= max_requests:
             logger.warning(
-                f"Rate limit exceeded: {request.path}",
+                f"Rate limit exceeded: {rate_limit_path}",
                 extra={
                     'ip': ip,
-                    'path': request.path,
+                    'path': rate_limit_path,
                     'limit': max_requests,
                 }
             )
             audit_logger.log_security_event(
                 'RATE_LIMIT_EXCEEDED',
                 request,
-                {'path': request.path, 'limit': max_requests}
+                {'path': rate_limit_path, 'limit': max_requests}
             )
             return JsonResponse(
                 {

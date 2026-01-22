@@ -317,11 +317,11 @@ class AuditLogger:
         success: bool = True,
     ):
         """Log an auditable action."""
+        user_email = user.email if user and user.is_authenticated else None
         log_data = {
             'timestamp': timezone.now().isoformat(),
             'action': action,
             'user_id': user.id if user and user.is_authenticated else None,
-            'user_email': user.email if user and user.is_authenticated else None,
             'ip_address': get_client_ip(request),
             'user_agent': request.META.get('HTTP_USER_AGENT', '')[:200],
             'path': request.path,
@@ -329,6 +329,10 @@ class AuditLogger:
             'success': success,
             'details': details or {},
         }
+        if settings.AUDIT_LOG_PII:
+            log_data['user_email'] = user_email
+        else:
+            log_data['user_email_hash'] = hash_sensitive_data(user_email) if user_email else None
         
         if success:
             self.logger.info(f"AUDIT: {action}", extra=log_data)

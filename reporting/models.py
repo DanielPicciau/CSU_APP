@@ -3,6 +3,7 @@ Models for export jobs and report scheduling.
 """
 
 from datetime import timedelta
+import uuid
 
 from django.conf import settings
 from django.db import models
@@ -25,7 +26,8 @@ class ExportJobStatus(models.TextChoices):
 def export_job_upload_path(instance, filename: str) -> str:
     """Store exports under user/date based paths."""
     date_segment = timezone.now().strftime("%Y/%m/%d")
-    return f"exports/user_{instance.user_id}/{date_segment}/{filename}"
+    token = uuid.uuid4().hex
+    return f"exports/user_{instance.user_id}/{date_segment}/{token}_{filename}"
 
 
 class ExportJob(models.Model):

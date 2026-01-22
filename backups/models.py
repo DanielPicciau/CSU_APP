@@ -2,6 +2,8 @@
 Models for user backup snapshots.
 """
 
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -16,7 +18,8 @@ class BackupStatus(models.TextChoices):
 def backup_upload_path(instance, filename: str) -> str:
     """Store backups under user/date based paths."""
     date_segment = timezone.now().strftime("%Y/%m/%d")
-    return f"backups/user_{instance.user_id}/{date_segment}/{filename}"
+    token = uuid.uuid4().hex
+    return f"backups/user_{instance.user_id}/{date_segment}/{token}_{filename}"
 
 
 class BackupSnapshot(models.Model):
