@@ -13,6 +13,10 @@ urlpatterns = [
     path("login/", views.CustomLoginView.as_view(), name="login"),
     path("logout/", views.CustomLogoutView.as_view(), name="logout"),
     path("register/", views.RegisterView.as_view(), name="register"),
+    path("password-reset/", views.password_reset_request_view, name="password_reset_request"),
+    path("password-reset/confirm/<uidb64>/<token>/", views.password_reset_confirm_view, name="password_reset_confirm"),
+    path("mfa/", views.mfa_setup_view, name="mfa_setup"),
+    path("mfa/verify/", views.mfa_verify_view, name="mfa_verify"),
     
     # Account management
     path("profile/", views.profile_view, name="profile"),

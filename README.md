@@ -473,18 +473,25 @@ Set these in production:
 ```bash
 DEBUG=False
 SECRET_KEY=<strong-random-key>
+FERNET_KEYS=<fernet-key>
 ALLOWED_HOSTS=yourdomain.com
 DATABASE_URL=postgres://user:pass@host:5432/dbname
 REDIS_URL=redis://host:6379/0
 VAPID_PRIVATE_KEY=<your-private-key>
 VAPID_PUBLIC_KEY=<your-public-key>
 VAPID_ADMIN_EMAIL=admin@yourdomain.com
+SECURE_SSL_REDIRECT=True
 CSRF_TRUSTED_ORIGINS=https://yourdomain.com
+CORS_ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
 ### HTTPS Requirement
 
-Web Push requires HTTPS in production. Use a reverse proxy (nginx) with SSL certificates (Let's Encrypt).
+TLS is required in production. Ensure your reverse proxy (nginx) terminates SSL and forwards `X-Forwarded-Proto: https` so Django enforces HTTPS and HSTS correctly.
+
+### Encryption at Rest
+
+Sensitive fields are encrypted with Fernet before being stored in the database. Set `FERNET_KEYS` (comma-separated for rotation) and keep it secret. Without this key, encrypted data cannot be recovered.
 
 ### Static Files
 

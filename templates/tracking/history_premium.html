@@ -290,6 +290,24 @@
     color: var(--text-primary);
     box-shadow: var(--shadow-sm);
 }
+
+.history-limit-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-warning-50);
+    border: 1px solid var(--color-warning-200);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .history-limit-banner {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
 </style>
 {% endblock %}
 
@@ -324,6 +342,15 @@
             <span><span class="summary-bar__value {% if missing_count > 0 %}summary-bar__value--warning{% endif %}">{{ missing_count }}</span> missing</span>
         </div>
     </div>
+
+    {% if history_limited %}
+    <div class="history-limit-banner fade-in">
+        <span>Free tier shows the last {{ history_limit_days }} days.</span>
+        {% if has_older_entries %}
+        <a href="{% url 'subscriptions:premium' %}" style="font-weight: 600; text-decoration: underline;">Upgrade</a>
+        {% endif %}
+    </div>
+    {% endif %}
     
     <!-- View Toggle -->
     <div class="view-tabs fade-in" role="tablist">
@@ -359,11 +386,19 @@
         <!-- Month Navigation -->
         <div class="card__header">
             <div class="month-nav" style="width: 100%;">
+                {% if prev_month %}
                 <a href="?days={{ days }}&view=calendar&month={{ prev_month|date:'Y-m' }}" class="month-nav__btn" aria-label="Previous month">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M15 18l-6-6 6-6"/>
                     </svg>
                 </a>
+                {% else %}
+                <button class="month-nav__btn" disabled aria-label="Previous month">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                {% endif %}
                 <h2 class="month-nav__title">{{ current_month|date:"F Y" }}</h2>
                 {% if next_month <= today %}
                 <a href="?days={{ days }}&view=calendar&month={{ next_month|date:'Y-m' }}" class="month-nav__btn" aria-label="Next month">

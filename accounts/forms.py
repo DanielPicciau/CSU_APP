@@ -194,6 +194,80 @@ class DeleteAccountForm(forms.Form):
         return email
 
 
+class PasswordResetRequestForm(forms.Form):
+    """Request a password reset email."""
+
+    email = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(attrs={
+            "class": "form-input",
+            "placeholder": "your@email.com",
+            "autocomplete": "email",
+        }),
+    )
+
+
+class PasswordResetConfirmForm(forms.Form):
+    """Set a new password using a reset token."""
+
+    new_password1 = forms.CharField(
+        label="New Password",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-input",
+            "placeholder": "Enter new password",
+            "autocomplete": "new-password",
+        }),
+    )
+    new_password2 = forms.CharField(
+        label="Confirm New Password",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-input",
+            "placeholder": "Confirm new password",
+            "autocomplete": "new-password",
+        }),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("new_password1")
+        password2 = cleaned.get("new_password2")
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("Passwords do not match.")
+        if password1:
+            validate_password(password1)
+        return cleaned
+
+
+class MFASetupForm(forms.Form):
+    """Verify TOTP during setup."""
+
+    code = forms.CharField(
+        label="Authenticator code",
+        max_length=6,
+        widget=forms.TextInput(attrs={
+            "class": "form-input",
+            "placeholder": "123456",
+            "autocomplete": "one-time-code",
+            "inputmode": "numeric",
+        }),
+    )
+
+
+class MFAVerifyForm(forms.Form):
+    """Verify MFA during login."""
+
+    code = forms.CharField(
+        label="Authenticator code",
+        max_length=6,
+        widget=forms.TextInput(attrs={
+            "class": "form-input",
+            "placeholder": "123456",
+            "autocomplete": "one-time-code",
+            "inputmode": "numeric",
+        }),
+    )
+
+
 # =============================================================================
 # ONBOARDING FORMS
 # =============================================================================

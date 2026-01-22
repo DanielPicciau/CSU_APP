@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from tracking.models import DailyEntry
+from subscriptions.models import Subscription, SubscriptionStatus
 
 User = get_user_model()
 
@@ -141,6 +142,46 @@ class TestEntryRetrieval:
             assert len(data["results"]) == 0
         else:
             assert len(data) == 0
+
+
+@pytest.mark.django_db
+class TestHistoryLimits:
+    """Tests for free vs premium history access."""
+
+    def test_free_user_history_limit_blocks_old_entries(self, authenticated_client):
+        client, user = authenticated_client
+        old_date = date.today() - timedelta(days=40)
+        DailyEntry.objects.create(user=user, date=old_date, score=2)
+
+        url = reverse("tracking_api:entries")
+        response = client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data
+        results = data["results"] if isinstance(data, dict) and "results" in data else data
+        dates = [item["date"] for item in results]
+        assert old_date.isoformat() not in dates
+
+        detail_url = reverse("tracking_api:entry_detail", kwargs={"date": old_date.isoformat()})
+        detail_response = client.get(detail_url)
+        assert detail_response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_premium_user_can_access_old_entries(self, authenticated_client):
+        client, user = authenticated_client
+        Subscription.objects.create(user=user, status=SubscriptionStatus.ACTIVE)
+        old_date = date.today() - timedelta(days=40)
+        DailyEntry.objects.create(user=user, date=old_date, score=2)
+
+        url = reverse("tracking_api:entries")
+        response = client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data
+        results = data["results"] if isinstance(data, dict) and "results" in data else data
+        dates = [item["date"] for item in results]
+        assert old_date.isoformat() in dates
+
+        detail_url = reverse("tracking_api:entry_detail", kwargs={"date": old_date.isoformat()})
+        detail_response = client.get(detail_url)
+        assert detail_response.status_code == status.HTTP_200_OK
 
 
 # =============================================================================

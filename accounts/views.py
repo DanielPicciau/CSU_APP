@@ -2,16 +2,28 @@
 Views for the accounts app (Django templates).
 """
 
+import logging
+
 from django.contrib import messages
+import secrets
+from datetime import timedelta
+
+import pyotp
+from django.conf import settings
 from django.contrib.auth import login, logout, update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.sessions.models import Session
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes, force_str
+from django.views.decorators.http import require_http_methods
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from django.utils import timezone
 
-from core.security import AccountLockout, get_client_ip, audit_logger
+from core.security import AccountLockout, get_client_ip, audit_logger, rate_limit
 
 from .forms import (
     CustomAuthenticationForm,
@@ -19,6 +31,10 @@ from .forms import (
     ProfileForm,
     CustomPasswordChangeForm,
     DeleteAccountForm,
+    PasswordResetRequestForm,
+    PasswordResetConfirmForm,
+    MFASetupForm,
+    MFAVerifyForm,
     OnboardingAccountForm,
     OnboardingNameForm,
     OnboardingAgeForm,
@@ -32,9 +48,10 @@ from .forms import (
     OnboardingReminderForm,
 )
 
-from .models import COMMON_MEDICATIONS, UserMedication
+from .models import COMMON_MEDICATIONS, UserMedication, PasswordResetToken, UserMFA
 
 User = get_user_model()
+logger = logging.getLogger("security")
 
 
 class CustomLoginView(LoginView):
@@ -72,8 +89,21 @@ class CustomLoginView(LoginView):
         identifier = self.get_lockout_identifier(self.request)
         AccountLockout.reset_attempts(identifier)
         # Audit log successful login
-        audit_logger.log_login(form.get_user(), self.request, success=True)
-        return super().form_valid(form)
+        user = form.get_user()
+        audit_logger.log_login(user, self.request, success=True)
+
+        # If MFA is enabled (or required for admins), defer login until verified
+        mfa_required = user.is_staff or user.is_superuser
+        has_mfa = hasattr(user, "mfa") and user.mfa.enabled
+        if mfa_required or has_mfa:
+            self.request.session["mfa_pending_user_id"] = str(user.pk)
+            self.request.session["mfa_next"] = str(self.get_success_url())
+            return redirect("accounts:mfa_verify")
+
+        response = super().form_valid(form)
+        # Rotate session key on login
+        self.request.session.cycle_key()
+        return response
     
     def form_invalid(self, form):
         """Track failed login attempt and log it."""
@@ -178,6 +208,7 @@ def change_password_view(request):
             cache.delete(rate_key)
             # Keep user logged in after password change
             update_session_auth_hash(request, user)
+            request.session.cycle_key()
             # Audit log the password change
             audit_logger.log_action('PASSWORD_CHANGE', user, request)
             messages.success(request, "Your password has been changed successfully!")
@@ -209,6 +240,217 @@ def delete_account_view(request):
     return render(request, "accounts/delete_account.html", {
         "form": form,
     })
+
+
+def _invalidate_user_sessions(user, current_session_key: str | None = None) -> int:
+    """Invalidate all sessions for a user except the current session (optional)."""
+    sessions_invalidated = 0
+    try:
+        all_sessions = Session.objects.filter(expire_date__gte=timezone.now())
+        for session in all_sessions:
+            if current_session_key and session.session_key == current_session_key:
+                continue
+            try:
+                session_data = session.get_decoded()
+                if session_data.get('_auth_user_id') == str(user.pk):
+                    session.delete()
+                    sessions_invalidated += 1
+            except Exception:
+                continue
+    except Exception as exc:
+        logger.warning(f"Failed to invalidate sessions: {exc}")
+    return sessions_invalidated
+
+
+@rate_limit("password_reset", 5, 900)
+@require_http_methods(["GET", "POST"])
+def password_reset_request_view(request):
+    """Request a password reset link (never reveal if email exists)."""
+    if request.method == "POST":
+        form = PasswordResetRequestForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data["email"].strip().lower()
+
+            # Always respond with a generic message
+            messages.success(
+                request,
+                "If an account exists for that email, we've sent a reset link.",
+            )
+
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            if user:
+                # Invalidate existing unused tokens
+                PasswordResetToken.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+
+                token = secrets.token_urlsafe(32)
+                token_hash = PasswordResetToken.hash_token(token)
+                ttl_minutes = getattr(settings, "PASSWORD_RESET_TOKEN_TTL_MINUTES", 30)
+                expires_at = timezone.now() + timedelta(minutes=ttl_minutes)
+
+                PasswordResetToken.objects.create(
+                    user=user,
+                    token_hash=token_hash,
+                    expires_at=expires_at,
+                    requested_ip=get_client_ip(request),
+                    requested_user_agent=request.META.get("HTTP_USER_AGENT", "")[:200],
+                )
+
+                uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+                reset_url = request.build_absolute_uri(
+                    reverse_lazy("accounts:password_reset_confirm", kwargs={"uidb64": uidb64, "token": token})
+                )
+
+                subject = "Reset your CSU Tracker password"
+                message = (
+                    "We received a request to reset your CSU Tracker password.\n\n"
+                    f"Reset your password using this link (valid for {ttl_minutes} minutes):\n"
+                    f"{reset_url}\n\n"
+                    "If you did not request this, you can ignore this email."
+                )
+                try:
+                    send_mail(
+                        subject,
+                        message,
+                        getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@csutracker.local"),
+                        [user.email],
+                        fail_silently=True,
+                    )
+                    audit_logger.log_action("PASSWORD_RESET_REQUEST", user, request)
+                except Exception as exc:
+                    logger.warning(f"Failed to send password reset email: {exc}")
+
+            return redirect("accounts:login")
+    else:
+        form = PasswordResetRequestForm()
+
+    return render(request, "accounts/password_reset_request.html", {"form": form})
+
+
+@rate_limit("password_reset_confirm", 10, 900)
+@require_http_methods(["GET", "POST"])
+def password_reset_confirm_view(request, uidb64: str, token: str):
+    """Confirm password reset using a single-use, hashed token."""
+    try:
+        user_id = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=user_id)
+    except Exception:
+        user = None
+
+    if request.method == "POST":
+        form = PasswordResetConfirmForm(request.POST)
+        if form.is_valid():
+            if not user:
+                messages.error(request, "This reset link is invalid or has expired.")
+                return redirect("accounts:password_reset_request")
+
+            token_hash = PasswordResetToken.hash_token(token)
+            reset_record = PasswordResetToken.objects.filter(
+                user=user,
+                token_hash=token_hash,
+                used_at__isnull=True,
+                expires_at__gte=timezone.now(),
+            ).first()
+
+            if not reset_record:
+                messages.error(request, "This reset link is invalid or has expired.")
+                return redirect("accounts:password_reset_request")
+
+            user.set_password(form.cleaned_data["new_password1"])
+            user.save()
+            reset_record.mark_used()
+            _invalidate_user_sessions(user)
+            audit_logger.log_action("PASSWORD_RESET_CONFIRM", user, request)
+            messages.success(request, "Your password has been reset. Please sign in.")
+            return redirect("accounts:login")
+    else:
+        form = PasswordResetConfirmForm()
+
+    return render(request, "accounts/password_reset_confirm.html", {"form": form})
+
+
+@rate_limit("mfa_setup", 10, 600)
+@require_http_methods(["GET", "POST"])
+def mfa_setup_view(request):
+    """Enable MFA for a logged-in user."""
+    user = request.user if request.user.is_authenticated else None
+    if not user:
+        pending_user_id = request.session.get("mfa_pending_user_id")
+        if not pending_user_id:
+            return redirect("accounts:login")
+        try:
+            user = User.objects.get(pk=pending_user_id)
+        except User.DoesNotExist:
+            return redirect("accounts:login")
+    mfa, _ = UserMFA.objects.get_or_create(user=user, defaults={"secret": pyotp.random_base32()})
+
+    if request.method == "POST":
+        form = MFASetupForm(request.POST)
+        if form.is_valid():
+            totp = pyotp.TOTP(mfa.secret)
+            if totp.verify(form.cleaned_data["code"], valid_window=1):
+                mfa.enabled = True
+                mfa.confirmed_at = timezone.now()
+                mfa.last_used_at = timezone.now()
+                mfa.save(update_fields=["enabled", "confirmed_at", "last_used_at"])
+                messages.success(request, "MFA enabled successfully.")
+                if request.user.is_authenticated:
+                    return redirect("accounts:profile")
+                return redirect("accounts:mfa_verify")
+            messages.error(request, "Invalid code. Please try again.")
+    else:
+        form = MFASetupForm()
+
+    provisioning_uri = pyotp.TOTP(mfa.secret).provisioning_uri(
+        name=user.email,
+        issuer_name="CSU Tracker",
+    )
+
+    return render(request, "accounts/mfa_setup.html", {
+        "form": form,
+        "secret": mfa.secret,
+        "provisioning_uri": provisioning_uri,
+        "is_enabled": mfa.enabled,
+    })
+
+
+@rate_limit("mfa_verify", 10, 600)
+@require_http_methods(["GET", "POST"])
+def mfa_verify_view(request):
+    """Verify MFA during login flow."""
+    pending_user_id = request.session.get("mfa_pending_user_id")
+    if not pending_user_id:
+        return redirect("accounts:login")
+
+    try:
+        user = User.objects.get(pk=pending_user_id)
+    except User.DoesNotExist:
+        request.session.pop("mfa_pending_user_id", None)
+        return redirect("accounts:login")
+
+    mfa = getattr(user, "mfa", None)
+    if not mfa or not mfa.enabled:
+        # Require admins to set up MFA before login
+        if user.is_staff or user.is_superuser:
+            return redirect("accounts:mfa_setup")
+        return redirect("accounts:login")
+
+    if request.method == "POST":
+        form = MFAVerifyForm(request.POST)
+        if form.is_valid():
+            totp = pyotp.TOTP(mfa.secret)
+            if totp.verify(form.cleaned_data["code"], valid_window=1):
+                login(request, user)
+                request.session.cycle_key()
+                request.session.pop("mfa_pending_user_id", None)
+                next_url = request.session.pop("mfa_next", None)
+                mfa.last_used_at = timezone.now()
+                mfa.save(update_fields=["last_used_at"])
+                return redirect(next_url or "home")
+            messages.error(request, "Invalid code. Please try again.")
+    else:
+        form = MFAVerifyForm()
+
+    return render(request, "accounts/mfa_verify.html", {"form": form})
 
 
 @login_required

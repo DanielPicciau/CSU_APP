@@ -3,7 +3,13 @@ Custom User model and Profile for CSU Tracker.
 """
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.sessions.models import Session
 from django.db import models
+from django.utils import timezone
+from django.utils.crypto import salted_hmac
+
+from core.fields import EncryptedCharField, EncryptedDateField
+
 
 
 class UserManager(BaseUserManager):
@@ -126,7 +132,7 @@ class Profile(models.Model):
     )
     
     # Personal info
-    display_name = models.CharField(
+    display_name = EncryptedCharField(
         max_length=100,
         blank=True,
         default="",
@@ -134,7 +140,7 @@ class Profile(models.Model):
     )
     
     # Onboarding fields
-    date_of_birth = models.DateField(
+    date_of_birth = EncryptedDateField(
         null=True,
         blank=True,
         help_text="User's date of birth",
@@ -146,7 +152,7 @@ class Profile(models.Model):
         help_text="User's age (calculated from DOB)",
     )
     
-    gender = models.CharField(
+    gender = EncryptedCharField(
         max_length=20,
         choices=GENDER_CHOICES,
         blank=True,
@@ -154,7 +160,7 @@ class Profile(models.Model):
         help_text="How user describes their gender",
     )
     
-    csu_diagnosis = models.CharField(
+    csu_diagnosis = EncryptedCharField(
         max_length=10,
         choices=CSU_DIAGNOSIS_CHOICES,
         blank=True,
@@ -163,7 +169,7 @@ class Profile(models.Model):
     )
     
     # Treatment context (metadata only - NOT medical advice)
-    has_prescribed_medication = models.CharField(
+    has_prescribed_medication = EncryptedCharField(
         max_length=20,
         choices=MEDICATION_STATUS_CHOICES,
         blank=True,
@@ -256,8 +262,95 @@ class Profile(models.Model):
         return self.user.email[0].upper()
 
 
+class UserMFA(models.Model):
+    """TOTP-based MFA configuration for a user."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="mfa",
+    )
+
+    secret = EncryptedCharField(
+        max_length=64,
+        help_text="Base32-encoded TOTP secret",
+    )
+
+    enabled = models.BooleanField(
+        default=False,
+        help_text="Whether MFA is enabled for this user",
+    )
+
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When MFA was confirmed",
+    )
+
+    last_used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last successful MFA verification",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "MFA configuration"
+        verbose_name_plural = "MFA configurations"
+
+    def __str__(self) -> str:
+        return f"MFA for {self.user.email} ({'enabled' if self.enabled else 'disabled'})"
+
+
+class PasswordResetToken(models.Model):
+    """Single-use password reset tokens stored hashed."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="password_reset_tokens",
+    )
+
+    token_hash = models.CharField(
+        max_length=64,
+        help_text="SHA256-based token hash",
+        db_index=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    requested_ip = models.CharField(max_length=45, blank=True, default="")
+    requested_user_agent = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        verbose_name = "password reset token"
+        verbose_name_plural = "password reset tokens"
+        indexes = [
+            models.Index(fields=["user", "token_hash"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Password reset token for {self.user.email}"
+
+    @staticmethod
+    def hash_token(token: str) -> str:
+        return salted_hmac("password-reset", token).hexdigest()
+
+    def is_valid(self) -> bool:
+        return self.used_at is None and self.expires_at >= timezone.now()
+
+    def mark_used(self) -> None:
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])
+
+
 # Signal to create profile when user is created
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 
@@ -273,6 +366,42 @@ def save_user_profile(sender, instance, **kwargs):
     """Save the Profile instance when the User is saved."""
     if hasattr(instance, "profile"):
         instance.profile.save()
+
+
+@receiver(pre_save, sender=User)
+def stash_user_privilege(sender, instance, **kwargs):
+    """Store previous privilege flags for comparison after save."""
+    if not instance.pk:
+        return
+    try:
+        previous = sender.objects.get(pk=instance.pk)
+        instance._prev_is_staff = previous.is_staff
+        instance._prev_is_superuser = previous.is_superuser
+    except Exception:
+        return
+
+
+@receiver(post_save, sender=User)
+def invalidate_sessions_on_privilege_change(sender, instance, created, **kwargs):
+    """Invalidate sessions when staff/superuser status changes."""
+    if created:
+        return
+    prev_staff = getattr(instance, "_prev_is_staff", instance.is_staff)
+    prev_superuser = getattr(instance, "_prev_is_superuser", instance.is_superuser)
+    if prev_staff == instance.is_staff and prev_superuser == instance.is_superuser:
+        return
+
+    try:
+        sessions = Session.objects.filter(expire_date__gte=timezone.now())
+        for session in sessions:
+            try:
+                session_data = session.get_decoded()
+                if session_data.get('_auth_user_id') == str(instance.pk):
+                    session.delete()
+            except Exception:
+                continue
+    except Exception:
+        pass
 
 
 class UserMedication(models.Model):

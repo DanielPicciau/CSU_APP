@@ -3,19 +3,23 @@ Views for Cura Premium subscription management.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 import stripe
 
-from .models import Subscription, SubscriptionStatus, user_is_premium
+from audit.utils import log_event
+from .entitlements import invalidate_entitlements_cache
+from .models import Subscription, SubscriptionPlan, SubscriptionStatus, user_is_premium
+from core.security import hash_sensitive_data
 
 
 logger = logging.getLogger(__name__)
@@ -75,6 +79,10 @@ def create_checkout_session(request):
         
         # Get or create Stripe customer
         subscription, created = Subscription.objects.get_or_create(user=request.user)
+
+        if not subscription.plan:
+            subscription.plan = SubscriptionPlan.get_default_plan()
+            subscription.save(update_fields=["plan"])
         
         if not subscription.stripe_customer_id:
             # Create new Stripe customer
@@ -179,6 +187,20 @@ def cancel_subscription_view(request):
         
         subscription.cancel_at_period_end = True
         subscription.save()
+
+        log_event(
+            action="subscription_cancel_scheduled",
+            target_type="subscription",
+            target_id=subscription.id,
+            actor=request.user,
+            metadata={
+                "current_period_end": (
+                    subscription.current_period_end.isoformat()
+                    if subscription.current_period_end
+                    else None
+                ),
+            },
+        )
         
         messages.success(
             request,
@@ -225,6 +247,13 @@ def reactivate_subscription_view(request):
         
         subscription.cancel_at_period_end = False
         subscription.save()
+
+        log_event(
+            action="subscription_reactivated",
+            target_type="subscription",
+            target_id=subscription.id,
+            actor=request.user,
+        )
         
         messages.success(request, "Your subscription has been reactivated!")
         
@@ -332,6 +361,11 @@ def update_subscription_from_stripe(user, stripe_sub):
     Update local subscription record from Stripe subscription object.
     """
     subscription, created = Subscription.objects.get_or_create(user=user)
+    previous_status = subscription.status
+    previous_cancel = subscription.cancel_at_period_end
+
+    if not subscription.plan:
+        subscription.plan = SubscriptionPlan.get_default_plan()
     
     subscription.stripe_subscription_id = stripe_sub.id
     subscription.stripe_customer_id = stripe_sub.customer
@@ -353,8 +387,31 @@ def update_subscription_from_stripe(user, stripe_sub):
         )
     if stripe_sub.get("canceled_at"):
         subscription.canceled_at = datetime.fromtimestamp(stripe_sub["canceled_at"])
+    if stripe_sub.get("trial_end"):
+        subscription.trial_end = datetime.fromtimestamp(stripe_sub["trial_end"])
+
+    if stripe_sub.status == SubscriptionStatus.PAST_DUE:
+        grace_days = getattr(settings, "SUBSCRIPTION_GRACE_DAYS", 7)
+        if not subscription.grace_period_end or subscription.grace_period_end < timezone.now():
+            subscription.grace_period_end = timezone.now() + timedelta(days=grace_days)
+    else:
+        subscription.grace_period_end = None
     
     subscription.save()
+    invalidate_entitlements_cache(user.id)
+
+    if previous_status != subscription.status or previous_cancel != subscription.cancel_at_period_end:
+        log_event(
+            action="subscription_updated",
+            target_type="subscription",
+            target_id=subscription.id,
+            actor=user,
+            metadata={
+                "from_status": previous_status,
+                "to_status": subscription.status,
+                "cancel_at_period_end": subscription.cancel_at_period_end,
+            },
+        )
     return subscription
 
 
@@ -365,7 +422,11 @@ def handle_subscription_created(stripe_sub):
     try:
         subscription = Subscription.objects.get(stripe_customer_id=customer_id)
         update_subscription_from_stripe(subscription.user, stripe_sub)
-        logger.info(f"Subscription created for user {subscription.user.email}")
+        logger.info(
+            "Subscription created for user_id=%s user_hash=%s",
+            subscription.user.id,
+            hash_sensitive_data(subscription.user.email),
+        )
     except Subscription.DoesNotExist:
         logger.warning(f"No local subscription found for customer {customer_id}")
 
@@ -377,14 +438,22 @@ def handle_subscription_updated(stripe_sub):
     try:
         subscription = Subscription.objects.get(stripe_subscription_id=subscription_id)
         update_subscription_from_stripe(subscription.user, stripe_sub)
-        logger.info(f"Subscription updated for user {subscription.user.email}")
+        logger.info(
+            "Subscription updated for user_id=%s user_hash=%s",
+            subscription.user.id,
+            hash_sensitive_data(subscription.user.email),
+        )
     except Subscription.DoesNotExist:
         # Try by customer ID
         customer_id = stripe_sub["customer"]
         try:
             subscription = Subscription.objects.get(stripe_customer_id=customer_id)
             update_subscription_from_stripe(subscription.user, stripe_sub)
-            logger.info(f"Subscription updated for user {subscription.user.email}")
+            logger.info(
+                "Subscription updated for user_id=%s user_hash=%s",
+                subscription.user.id,
+                hash_sensitive_data(subscription.user.email),
+            )
         except Subscription.DoesNotExist:
             logger.warning(f"No local subscription found for {subscription_id}")
 
@@ -397,8 +466,20 @@ def handle_subscription_deleted(stripe_sub):
         subscription = Subscription.objects.get(stripe_subscription_id=subscription_id)
         subscription.status = SubscriptionStatus.CANCELED
         subscription.canceled_at = datetime.now()
+        subscription.grace_period_end = None
         subscription.save()
-        logger.info(f"Subscription canceled for user {subscription.user.email}")
+        log_event(
+            action="subscription_canceled",
+            target_type="subscription",
+            target_id=subscription.id,
+            actor=None,
+            metadata={"provider_subscription_id": subscription.stripe_subscription_id},
+        )
+        logger.info(
+            "Subscription canceled for user_id=%s user_hash=%s",
+            subscription.user.id,
+            hash_sensitive_data(subscription.user.email),
+        )
     except Subscription.DoesNotExist:
         logger.warning(f"No local subscription found for {subscription_id}")
 
@@ -415,7 +496,11 @@ def handle_payment_succeeded(invoice):
         init_stripe()
         stripe_sub = stripe.Subscription.retrieve(subscription_id)
         update_subscription_from_stripe(subscription.user, stripe_sub)
-        logger.info(f"Payment succeeded for user {subscription.user.email}")
+        logger.info(
+            "Payment succeeded for user_id=%s user_hash=%s",
+            subscription.user.id,
+            hash_sensitive_data(subscription.user.email),
+        )
     except Subscription.DoesNotExist:
         logger.warning(f"No local subscription found for {subscription_id}")
 
@@ -432,6 +517,10 @@ def handle_payment_failed(invoice):
         init_stripe()
         stripe_sub = stripe.Subscription.retrieve(subscription_id)
         update_subscription_from_stripe(subscription.user, stripe_sub)
-        logger.warning(f"Payment failed for user {subscription.user.email}")
+        logger.warning(
+            "Payment failed for user_id=%s user_hash=%s",
+            subscription.user.id,
+            hash_sensitive_data(subscription.user.email),
+        )
     except Subscription.DoesNotExist:
         logger.warning(f"No local subscription found for {subscription_id}")

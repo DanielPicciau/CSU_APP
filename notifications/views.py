@@ -29,7 +29,6 @@ def verify_cron_token(request) -> bool:
     Accepts token via:
     1. Authorization header (preferred): "Bearer <token>"
     2. X-Cron-Token header (alternative)
-    3. Query string (legacy support for cron-job.org)
     
     Uses constant-time comparison to prevent timing attacks.
     """
@@ -44,10 +43,6 @@ def verify_cron_token(request) -> bool:
     else:
         # Try X-Cron-Token header (alternative)
         token = request.headers.get('X-Cron-Token', '')
-    
-    # Fallback to query string (for cron-job.org compatibility)
-    if not token:
-        token = request.GET.get('token', '')
     
     if not token:
         return False
@@ -138,7 +133,7 @@ def cron_send_reminders(request):
     Authentication: Use Authorization header with Bearer token (preferred)
     Example: Authorization: Bearer YOUR_SECRET
     
-    Alternative: X-Cron-Token header or ?token= query param (legacy)
+    Alternative: X-Cron-Token header
     
     Add ?force=1 to bypass all checks and send immediately (for testing).
     

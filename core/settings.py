@@ -2,11 +2,14 @@
 Django settings for CSU Tracker project.
 """
 
+import base64
+import hashlib
 import os
 from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,16 +19,32 @@ env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     CSU_MAX_SCORE=(int, 42),
+    FREE_HISTORY_DAYS=(int, 30),
+    SUBSCRIPTION_GRACE_DAYS=(int, 7),
+    ENTITLEMENTS_CACHE_TTL=(int, 300),
 )
 
 # Read .env file
 environ.Env.read_env(BASE_DIR / ".env")
 
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = env("DEBUG")
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG")
+# Encryption-at-rest keys (Fernet). Use a list for rotation.
+FERNET_KEYS = env.list("FERNET_KEYS", default=[])
+if not FERNET_KEYS:
+    if DEBUG:
+        # Derive a deterministic dev key from SECRET_KEY (NOT for production)
+        derived = base64.urlsafe_b64encode(hashlib.sha256(SECRET_KEY.encode()).digest()).decode()
+        FERNET_KEYS = [derived]
+    else:
+        raise ImproperlyConfigured(
+            "FERNET_KEYS not set in production. "
+            "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
 
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
@@ -47,6 +66,10 @@ INSTALLED_APPS = [
     "tracking.apps.TrackingConfig",
     "notifications.apps.NotificationsConfig",
     "subscriptions.apps.SubscriptionsConfig",
+    "reporting.apps.ReportingConfig",
+    "backups.apps.BackupsConfig",
+    "sharing.apps.SharingConfig",
+    "audit.apps.AuditConfig",
 ]
 
 MIDDLEWARE = [
@@ -63,6 +86,7 @@ MIDDLEWARE = [
     "core.middleware.SecurityHeadersMiddleware",
     "core.middleware.RateLimitMiddleware",
     "core.middleware.RequestValidationMiddleware",
+    "core.middleware.AdminMFAEnforcementMiddleware",
     "core.middleware.AuditMiddleware",
     # Onboarding redirect for new users
     "core.middleware.OnboardingMiddleware",
@@ -114,6 +138,13 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "core.validators.PwnedPasswordValidator"},  # Check against known data breaches
 ]
 
+# Password hashing (Argon2id preferred, bcrypt acceptable)
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
 # Internationalization
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -123,6 +154,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
@@ -160,12 +194,10 @@ REST_FRAMEWORK = {
 # SECURITY: Use a separate signing key from SECRET_KEY for defense in depth
 JWT_SIGNING_KEY = env("JWT_SIGNING_KEY", default="")
 if not JWT_SIGNING_KEY:
-    import warnings
     if not DEBUG:
-        warnings.warn(
-            "JWT_SIGNING_KEY not set! Using SECRET_KEY is insecure in production. "
-            "Generate a separate key with: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\"",
-            SecurityWarning
+        raise ImproperlyConfigured(
+            "JWT_SIGNING_KEY not set in production. "
+            "Generate a separate key with: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
         )
     JWT_SIGNING_KEY = SECRET_KEY
 
@@ -182,18 +214,31 @@ SIMPLE_JWT = {
 }
 
 # CORS Settings
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[
+_default_cors_origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-])
+]
+if not DEBUG:
+    _default_cors_origins = [
+        "https://localhost:8000",
+        "https://127.0.0.1:8000",
+        "https://webflareuk.pythonanywhere.com",
+    ]
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=_default_cors_origins)
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[
+_default_csrf_origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://webflareuk.pythonanywhere.com",
-])
+]
+if not DEBUG:
+    _default_csrf_origins = [
+        "https://localhost:8000",
+        "https://127.0.0.1:8000",
+        "https://webflareuk.pythonanywhere.com",
+    ]
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=_default_csrf_origins)
 
 # In debug mode, also trust the current request's origin for CSRF
 if DEBUG:
@@ -241,6 +286,11 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 STRIPE_PRICE_ID = env("STRIPE_PRICE_ID", default="")  # Monthly £2.99 price ID
 
+# Entitlements and subscription policy
+FREE_HISTORY_DAYS = env("FREE_HISTORY_DAYS")
+SUBSCRIPTION_GRACE_DAYS = env("SUBSCRIPTION_GRACE_DAYS")
+ENTITLEMENTS_CACHE_TTL = env("ENTITLEMENTS_CACHE_TTL")
+
 # Validate Stripe in production
 if not DEBUG and not STRIPE_SECRET_KEY:
     import warnings
@@ -278,16 +328,18 @@ SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
 # CSRF Cookie settings - Safari PWA compatible
 CSRF_COOKIE_NAME = "csrftoken"  # Avoid __Host- prefix for Safari PWA compatibility
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 
 # =============================================================================
 # SECURITY SETTINGS - Medical Grade
 # =============================================================================
 
+# Password reset token lifetime (minutes)
+PASSWORD_RESET_TOKEN_TTL_MINUTES = env.int("PASSWORD_RESET_TOKEN_TTL_MINUTES", default=30)
+
 # HTTPS/SSL Settings (enforced in production)
+SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
@@ -429,4 +481,3 @@ CONN_MAX_AGE = 60 if not DEBUG else 0  # Keep connections alive for 60 seconds
 # For PostgreSQL: enable connection health checks
 if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
     DATABASES['default'].setdefault('CONN_HEALTH_CHECKS', True)
-

@@ -59,6 +59,9 @@
                         {% if form.password.errors %}
                         <p class="form-error">{{ form.password.errors.0 }}</p>
                         {% endif %}
+                        <div class="text-right mt-2">
+                            <a href="{% url 'accounts:password_reset_request' %}" class="text-sm text-brand font-semibold">Forgot password?</a>
+                        </div>
                     </div>
                     
                     <button type="submit" class="btn btn--primary btn--lg btn--full mt-5">

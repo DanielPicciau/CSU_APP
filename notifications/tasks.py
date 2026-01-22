@@ -13,6 +13,7 @@ import pytz
 
 from .models import ReminderPreferences, ReminderLog
 from .push import send_push_to_user
+from core.security import hash_sensitive_data
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -90,12 +91,26 @@ def process_daily_reminders():
             
             if success_count > 0:
                 reminders_sent += 1
-                logger.info(f"Reminder sent to {user.email} ({success_count} subscriptions)")
+                logger.info(
+                    "Reminder sent to user_id=%s user_hash=%s (%s subscriptions)",
+                    user.id,
+                    hash_sensitive_data(user.email),
+                    success_count,
+                )
             else:
-                logger.warning(f"Failed to send reminder to {user.email}")
+                logger.warning(
+                    "Failed to send reminder to user_id=%s user_hash=%s",
+                    user.id,
+                    hash_sensitive_data(user.email),
+                )
                 
         except Exception as e:
-            logger.error(f"Error processing reminder for {user.email}: {e}")
+            logger.error(
+                "Error processing reminder for user_id=%s user_hash=%s: %s",
+                user.id,
+                hash_sensitive_data(user.email),
+                e,
+            )
             continue
     
     logger.info(f"Daily reminder processing complete. Sent {reminders_sent} reminders.")

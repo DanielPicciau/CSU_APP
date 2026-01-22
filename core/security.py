@@ -205,6 +205,31 @@ def rate_limit(key_prefix: str, max_requests: int, window_seconds: int):
 
 
 # =============================================================================
+# BOT PROTECTION (basic heuristics)
+# =============================================================================
+
+SUSPICIOUS_UA_KEYWORDS = [
+    "python-requests",
+    "curl",
+    "httpclient",
+    "wget",
+    "scrapy",
+    "bot",
+    "spider",
+]
+
+
+def is_suspicious_bot(request) -> bool:
+    """Basic bot heuristic to slow down credential stuffing attempts."""
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    accept_lang = request.META.get("HTTP_ACCEPT_LANGUAGE", "")
+    if not user_agent or not accept_lang:
+        return True
+    ua_lower = user_agent.lower()
+    return any(keyword in ua_lower for keyword in SUSPICIOUS_UA_KEYWORDS)
+
+
+# =============================================================================
 # INPUT VALIDATION & SANITIZATION
 # =============================================================================
 

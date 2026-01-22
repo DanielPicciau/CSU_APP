@@ -75,6 +75,7 @@ Paste this content (modify as needed):
 # Django Settings
 DEBUG=False
 SECRET_KEY=your-super-secret-key-generate-a-new-one
+FERNET_KEYS=your-fernet-key
 ALLOWED_HOSTS=csu-webflareuk.pythonanywhere.com,www.csu-webflareuk.pythonanywhere.com
 
 # Database (SQLite for PythonAnywhere free tier)
@@ -108,6 +109,14 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ```
 
 Copy the output and paste it as your SECRET_KEY value.
+
+**Generate a new FERNET key:**
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Copy the output and paste it as your FERNET_KEYS value.
 
 ---
 

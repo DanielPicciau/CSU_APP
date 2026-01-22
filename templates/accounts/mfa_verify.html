@@ -1,0 +1,38 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Verify MFA - CSU Tracker{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card fade-in">
+        <div class="card">
+            <div class="card__body">
+                <h2 class="text-xl font-semibold text-primary text-center mb-5">Verify MFA</h2>
+                <p class="text-secondary text-center mb-6">Enter the 6-digit code from your authenticator app.</p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="id_code" class="form-label">Authenticator code</label>
+                        {{ form.code }}
+                        {% if form.code.errors %}
+                        <p class="form-error">{{ form.code.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn--primary btn--lg btn--full mt-5">
+                        Verify
+                    </button>
+                </form>
+
+                <div class="mt-5 text-center">
+                    <a href="{% url 'accounts:login' %}" class="text-brand font-semibold">Back to login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

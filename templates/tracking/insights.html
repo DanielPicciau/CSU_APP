@@ -247,6 +247,29 @@
     color: var(--text-primary);
     box-shadow: var(--shadow-sm);
 }
+.period-toggle__btn--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.history-limit-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-warning-50);
+    border: 1px solid var(--color-warning-200);
+    border-radius: var(--radius-lg);
+    margin: 0 auto var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    max-width: 520px;
+}
+[data-theme="dark"] .history-limit-banner {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
 
 .disclaimer-text {
     font-size: var(--text-xs);
@@ -286,9 +309,16 @@
         <div class="period-toggle">
             <a href="?period=7" class="period-toggle__btn {% if period == 7 %}period-toggle__btn--active{% endif %}">7 days</a>
             <a href="?period=30" class="period-toggle__btn {% if period == 30 %}period-toggle__btn--active{% endif %}">30 days</a>
-            <a href="?period=90" class="period-toggle__btn {% if period == 90 %}period-toggle__btn--active{% endif %}">90 days</a>
+            <a href="{% if history_limited %}#{% else %}?period=90{% endif %}" class="period-toggle__btn {% if period == 90 %}period-toggle__btn--active{% endif %} {% if history_limited %}period-toggle__btn--disabled{% endif %}">90 days</a>
         </div>
     </div>
+
+    {% if history_limited %}
+    <div class="history-limit-banner fade-in">
+        Free tier insights are limited to the last {{ history_limit_days }} days.
+        <a href="{% url 'subscriptions:premium' %}" style="margin-left: 6px; font-weight: 600; text-decoration: underline;">Upgrade</a>
+    </div>
+    {% endif %}
     
     <!-- Adherence Card -->
     <div class="insight-card fade-in">

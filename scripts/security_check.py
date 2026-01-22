@@ -87,22 +87,33 @@ def main():
         else:
             print("    OK: SSL redirect enabled")
     
-    # 6. Check rate limiting
-    print("\n[6] Rate Limiting...")
+    # 6. Check encryption-at-rest config
+    print("\n[6] Encryption at Rest...")
+    if settings.DEBUG:
+        print("    WARN: DEBUG=True (dev keys allowed)")
+    else:
+        if getattr(settings, "FERNET_KEYS", None):
+            print("    OK: FERNET_KEYS configured")
+        else:
+            errors.append("FERNET_KEYS not configured")
+            print("    FAIL: FERNET_KEYS not configured")
+
+    # 7. Check rate limiting
+    print("\n[7] Rate Limiting...")
     from core.middleware import RateLimitMiddleware
     print(f"    Login limit: {RateLimitMiddleware.LIMITS.get('/accounts/login/', 'default')}")
     print(f"    API register limit: {RateLimitMiddleware.LIMITS.get('/api/accounts/register/', 'default')}")
     print("    OK: Rate limiting configured")
     
-    # 7. Check account lockout
-    print("\n[7] Account Lockout...")
+    # 8. Check account lockout
+    print("\n[8] Account Lockout...")
     from core.security import AccountLockout
     print(f"    Max attempts: {AccountLockout.MAX_FAILED_ATTEMPTS}")
     print(f"    Lockout duration: {AccountLockout.LOCKOUT_DURATION // 60} minutes")
     print("    OK: Account lockout configured")
     
-    # 8. Check admin privacy
-    print("\n[8] Admin Privacy...")
+    # 9. Check admin privacy
+    print("\n[9] Admin Privacy...")
     from django.contrib.admin.sites import site
     
     for model, admin_class in site._registry.items():

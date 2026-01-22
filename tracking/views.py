@@ -8,19 +8,18 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Sum, Count
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
 from django.http import JsonResponse
-
-import pytz
 
 from .models import DailyEntry
 from .forms import DailyEntryForm, ITCH_CHOICES, HIVE_CHOICES
-
-
-def get_user_today(user) -> date:
-    """Get today's date in the user's timezone."""
-    user_tz = pytz.timezone(user.profile.default_timezone)
-    return timezone.now().astimezone(user_tz).date()
+from .utils import (
+    apply_history_limit,
+    enforce_history_range,
+    get_history_limit_days,
+    get_history_start_date,
+    get_user_today,
+)
+from subscriptions.entitlements import has_entitlement
 
 
 @login_required
@@ -67,7 +66,11 @@ def today_view(request):
     ).count()
     
     # Total entries count
-    total_entries = DailyEntry.objects.filter(user=request.user).count()
+    total_entries = apply_history_limit(
+        DailyEntry.objects.filter(user=request.user),
+        request.user,
+        today=today,
+    ).count()
     
     # Check if notifications are actually enabled (not just if preferences exist)
     has_notification_setup = False
@@ -104,6 +107,14 @@ def log_entry_view(request, date_str=None):
     if entry_date > user_today:
         messages.error(request, "Cannot log entries for future dates.")
         return redirect("tracking:today")
+
+    history_start = get_history_start_date(request.user, today=user_today)
+    if history_start and entry_date < history_start:
+        messages.error(
+            request,
+            "Free tier access is limited to the last 30 days. Upgrade to edit older entries.",
+        )
+        return redirect("subscriptions:premium")
     
     # Check if entry exists (for update)
     existing_entry = DailyEntry.objects.filter(
@@ -210,6 +221,9 @@ def history_view(request):
         days = max(1, min(365, int(request.GET.get("days", 10))))
     except (ValueError, TypeError):
         days = 10
+    limit_days = get_history_limit_days(request.user)
+    if limit_days is not None:
+        days = min(days, limit_days)
     view = request.GET.get("view", "grid")  # Default to grid view
     show = request.GET.get("show", "all")
     min_score = request.GET.get("min_score")
@@ -219,12 +233,15 @@ def history_view(request):
     
     start_date = today - timedelta(days=days - 1)
     
+    history_start = get_history_start_date(request.user, today=today)
+
     # Get all entries in range
-    entries = list(DailyEntry.objects.filter(
+    entries_query = DailyEntry.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=today,
-    ).order_by("-date"))
+    )
+    entries = list(apply_history_limit(entries_query, request.user, today=today).order_by("-date"))
     
     # Apply score filters
     if min_score:
@@ -288,6 +305,11 @@ def history_view(request):
                 current_month = date(today.year, today.month, 1)
         else:
             current_month = date(today.year, today.month, 1)
+
+        if history_start:
+            earliest_month = date(history_start.year, history_start.month, 1)
+            if current_month < earliest_month:
+                current_month = earliest_month
         
         # Calculate prev/next months
         if current_month.month == 1:
@@ -299,6 +321,11 @@ def history_view(request):
             next_month = date(current_month.year + 1, 1, 1)
         else:
             next_month = date(current_month.year, current_month.month + 1, 1)
+
+        if history_start:
+            earliest_month = date(history_start.year, history_start.month, 1)
+            if prev_month < earliest_month:
+                prev_month = None
         
         # Get first day of month and number of days
         first_day_weekday = current_month.weekday()  # Monday = 0
@@ -311,11 +338,12 @@ def history_view(request):
         
         # Get entries for this month
         month_end = (next_month - timedelta(days=1))
-        month_entries = DailyEntry.objects.filter(
+        month_entries_query = DailyEntry.objects.filter(
             user=request.user,
             date__gte=current_month,
             date__lte=month_end,
         )
+        month_entries = apply_history_limit(month_entries_query, request.user, today=today)
         month_entry_by_date = {e.date: e for e in month_entries}
         
         # Add days of the month
@@ -331,6 +359,14 @@ def history_view(request):
             })
             day += timedelta(days=1)
     
+    max_days = limit_days or 365
+    has_older_entries = False
+    if history_start:
+        has_older_entries = DailyEntry.objects.filter(
+            user=request.user,
+            date__lt=history_start,
+        ).exists()
+
     context = {
         "list_data": list_data,
         "calendar_data": calendar_data,
@@ -344,8 +380,12 @@ def history_view(request):
         "filter_min": min_score,
         "filter_max": max_score,
         "filter_antihistamine": antihistamine,
-        "has_more": days < 365,
-        "next_days": min(days * 2, 365),
+        "has_more": days < max_days,
+        "next_days": min(days * 2, max_days),
+        "history_limit_days": limit_days,
+        "history_start": history_start,
+        "history_limited": limit_days is not None,
+        "has_older_entries": has_older_entries,
     }
     
     if view == "calendar":
@@ -368,14 +408,18 @@ def insights_view(request):
         period = max(1, min(365, int(request.GET.get("period", 30))))
     except (ValueError, TypeError):
         period = 30
+    limit_days = get_history_limit_days(request.user)
+    if limit_days is not None:
+        period = min(period, limit_days)
     start_date = today - timedelta(days=period - 1)
     
     # Get entries for period
-    entries = list(DailyEntry.objects.filter(
+    entries_query = DailyEntry.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=today,
-    ).order_by("date"))
+    )
+    entries = list(apply_history_limit(entries_query, request.user, today=today).order_by("date"))
     
     logged_days = len(entries)
     missing_days = period - logged_days
@@ -383,7 +427,11 @@ def insights_view(request):
     adherence_offset = 327 - (327 * adherence_pct / 100)  # For SVG circle
     
     # Total entries count (non-judgmental lifetime metric)
-    total_entries = DailyEntry.objects.filter(user=request.user).count()
+    total_entries = apply_history_limit(
+        DailyEntry.objects.filter(user=request.user),
+        request.user,
+        today=today,
+    ).count()
     
     # Calculate averages
     if entries:
@@ -406,11 +454,14 @@ def insights_view(request):
     
     # Weekly UAS7 comparison (last 4 weeks) - Optimized: single query
     four_weeks_ago = today - timedelta(days=27)
-    all_weekly_entries = list(DailyEntry.objects.filter(
+    weekly_query = DailyEntry.objects.filter(
         user=request.user,
         date__gte=four_weeks_ago,
         date__lte=today,
-    ).values('date', 'score'))
+    )
+    all_weekly_entries = list(
+        apply_history_limit(weekly_query, request.user, today=today).values("date", "score")
+    )
     
     # Build a lookup for entries by date
     entries_by_date = {e['date']: e['score'] for e in all_weekly_entries}
@@ -495,6 +546,8 @@ def insights_view(request):
         "chart_path": chart_path,
         "chart_area_path": chart_area_path,
         "chart_width": chart_width,
+        "history_limit_days": limit_days,
+        "history_limited": limit_days is not None,
     })
 
 
@@ -507,11 +560,12 @@ def entry_detail_view(request, date_str):
         messages.error(request, "Invalid date format.")
         return redirect("tracking:history")
     
-    entry = get_object_or_404(
-        DailyEntry,
-        user=request.user,
-        date=entry_date,
+    entry_queryset = apply_history_limit(
+        DailyEntry.objects.filter(user=request.user),
+        request.user,
+        today=get_user_today(request.user),
     )
+    entry = get_object_or_404(entry_queryset, date=entry_date)
     
     return render(request, "tracking/entry_detail_new.html", {
         "entry": entry,
@@ -527,11 +581,12 @@ def delete_entry_view(request, date_str):
         messages.error(request, "Invalid date format.")
         return redirect("tracking:history")
     
-    entry = get_object_or_404(
-        DailyEntry,
-        user=request.user,
-        date=entry_date,
+    entry_queryset = apply_history_limit(
+        DailyEntry.objects.filter(user=request.user),
+        request.user,
+        today=get_user_today(request.user),
     )
+    entry = get_object_or_404(entry_queryset, date=entry_date)
     
     if request.method == "POST":
         entry.delete()
@@ -547,8 +602,11 @@ def delete_entry_view(request, date_str):
 def delete_entry_by_id_view(request, entry_id):
     """Delete an entry by ID (for modal delete)."""
     entry = get_object_or_404(
-        DailyEntry,
-        user=request.user,
+        apply_history_limit(
+            DailyEntry.objects.filter(user=request.user),
+            request.user,
+            today=get_user_today(request.user),
+        ),
         id=entry_id,
     )
     
@@ -569,13 +627,17 @@ def chart_data_view(request):
         days = max(1, min(365, int(request.GET.get("days", 30))))
     except (ValueError, TypeError):
         days = 30
+    limit_days = get_history_limit_days(request.user)
+    if limit_days is not None:
+        days = min(days, limit_days)
     start_date = today - timedelta(days=days - 1)
     
-    entries = DailyEntry.objects.filter(
+    entries_query = DailyEntry.objects.filter(
         user=request.user,
         date__gte=start_date,
         date__lte=today,
     ).order_by("date")
+    entries = apply_history_limit(entries_query, request.user, today=today)
     
     data = []
     for i in range(days):
@@ -593,17 +655,25 @@ def chart_data_view(request):
 @login_required
 def export_page_view(request):
     """Render the export options page."""
-    from subscriptions.models import user_is_premium
-    
     today = get_user_today(request.user)
-    is_premium = user_is_premium(request.user)
+    is_premium = has_entitlement(request.user, "premium_access")
+    history_start = get_history_start_date(request.user, today=today)
     
     # Get first and last entry dates for the user
-    first_entry = DailyEntry.objects.filter(user=request.user).order_by("date").first()
-    last_entry = DailyEntry.objects.filter(user=request.user).order_by("-date").first()
+    entries_query = DailyEntry.objects.filter(user=request.user)
+    if history_start:
+        entries_query = entries_query.filter(date__gte=history_start)
+    first_entry = entries_query.order_by("date").first()
+    last_entry = entries_query.order_by("-date").first()
     
     # Calculate total entries
-    total_entries = DailyEntry.objects.filter(user=request.user).count()
+    total_entries = entries_query.count()
+    has_older_entries = False
+    if history_start:
+        has_older_entries = DailyEntry.objects.filter(
+            user=request.user,
+            date__lt=history_start,
+        ).exists()
     
     return render(request, "tracking/export.html", {
         "today": today,
@@ -612,20 +682,21 @@ def export_page_view(request):
         "total_entries": total_entries,
         "has_entries": total_entries > 0,
         "is_premium": is_premium,
+        "history_limit_days": get_history_limit_days(request.user),
+        "history_start": history_start,
+        "has_older_entries": has_older_entries,
     })
 
 
 @login_required
 def export_csv_view(request):
     """Generate and download CSV export."""
-    from subscriptions.models import user_is_premium
     from .exports import CSUExporter
     
-    is_premium = user_is_premium(request.user)
     report_type = request.GET.get("report_type", "quick")
     
     # Free users can only export quick summary
-    if not is_premium and report_type != "quick":
+    if not has_entitlement(request.user, "reports_advanced") and report_type != "quick":
         messages.error(request, "Detailed reports are a Cura Premium feature. Upgrade to access full reports.")
         return redirect("subscriptions:premium")
     
@@ -639,13 +710,22 @@ def export_csv_view(request):
         messages.error(request, "Invalid date format.")
         return redirect("tracking:export")
     
-    # Validate dates
-    if start_date > end_date:
+    try:
+        start_date, end_date, _history_start = enforce_history_range(
+            request.user,
+            start_date,
+            end_date,
+            today=today,
+        )
+    except PermissionError:
+        messages.error(
+            request,
+            "Free tier exports are limited to the last 30 days. Upgrade to export older history.",
+        )
+        return redirect("subscriptions:premium")
+    except ValueError:
         messages.error(request, "Start date must be before end date.")
         return redirect("tracking:export")
-    
-    if end_date > today:
-        end_date = today
     
     # Parse options
     options = {
@@ -670,14 +750,12 @@ def export_csv_view(request):
 @login_required
 def export_pdf_view(request):
     """Generate and download PDF export."""
-    from subscriptions.models import user_is_premium
     from .exports import CSUExporter
     
-    is_premium = user_is_premium(request.user)
     report_type = request.GET.get("report_type", "quick")
     
     # Free users can only export quick summary
-    if not is_premium and report_type != "quick":
+    if not has_entitlement(request.user, "reports_advanced") and report_type != "quick":
         messages.error(request, "Detailed reports are a Cura Premium feature. Upgrade to access full reports.")
         return redirect("subscriptions:premium")
     
@@ -691,13 +769,22 @@ def export_pdf_view(request):
         messages.error(request, "Invalid date format.")
         return redirect("tracking:export")
     
-    # Validate dates
-    if start_date > end_date:
+    try:
+        start_date, end_date, _history_start = enforce_history_range(
+            request.user,
+            start_date,
+            end_date,
+            today=today,
+        )
+    except PermissionError:
+        messages.error(
+            request,
+            "Free tier exports are limited to the last 30 days. Upgrade to export older history.",
+        )
+        return redirect("subscriptions:premium")
+    except ValueError:
         messages.error(request, "Start date must be before end date.")
         return redirect("tracking:export")
-    
-    if end_date > today:
-        end_date = today
     
     # Parse options
     options = {
@@ -717,4 +804,3 @@ def export_pdf_view(request):
         logging.error(f"PDF export failed for user {request.user.id}: {e}")
         messages.error(request, "Export failed. Please try again or contact support if the problem persists.")
         return redirect("tracking:export")
-

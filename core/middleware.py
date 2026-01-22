@@ -9,12 +9,14 @@ from typing import Callable
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import redirect
 from django.utils.deprecation import MiddlewareMixin
 
 from .security import (
     SECURITY_HEADERS,
     get_client_ip,
     audit_logger,
+    is_suspicious_bot,
 )
 
 logger = logging.getLogger('security')
@@ -49,11 +51,35 @@ class RateLimitMiddleware(MiddlewareMixin):
     # Rate limit configurations (max_requests, window_seconds)
     LIMITS = {
         '/accounts/login/': (5, 60),
+        '/accounts/password-reset/': (5, 900),
+        '/accounts/password-reset/confirm/': (10, 900),
+        '/accounts/mfa/verify/': (10, 600),
+        '/accounts/mfa/': (10, 600),
+        '/accounts/onboarding/account/': (3, 60),
+        '/accounts/register/': (3, 60),
+        '/admin/login/': (5, 60),
         '/api/accounts/register/': (3, 60),
-        '/api/accounts/token/': (10, 60),
+        '/api/accounts/password/change/': (10, 600),
+        '/api/token/': (10, 60),
+        '/api/token/refresh/': (10, 60),
         '/api/': (100, 60),
         'default': (200, 60),
     }
+
+    SENSITIVE_PATHS = [
+        '/accounts/login/',
+        '/accounts/password-reset/',
+        '/accounts/password-reset/confirm/',
+        '/accounts/mfa/',
+        '/accounts/mfa/verify/',
+        '/accounts/onboarding/account/',
+        '/accounts/register/',
+        '/admin/login/',
+        '/api/accounts/register/',
+        '/api/accounts/password/change/',
+        '/api/token/',
+        '/api/token/refresh/',
+    ]
     
     # Paths to exclude from rate limiting
     EXCLUDED_PATHS = [
@@ -94,6 +120,12 @@ class RateLimitMiddleware(MiddlewareMixin):
             if path_prefix != 'default' and request.path.startswith(path_prefix):
                 max_requests, window = limits
                 break
+
+        # Basic bot heuristics for sensitive endpoints
+        if any(request.path.startswith(path) for path in self.SENSITIVE_PATHS):
+            if not settings.DEBUG and is_suspicious_bot(request):
+                # Stricter limit for suspicious clients
+                max_requests, window = (2, 60)
         
         # Create cache key
         ip = get_client_ip(request)
@@ -267,6 +299,35 @@ class RequestValidationMiddleware(MiddlewareMixin):
                     status=400
                 )
         
+        return None
+
+
+class AdminMFAEnforcementMiddleware(MiddlewareMixin):
+    """Require MFA for staff/superusers before accessing protected pages."""
+
+    ALLOWED_PATH_PREFIXES = [
+        '/accounts/mfa/',
+        '/accounts/logout/',
+        '/accounts/login/',
+        '/static/',
+        '/favicon.ico',
+    ]
+
+    def process_request(self, request: HttpRequest) -> HttpResponse | None:
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return None
+
+        if not (user.is_staff or user.is_superuser):
+            return None
+
+        if any(request.path.startswith(path) for path in self.ALLOWED_PATH_PREFIXES):
+            return None
+
+        mfa = getattr(user, 'mfa', None)
+        if not mfa or not mfa.enabled:
+            return redirect('accounts:mfa_setup')
+
         return None
 
 

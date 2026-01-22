@@ -6,6 +6,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+from core.fields import EncryptedTextField
+
 
 class DailyEntry(models.Model):
     """
@@ -53,7 +55,7 @@ class DailyEntry(models.Model):
     )
     
     # Additional tracking
-    notes = models.TextField(
+    notes = EncryptedTextField(
         blank=True,
         default="",
         help_text="Optional notes about the day",

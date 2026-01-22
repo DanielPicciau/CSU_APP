@@ -5,7 +5,23 @@ Admin configuration for Cura Premium subscriptions.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Subscription, SubscriptionStatus
+from .models import EntitlementOverride, Subscription, SubscriptionPlan, SubscriptionStatus
+
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_display = ["name", "price_gbp", "billing_period", "is_active", "updated_at"]
+    list_filter = ["billing_period", "is_active"]
+    search_fields = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+
+@admin.register(EntitlementOverride)
+class EntitlementOverrideAdmin(admin.ModelAdmin):
+    list_display = ["user", "entitlement_key", "value", "expires_at", "created_at"]
+    list_filter = ["entitlement_key", "value"]
+    search_fields = ["user__email", "entitlement_key", "reason"]
+    readonly_fields = ["created_at", "updated_at"]
 
 
 @admin.register(Subscription)
@@ -19,6 +35,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
     
     list_display = [
         "user_email",
+        "plan",
         "status_badge",
         "current_period_end",
         "cancel_at_period_end",
@@ -27,6 +44,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
     
     list_filter = [
         "status",
+        "plan",
         "cancel_at_period_end",
         "created_at",
     ]
@@ -43,6 +61,8 @@ class SubscriptionAdmin(admin.ModelAdmin):
         "stripe_price_id",
         "current_period_start",
         "current_period_end",
+        "grace_period_end",
+        "trial_end",
         "canceled_at",
         "created_at",
         "updated_at",
@@ -51,6 +71,9 @@ class SubscriptionAdmin(admin.ModelAdmin):
     fieldsets = (
         ("User", {
             "fields": ("user",),
+        }),
+        ("Plan", {
+            "fields": ("plan",),
         }),
         ("Stripe Details", {
             "fields": (
@@ -70,6 +93,8 @@ class SubscriptionAdmin(admin.ModelAdmin):
             "fields": (
                 "current_period_start",
                 "current_period_end",
+                "grace_period_end",
+                "trial_end",
                 "canceled_at",
             ),
         }),

@@ -20,4 +20,14 @@ app.conf.beat_schedule = {
         "task": "notifications.tasks.process_daily_reminders",
         "schedule": crontab(minute="*/5"),
     },
+    # Nightly backups for premium users
+    "enqueue-nightly-backups": {
+        "task": "backups.tasks.enqueue_nightly_backups",
+        "schedule": crontab(minute=0, hour=2),
+    },
+    # Scheduled report exports
+    "enqueue-scheduled-reports": {
+        "task": "reporting.tasks.enqueue_scheduled_reports",
+        "schedule": crontab(minute=15, hour="*/6"),
+    },
 }

@@ -9,6 +9,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from subscriptions.models import Subscription, SubscriptionStatus
+
 User = get_user_model()
 
 
@@ -279,3 +281,29 @@ class TestInputValidation:
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# =============================================================================
+# ENTITLEMENTS TESTS
+# =============================================================================
+
+@pytest.mark.django_db
+class TestEntitlements:
+    """Tests for entitlements endpoint."""
+
+    def test_entitlements_free_defaults(self, authenticated_client):
+        client, user = authenticated_client
+        url = reverse("accounts_api:entitlements")
+        response = client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["is_premium"] is False
+        assert response.data["entitlements"]["history_unlimited"] is False
+
+    def test_entitlements_premium(self, authenticated_client):
+        client, user = authenticated_client
+        Subscription.objects.create(user=user, status=SubscriptionStatus.ACTIVE)
+        url = reverse("accounts_api:entitlements")
+        response = client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["is_premium"] is True
+        assert response.data["entitlements"]["history_unlimited"] is True

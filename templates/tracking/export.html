@@ -111,6 +111,11 @@
     border-color: var(--color-primary-500);
     color: var(--color-primary-600);
 }
+.quick-range__btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 
 .export-preview {
     background: var(--bg-secondary);
@@ -374,6 +379,16 @@
             treatment response analysis, flare identification, and clinical decision support.
         </p>
     </div>
+
+    {% if history_limit_days and has_older_entries %}
+    <div class="disclaimer-banner fade-in">
+        <p class="disclaimer-banner__text">
+            <strong>Free tier limit:</strong> Exports are limited to the last {{ history_limit_days }} days.
+            <a href="{% url 'subscriptions:premium' %}" style="font-weight: 600; text-decoration: underline;">Upgrade</a>
+            to include your full history.
+        </p>
+    </div>
+    {% endif %}
     
     <!-- Export Options Form -->
     <form id="export-form" method="get" class="fade-in">
@@ -418,8 +433,8 @@
             <div class="quick-range">
                 <button type="button" class="quick-range__btn" data-days="7">Last 7 days</button>
                 <button type="button" class="quick-range__btn" data-days="30">Last 30 days</button>
-                <button type="button" class="quick-range__btn" data-days="90">Last 90 days</button>
-                <button type="button" class="quick-range__btn" data-days="all">All time</button>
+                <button type="button" class="quick-range__btn" data-days="90" {% if history_limit_days %}disabled{% endif %}>Last 90 days</button>
+                <button type="button" class="quick-range__btn" data-days="all" {% if history_limit_days %}disabled{% endif %}>All time</button>
             </div>
             
             <!-- Preview stats -->

@@ -4,6 +4,7 @@ API views for the accounts app.
 
 import logging
 
+from django.conf import settings
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.sessions.models import Session
 from django.utils import timezone
@@ -12,6 +13,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.security import audit_logger, rate_limit
+from subscriptions.entitlements import has_entitlement, resolve_entitlements
+from subscriptions.models import Subscription
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
@@ -109,6 +112,7 @@ class PasswordChangeAPIView(APIView):
                 
                 # Update current session to stay logged in
                 update_session_auth_hash(request, user)
+                request.session.cycle_key()
             
             # Audit log the password change
             audit_logger.log_action(
@@ -123,3 +127,50 @@ class PasswordChangeAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EntitlementsAPIView(APIView):
+    """Return current user's entitlements and subscription summary."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        entitlements = resolve_entitlements(request.user)
+        subscription = Subscription.objects.select_related("plan").filter(
+            user=request.user
+        ).first()
+        plan = subscription.plan if subscription else None
+
+        history_limit_days = None
+        if not has_entitlement(request.user, "history_unlimited"):
+            history_limit_days = getattr(settings, "FREE_HISTORY_DAYS", 30)
+
+        data = {
+            "entitlements": entitlements,
+            "is_premium": entitlements.get("premium_access", False),
+            "history_limit_days": history_limit_days,
+            "subscription": {
+                "normalized_status": subscription.normalized_status if subscription else "free",
+                "provider_status": subscription.status if subscription else None,
+                "current_period_end": (
+                    subscription.current_period_end.isoformat()
+                    if subscription and subscription.current_period_end
+                    else None
+                ),
+                "cancel_at_period_end": (
+                    subscription.cancel_at_period_end if subscription else False
+                ),
+                "plan": (
+                    {
+                        "id": plan.id,
+                        "name": plan.name,
+                        "price_gbp": str(plan.price_gbp),
+                        "billing_period": plan.billing_period,
+                    }
+                    if plan
+                    else None
+                ),
+            },
+        }
+
+        return Response(data, status=status.HTTP_200_OK)

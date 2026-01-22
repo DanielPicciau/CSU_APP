@@ -10,8 +10,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-import pytz
-
 from .models import DailyEntry
 from .serializers import (
     DailyEntrySerializer,
@@ -19,13 +17,7 @@ from .serializers import (
     AdherenceMetricsSerializer,
     WeeklyStatsSerializer,
 )
-
-
-def get_user_today(user) -> date:
-    """Get today's date in the user's timezone."""
-    from django.utils import timezone
-    user_tz = pytz.timezone(user.profile.default_timezone)
-    return timezone.now().astimezone(user_tz).date()
+from .utils import apply_history_limit, get_history_limit_days, get_user_today
 
 
 class DailyEntryListCreateView(generics.ListCreateAPIView):
@@ -39,6 +31,7 @@ class DailyEntryListCreateView(generics.ListCreateAPIView):
         return DailyEntrySerializer
 
     def get_queryset(self):
+        today = get_user_today(self.request.user)
         queryset = DailyEntry.objects.filter(user=self.request.user)
         
         # Filter by date range
@@ -50,6 +43,7 @@ class DailyEntryListCreateView(generics.ListCreateAPIView):
         if end_date:
             queryset = queryset.filter(date__lte=end_date)
         
+        queryset = apply_history_limit(queryset, self.request.user, today=today)
         return queryset.order_by("-date")
 
     def perform_create(self, serializer):
@@ -65,7 +59,12 @@ class DailyEntryDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_url_kwarg = "date"
 
     def get_queryset(self):
-        return DailyEntry.objects.filter(user=self.request.user)
+        today = get_user_today(self.request.user)
+        return apply_history_limit(
+            DailyEntry.objects.filter(user=self.request.user),
+            self.request.user,
+            today=today,
+        )
 
 
 class TodayEntryView(APIView):
@@ -123,6 +122,9 @@ class AdherenceMetricsView(APIView):
             days = max(1, min(365, int(request.query_params.get("days", 7))))
         except (ValueError, TypeError):
             days = 7
+        limit_days = get_history_limit_days(request.user)
+        if limit_days is not None:
+            days = min(days, limit_days)
         today = get_user_today(request.user)
         start_date = today - timedelta(days=days - 1)
         
@@ -163,6 +165,10 @@ class WeeklyStatsView(APIView):
             weeks = max(1, min(52, int(request.query_params.get("weeks", 4))))
         except (ValueError, TypeError):
             weeks = 4
+        limit_days = get_history_limit_days(request.user)
+        if limit_days is not None:
+            max_weeks = max(1, limit_days // 7)
+            weeks = min(weeks, max_weeks)
         today = get_user_today(request.user)
         
         results = []
