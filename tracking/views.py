@@ -404,20 +404,33 @@ def insights_view(request):
     antihistamine_days = sum(1 for e in entries if e.took_antihistamine)
     antihistamine_pct = (antihistamine_days / logged_days * 100) if logged_days > 0 else 0
     
-    # Weekly UAS7 comparison (last 4 weeks)
+    # Weekly UAS7 comparison (last 4 weeks) - Optimized: single query
+    four_weeks_ago = today - timedelta(days=27)
+    all_weekly_entries = list(DailyEntry.objects.filter(
+        user=request.user,
+        date__gte=four_weeks_ago,
+        date__lte=today,
+    ).values('date', 'score'))
+    
+    # Build a lookup for entries by date
+    entries_by_date = {e['date']: e['score'] for e in all_weekly_entries}
+    
     weekly_scores = []
     for week_num in range(4):
         week_end = today - timedelta(days=week_num * 7)
         week_start = week_end - timedelta(days=6)
         
-        week_entries = DailyEntry.objects.filter(
-            user=request.user,
-            date__gte=week_start,
-            date__lte=week_end,
-        )
+        # Calculate from in-memory data instead of DB query
+        week_uas7 = 0
+        week_count = 0
+        for day_offset in range(7):
+            day = week_start + timedelta(days=day_offset)
+            if day in entries_by_date:
+                week_uas7 += entries_by_date[day]
+                week_count += 1
         
-        uas7 = sum(e.score for e in week_entries)
-        complete = week_entries.count() == 7
+        uas7 = week_uas7
+        complete = week_count == 7
         
         # Calculate change from previous week
         change = None

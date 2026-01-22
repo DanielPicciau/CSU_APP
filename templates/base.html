@@ -261,6 +261,29 @@
                 })
                 .catch(err => console.error('SW registration failed:', err));
         }
+        
+        // Instant navigation feedback for bottom nav
+        (function() {
+            document.addEventListener('click', function(e) {
+                var navItem = e.target.closest('.mobile-nav a');
+                if (navItem) {
+                    // Immediately change color for instant visual feedback
+                    navItem.style.color = '#4F46E5';
+                    
+                    // Trigger haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(10);
+                    }
+                    
+                    // Fade out content immediately for perceived speed
+                    var main = document.querySelector('main');
+                    if (main) {
+                        main.style.opacity = '0.6';
+                        main.style.transition = 'opacity 0.1s ease';
+                    }
+                }
+            }, { passive: true });
+        })();
     </script>
     
     <!-- Desktop Layout JavaScript -->

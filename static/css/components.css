@@ -115,13 +115,20 @@
   padding: var(--space-2) var(--space-1);
   color: var(--text-tertiary);
   text-decoration: none;
-  transition: var(--transition-colors);
+  transition: color 0.1s ease, transform 0.1s ease;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
 .bottom-nav__item:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+  color: var(--text-brand);
+}
+
+/* Instant highlight on tap - navigating state */
+.bottom-nav__item--navigating {
+  color: var(--text-brand);
 }
 
 .bottom-nav__item--active {
@@ -156,7 +163,8 @@
   color: var(--text-inverse);
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-lg);
-  transition: var(--transition-all);
+  transition: transform 0.1s ease, background-color 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .bottom-nav__fab-button:hover {
@@ -165,7 +173,8 @@
 }
 
 .bottom-nav__fab-button:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+  background-color: var(--interactive-primary-active);
 }
 
 /* ==========================================================================

@@ -1,5 +1,5 @@
 // CSU Tracker Service Worker
-const CACHE_NAME = 'csu-tracker-v1';
+const CACHE_NAME = 'csu-tracker-v2';
 const OFFLINE_URL = '/offline/';
 
 // Assets to cache on install
@@ -31,7 +31,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - network first, fallback to cache
+// Fetch event - stale-while-revalidate for navigation, network-first for others
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
@@ -39,6 +39,30 @@ self.addEventListener('fetch', (event) => {
     // Skip API requests (don't cache)
     if (event.request.url.includes('/api/')) return;
     
+    // Use stale-while-revalidate for navigation requests (instant page loads)
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            caches.match(event.request).then((cachedResponse) => {
+                // Start network fetch in background
+                const networkFetch = fetch(event.request).then((networkResponse) => {
+                    // Cache the fresh response
+                    if (networkResponse.status === 200) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                });
+                
+                // Return cached response immediately, or wait for network
+                return cachedResponse || networkFetch.catch(() => caches.match(OFFLINE_URL));
+            })
+        );
+        return;
+    }
+    
+    // Network-first for other resources (CSS, JS, images)
     event.respondWith(
         fetch(event.request)
             .then((response) => {
@@ -57,10 +81,6 @@ self.addEventListener('fetch', (event) => {
                     .then((response) => {
                         if (response) {
                             return response;
-                        }
-                        // For navigation requests, show offline page
-                        if (event.request.mode === 'navigate') {
-                            return caches.match(OFFLINE_URL);
                         }
                         return new Response('Offline', { status: 503 });
                     });
