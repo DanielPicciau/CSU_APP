@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{# 
+  Desktop Layout Template
+  =======================
+  This template extends the base mobile template and adds desktop-specific
+  navigation and layout enhancements. It only affects screens ≥1024px.
+  
+  Mobile users continue to see the original mobile layout unchanged.
+#}
+
+{% block extra_head %}
+{{ block.super }}
+<!-- Desktop-specific styles -->
+<link rel="stylesheet" href="/static/css/desktop.css">
+{% endblock %}
+
+{% block content %}
+{# Desktop Sidebar Navigation - Hidden on mobile via CSS #}
+{% if user.is_authenticated %}
+<aside class="desktop-sidebar" style="display: none;">
+    <!-- Logo -->
+    <div class="desktop-sidebar-logo">
+        <div class="desktop-sidebar-logo-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+        </div>
+        <span class="desktop-sidebar-logo-text">CSU Tracker</span>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="desktop-sidebar-nav">
+        <a href="{% url 'home' %}" class="desktop-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Dashboard
+        </a>
+        
+        <a href="{% url 'tracking:log_entry' %}" class="desktop-nav-item log-button {% if 'log' in request.path %}active{% endif %}">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Log Entry
+        </a>
+        
+        <div class="desktop-nav-divider"></div>
+        
+        <a href="{% url 'tracking:history' %}" class="desktop-nav-item {% if 'history' in request.path %}active{% endif %}">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            History
+        </a>
+        
+        <a href="{% url 'notifications:settings' %}" class="desktop-nav-item {% if 'notifications' in request.path %}active{% endif %}">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+            </svg>
+            Notifications
+        </a>
+        
+        <a href="{% url 'tracking:export' %}" class="desktop-nav-item {% if 'export' in request.path %}active{% endif %}">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Export Data
+        </a>
+    </nav>
+    
+    <!-- User Section -->
+    <div class="desktop-sidebar-user">
+        <div class="desktop-sidebar-user-info">
+            <div class="desktop-sidebar-user-avatar">
+                {{ user.email.0|upper }}
+            </div>
+            <span class="desktop-sidebar-user-email">{{ user.email }}</span>
+        </div>
+        <div class="desktop-sidebar-user-actions">
+            <a href="{% url 'accounts:profile' %}" class="desktop-user-action-btn profile">
+                Profile
+            </a>
+            <form method="post" action="{% url 'accounts:logout' %}" style="flex: 1;">
+                {% csrf_token %}
+                <button type="submit" class="desktop-user-action-btn logout" style="width: 100%;">
+                    Sign Out
+                </button>
+            </form>
+        </div>
+    </div>
+</aside>
+{% endif %}
+
+{# Main Content Area #}
+<div class="desktop-main">
+    {% if user.is_authenticated %}
+    <!-- Desktop Header -->
+    <header class="desktop-header" style="display: none;">
+        <h1 class="desktop-header-title">{% block page_title %}CSU Tracker{% endblock %}</h1>
+        <div class="desktop-header-actions">
+            <span class="desktop-header-date">{{ today|date:"l, F j, Y" }}</span>
+        </div>
+    </header>
+    {% endif %}
+    
+    <!-- Page Content -->
+    <div class="desktop-content">
+        {% block desktop_content %}{% endblock %}
+    </div>
+</div>
+
+{# Desktop Quick Actions FAB - Hidden on mobile #}
+{% if user.is_authenticated %}
+<div class="desktop-quick-actions" style="display: none;">
+    <a href="{% url 'tracking:log_entry' %}" class="desktop-fab" data-tooltip="Log Entry (L)">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+// Desktop keyboard shortcuts
+if (window.innerWidth >= 1024) {
+    document.addEventListener('keydown', function(e) {
+        // Only trigger if not in an input field
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        // L - Log Entry
+        if (e.key === 'l' || e.key === 'L') {
+            window.location.href = '{% url "tracking:log_entry" %}';
+        }
+        
+        // H - Home/Dashboard
+        if (e.key === 'h' || e.key === 'H') {
+            window.location.href = '{% url "home" %}';
+        }
+        
+        // G - History (G for graph/history)
+        if (e.key === 'g' || e.key === 'G') {
+            window.location.href = '{% url "tracking:history" %}';
+        }
+    });
+}
+
+// Show desktop elements via JS after CSS loads (prevents flash)
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.innerWidth >= 1024) {
+        document.body.classList.add('desktop-layout');
+        
+        // Show desktop-only elements
+        var sidebar = document.querySelector('.desktop-sidebar');
+        var header = document.querySelector('.desktop-header');
+        var quickActions = document.querySelector('.desktop-quick-actions');
+        
+        if (sidebar) sidebar.style.display = 'flex';
+        if (header) header.style.display = 'flex';
+        if (quickActions) quickActions.style.display = 'flex';
+    }
+});
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    var isDesktop = window.innerWidth >= 1024;
+    document.body.classList.toggle('desktop-layout', isDesktop);
+});
+</script>
+{% endblock %}

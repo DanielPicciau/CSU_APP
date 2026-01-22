@@ -38,6 +38,9 @@
     <link rel="stylesheet" href="{% static 'css/design-tokens.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     
+    <!-- Desktop Layout CSS -->
+    <link rel="stylesheet" href="{% static 'css/desktop.css' %}">
+    
     <!-- Preconnect to CDN -->
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     
@@ -51,6 +54,98 @@
     <a href="#main-content" class="sr-only" style="position:absolute;top:-40px;left:0;background:var(--bg-primary);padding:8px;z-index:9999;">
         Skip to main content
     </a>
+    
+    {% if user.is_authenticated %}
+    <!-- Desktop Sidebar Navigation (Hidden on mobile via CSS) -->
+    <aside class="desktop-sidebar" style="display: none;">
+        <!-- Logo -->
+        <div class="desktop-sidebar-logo">
+            <div class="desktop-sidebar-logo-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+            </div>
+            <span class="desktop-sidebar-logo-text">CSU Tracker</span>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="desktop-sidebar-nav">
+            <a href="{% url 'tracking:today' %}" class="desktop-nav-item {% if request.resolver_match.url_name == 'today' or request.resolver_match.url_name == 'home' %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Today
+            </a>
+            
+            <a href="{% url 'tracking:log_entry' %}" class="desktop-nav-item log-button {% if request.resolver_match.url_name == 'log_entry' %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Log Entry
+            </a>
+            
+            <div class="desktop-nav-divider"></div>
+            
+            <a href="{% url 'tracking:history' %}" class="desktop-nav-item {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8v4l3 3"/>
+                    <circle cx="12" cy="12" r="9"/>
+                </svg>
+                History
+            </a>
+            
+            <a href="{% url 'tracking:insights' %}" class="desktop-nav-item {% if request.resolver_match.url_name == 'insights' %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                </svg>
+                Insights
+            </a>
+            
+            <a href="{% url 'notifications:settings' %}" class="desktop-nav-item {% if 'settings' in request.path or 'notifications' in request.path %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4"/>
+                </svg>
+                Settings
+            </a>
+            
+            <a href="{% url 'tracking:export' %}" class="desktop-nav-item {% if 'export' in request.path %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Export Data
+            </a>
+        </nav>
+        
+        <!-- User Section -->
+        <div class="desktop-sidebar-user">
+            <div class="desktop-sidebar-user-info">
+                <div class="desktop-sidebar-user-avatar">
+                    {{ user.email.0|upper }}
+                </div>
+                <span class="desktop-sidebar-user-email">{{ user.email }}</span>
+            </div>
+            <div class="desktop-sidebar-user-actions">
+                <a href="{% url 'accounts:profile' %}" class="desktop-user-action-btn profile">
+                    Profile
+                </a>
+                <form method="post" action="{% url 'accounts:logout' %}" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" class="desktop-user-action-btn logout" style="width: 100%;">
+                        Sign Out
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+    {% endif %}
+
+    <!-- Main Content Wrapper (margin added on desktop via CSS) -->
+    <div class="desktop-main">
     
     {% if user.is_authenticated %}
     <!-- App Header (conditionally shown per page) -->
@@ -108,8 +203,8 @@
     </main>
     
     {% if user.is_authenticated %}
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+    <!-- Bottom Navigation (Mobile Only) -->
+    <nav class="mobile-nav bottom-nav" role="navigation" aria-label="Main navigation">
         <div class="bottom-nav__inner">
             <!-- Today -->
             <a href="{% url 'tracking:today' %}" 
@@ -186,6 +281,8 @@
     <!-- Bottom Sheet Backdrop (shared) -->
     <div id="bottom-sheet-backdrop" class="bottom-sheet-backdrop" aria-hidden="true"></div>
     
+    </div><!-- End .desktop-main -->
+    
     <!-- Service Worker & Push Notifications -->
     <script>
         const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
@@ -200,6 +297,68 @@
     
     <!-- Design System JavaScript -->
     <script src="{% static 'js/components.js' %}"></script>
+    
+    <!-- Desktop Layout JavaScript -->
+    <script>
+    (function() {
+        // Desktop detection and layout initialization
+        function initDesktopLayout() {
+            var isDesktop = window.innerWidth >= 1024;
+            document.body.classList.toggle('desktop-layout', isDesktop);
+            
+            // Show/hide desktop elements
+            var sidebar = document.querySelector('.desktop-sidebar');
+            if (sidebar) {
+                sidebar.style.display = isDesktop ? 'flex' : 'none';
+            }
+        }
+        
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDesktopLayout);
+        } else {
+            initDesktopLayout();
+        }
+        
+        // Handle window resize with debounce
+        var resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(initDesktopLayout, 100);
+        });
+        
+        // Desktop keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Only on desktop and not in input fields
+            if (window.innerWidth < 1024) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            
+            switch(e.key.toLowerCase()) {
+                case 'l':
+                    e.preventDefault();
+                    window.location.href = '{% url "tracking:log_entry" %}';
+                    break;
+                case 't':
+                    e.preventDefault();
+                    window.location.href = '{% url "tracking:today" %}';
+                    break;
+                case 'h':
+                    e.preventDefault();
+                    window.location.href = '{% url "tracking:history" %}';
+                    break;
+                case 'i':
+                    e.preventDefault();
+                    window.location.href = '{% url "tracking:insights" %}';
+                    break;
+                case 's':
+                    e.preventDefault();
+                    window.location.href = '{% url "notifications:settings" %}';
+                    break;
+            }
+        });
+    })();
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

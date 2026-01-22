@@ -100,8 +100,13 @@ class RateLimitMiddleware(MiddlewareMixin):
         user_id = request.user.id if hasattr(request, 'user') and request.user.is_authenticated else 'anon'
         cache_key = f"ratelimit:global:{request.path}:{ip}:{user_id}"
         
-        # Check rate limit
-        current = cache.get(cache_key, 0)
+        # Check rate limit - gracefully handle cache failures
+        try:
+            current = cache.get(cache_key, 0)
+        except Exception as e:
+            # Cache unavailable - allow request to proceed (fail open for availability)
+            logger.warning(f"Cache unavailable for rate limiting: {e}")
+            return None
         
         if current >= max_requests:
             logger.warning(
@@ -126,8 +131,11 @@ class RateLimitMiddleware(MiddlewareMixin):
                 headers={'Retry-After': str(window)}
             )
         
-        # Increment counter
-        cache.set(cache_key, current + 1, window)
+        # Increment counter - ignore cache failures
+        try:
+            cache.set(cache_key, current + 1, window)
+        except Exception:
+            pass  # Non-critical, continue without rate limiting
         
         return None
 

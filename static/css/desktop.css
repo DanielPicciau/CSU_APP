@@ -1,0 +1,563 @@
+/**
+ * CSU Tracker - Desktop Styles
+ * ============================
+ * Desktop-specific styles that only apply on larger screens (≥1024px)
+ * These styles enhance the experience for desktop users without affecting mobile
+ */
+
+/* ==========================================================================
+   DESKTOP DETECTION - Only apply styles on desktop screens
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  /* Hide mobile bottom navigation on desktop */
+  .mobile-nav,
+  .bottom-nav.mobile-nav {
+    display: none !important;
+  }
+
+  /* Show desktop sidebar on desktop */
+  .desktop-sidebar {
+    display: flex !important;
+  }
+
+  /* Remove mobile-specific padding from body */
+  body.desktop-layout {
+    padding-bottom: 0;
+    overflow-x: hidden;
+  }
+
+  /* ==========================================================================
+     DESKTOP LAYOUT STRUCTURE
+     ========================================================================== */
+
+  .desktop-container {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Sidebar Navigation */
+  .desktop-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 260px;
+    background: linear-gradient(180deg, #4F46E5 0%, #4338CA 100%);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .desktop-sidebar-logo {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 32px;
+  }
+
+  .desktop-sidebar-logo-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+  }
+
+  .desktop-sidebar-logo-text {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .desktop-sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .desktop-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    gap: 12px;
+  }
+
+  .desktop-nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
+  .desktop-nav-item.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
+  .desktop-nav-item svg {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .desktop-nav-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 16px 0;
+  }
+
+  /* Log Button - Special Styling */
+  .desktop-nav-item.log-button {
+    background: white;
+    color: #4F46E5;
+    font-weight: 600;
+    margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .desktop-nav-item.log-button:hover {
+    background: #F5F5FF;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  /* User Section at Bottom */
+  .desktop-sidebar-user {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: auto;
+  }
+
+  .desktop-sidebar-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .desktop-sidebar-user-avatar {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .desktop-sidebar-user-email {
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+  }
+
+  .desktop-sidebar-user-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .desktop-user-action-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .desktop-user-action-btn.profile {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  .desktop-user-action-btn.profile:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .desktop-user-action-btn.logout {
+    background: rgba(239, 68, 68, 0.2);
+    color: #FCA5A5;
+  }
+
+  .desktop-user-action-btn.logout:hover {
+    background: rgba(239, 68, 68, 0.3);
+  }
+
+  /* ==========================================================================
+     MAIN CONTENT AREA
+     ========================================================================== */
+
+  .desktop-main {
+    flex: 1;
+    margin-left: 260px;
+    min-height: 100vh;
+    background: #F9FAFB;
+  }
+
+  /* Desktop Header */
+  .desktop-header {
+    background: white;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .desktop-header-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .desktop-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .desktop-header-date {
+    color: #6B7280;
+    font-size: 0.875rem;
+  }
+
+  /* Content wrapper for proper spacing */
+  .desktop-content {
+    padding: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Remove mobile-specific max-width constraints */
+  .desktop-content .max-w-md {
+    max-width: 100%;
+  }
+
+  /* ==========================================================================
+     DESKTOP CARD LAYOUTS
+     ========================================================================== */
+
+  /* Dashboard Grid Layout */
+  .desktop-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 24px;
+  }
+
+  .desktop-card-full {
+    grid-column: span 12;
+  }
+
+  .desktop-card-half {
+    grid-column: span 6;
+  }
+
+  .desktop-card-third {
+    grid-column: span 4;
+  }
+
+  .desktop-card-quarter {
+    grid-column: span 3;
+  }
+
+  /* Enhanced Cards */
+  .desktop-content .bg-white {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .desktop-content .bg-white:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Larger cards on desktop */
+  .desktop-content .rounded-2xl {
+    border-radius: 16px;
+  }
+
+  .desktop-content .p-6 {
+    padding: 28px;
+  }
+
+  /* ==========================================================================
+     DESKTOP-SPECIFIC COMPONENT ENHANCEMENTS
+     ========================================================================== */
+
+  /* Week Chart - Larger on Desktop */
+  .desktop-content .h-24 {
+    height: 120px;
+  }
+
+  /* Calendar Grid - Bigger cells */
+  .desktop-content .grid-cols-7 {
+    gap: 6px;
+  }
+
+  .desktop-content .aspect-square {
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* Form Elements - Desktop Sizing */
+  .desktop-content input[type="text"],
+  .desktop-content input[type="email"],
+  .desktop-content input[type="password"],
+  .desktop-content textarea,
+  .desktop-content select {
+    padding: 14px 16px;
+    font-size: 1rem;
+    border-radius: 10px;
+  }
+
+  .desktop-content .radio-card {
+    padding: 16px 20px;
+  }
+
+  /* Buttons - Desktop Sizing */
+  .desktop-content button[type="submit"],
+  .desktop-content .btn-primary {
+    padding: 16px 24px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  /* Stats Cards - Grid on Desktop */
+  .desktop-content .grid-cols-2 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* ==========================================================================
+     DESKTOP HISTORY PAGE ENHANCEMENTS
+     ========================================================================== */
+
+  .desktop-history-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .desktop-history-layout > *:first-child {
+    grid-column: span 2;
+  }
+
+  /* ==========================================================================
+     DESKTOP LOG ENTRY FORM
+     ========================================================================== */
+
+  .desktop-log-form {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .desktop-log-form .space-y-6 > div {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Radio cards in horizontal layout on desktop */
+  .desktop-log-form .space-y-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* ==========================================================================
+     DESKTOP QUICK ACTIONS
+     ========================================================================== */
+
+  .desktop-quick-actions {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 45;
+  }
+
+  .desktop-fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #4F46E5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .desktop-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+  }
+
+  .desktop-fab svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* ==========================================================================
+     DESKTOP ANIMATIONS
+     ========================================================================== */
+
+  /* Smoother, more subtle animations on desktop */
+  .desktop-content .animate-fade-in-up {
+    animation-duration: 0.5s;
+  }
+
+  .desktop-content .card-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .desktop-content .card-lift:hover {
+    transform: translateY(-4px);
+  }
+
+  /* ==========================================================================
+     TOOLTIPS (Desktop Only)
+     ========================================================================== */
+
+  [data-tooltip] {
+    position: relative;
+  }
+
+  [data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: 8px 12px;
+    background: #1F2937;
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 100;
+  }
+
+  [data-tooltip]:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+  }
+
+  /* ==========================================================================
+     KEYBOARD SHORTCUTS HINT
+     ========================================================================== */
+
+  .desktop-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    background: #F3F4F6;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+    box-shadow: 0 1px 0 #D1D5DB;
+  }
+
+  /* ==========================================================================
+     RESPONSIVE ADJUSTMENTS FOR MEDIUM DESKTOPS
+     ========================================================================== */
+
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .desktop-sidebar {
+      width: 220px;
+    }
+
+    .desktop-main {
+      margin-left: 220px;
+    }
+
+    .desktop-content {
+      padding: 24px;
+    }
+  }
+
+  /* ==========================================================================
+     LARGE DESKTOP / ULTRAWIDE SUPPORT
+     ========================================================================== */
+
+  @media (min-width: 1536px) {
+    .desktop-sidebar {
+      width: 280px;
+    }
+
+    .desktop-main {
+      margin-left: 280px;
+    }
+
+    .desktop-content {
+      max-width: 1400px;
+      padding: 40px;
+    }
+  }
+}
+
+/* ==========================================================================
+   ENSURE MOBILE STYLES REMAIN UNAFFECTED
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+  /* Force mobile nav visibility */
+  .mobile-nav {
+    display: flex !important;
+  }
+
+  /* Force hide desktop sidebar */
+  .desktop-sidebar {
+    display: none !important;
+  }
+
+  /* Ensure mobile content is full width */
+  .desktop-main {
+    margin-left: 0 !important;
+  }
+
+  .desktop-header {
+    display: none !important;
+  }
+
+  .desktop-quick-actions {
+    display: none !important;
+  }
+}

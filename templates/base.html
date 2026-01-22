@@ -54,6 +54,9 @@
     <!-- Animation & Performance CSS -->
     <link rel="stylesheet" href="/static/css/animations.css">
     
+    <!-- Desktop Layout CSS -->
+    <link rel="stylesheet" href="/static/css/desktop.css">
+    
     <!-- Custom Styles -->
     <style>
         /* iOS safe area handling */
@@ -111,8 +114,86 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
+    {% if user.is_authenticated %}
+    <!-- Desktop Sidebar Navigation (Hidden on mobile via CSS) -->
+    <aside class="desktop-sidebar" style="display: none;">
+        <!-- Logo -->
+        <div class="desktop-sidebar-logo">
+            <div class="desktop-sidebar-logo-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+            </div>
+            <span class="desktop-sidebar-logo-text">CSU Tracker</span>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="desktop-sidebar-nav">
+            <a href="{% url 'home' %}" class="desktop-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Dashboard
+            </a>
+            
+            <a href="{% url 'tracking:log_entry' %}" class="desktop-nav-item log-button {% if 'log' in request.path %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Log Entry
+            </a>
+            
+            <div class="desktop-nav-divider"></div>
+            
+            <a href="{% url 'tracking:history' %}" class="desktop-nav-item {% if 'history' in request.path %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                History
+            </a>
+            
+            <a href="{% url 'notifications:settings' %}" class="desktop-nav-item {% if 'notifications' in request.path %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                Notifications
+            </a>
+            
+            <a href="{% url 'tracking:export' %}" class="desktop-nav-item {% if 'export' in request.path %}active{% endif %}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Export Data
+            </a>
+        </nav>
+        
+        <!-- User Section -->
+        <div class="desktop-sidebar-user">
+            <div class="desktop-sidebar-user-info">
+                <div class="desktop-sidebar-user-avatar">
+                    {{ user.email.0|upper }}
+                </div>
+                <span class="desktop-sidebar-user-email">{{ user.email }}</span>
+            </div>
+            <div class="desktop-sidebar-user-actions">
+                <a href="{% url 'accounts:profile' %}" class="desktop-user-action-btn profile">
+                    Profile
+                </a>
+                <form method="post" action="{% url 'accounts:logout' %}" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" class="desktop-user-action-btn logout" style="width: 100%;">
+                        Sign Out
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+    {% endif %}
+
+    <!-- Main Content Wrapper (margin added on desktop via CSS) -->
+    <div class="desktop-main">
     <!-- Main Content -->
-    <main class="flex-1 pb-20">
+    <main class="flex-1 pb-20 desktop-content">
         {% if messages %}
         <div class="px-4 pt-4 stagger-animation stagger-fast">
             {% for message in messages %}
@@ -127,8 +208,8 @@
     </main>
     
     {% if user.is_authenticated %}
-    <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 safe-area-bottom" style="backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background-color: rgba(255,255,255,0.9);">
+    <!-- Bottom Navigation (Mobile Only) -->
+    <nav class="mobile-nav fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 safe-area-bottom" style="backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background-color: rgba(255,255,255,0.9);">
         <div class="flex justify-around items-center max-w-md mx-auto">
             <a href="{% url 'home' %}" class="flex flex-col items-center py-2 px-4 {% if request.resolver_match.url_name == 'home' %}text-indigo-600{% else %}text-gray-500{% endif %} tap-highlight transition-transform duration-150 active:scale-95">
                 <svg class="w-6 h-6 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,6 +244,8 @@
     </nav>
     {% endif %}
     
+    </div><!-- End .desktop-main -->
+    
     <!-- Performance JavaScript -->
     <script src="/static/js/performance.js" defer></script>
     
@@ -178,6 +261,64 @@
                 })
                 .catch(err => console.error('SW registration failed:', err));
         }
+    </script>
+    
+    <!-- Desktop Layout JavaScript -->
+    <script>
+    (function() {
+        // Desktop detection and layout initialization
+        function initDesktopLayout() {
+            var isDesktop = window.innerWidth >= 1024;
+            document.body.classList.toggle('desktop-layout', isDesktop);
+            
+            // Show/hide desktop elements
+            var sidebar = document.querySelector('.desktop-sidebar');
+            if (sidebar) {
+                sidebar.style.display = isDesktop ? 'flex' : 'none';
+            }
+        }
+        
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDesktopLayout);
+        } else {
+            initDesktopLayout();
+        }
+        
+        // Handle window resize with debounce
+        var resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(initDesktopLayout, 100);
+        });
+        
+        // Desktop keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Only on desktop and not in input fields
+            if (window.innerWidth < 1024) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            
+            switch(e.key.toLowerCase()) {
+                case 'l':
+                    e.preventDefault();
+                    window.location.href = '{% url "tracking:log_entry" %}';
+                    break;
+                case 'h':
+                    e.preventDefault();
+                    window.location.href = '{% url "home" %}';
+                    break;
+                case 'g':
+                    e.preventDefault();
+                    window.location.href = '{% url "tracking:history" %}';
+                    break;
+                case 'n':
+                    e.preventDefault();
+                    window.location.href = '{% url "notifications:settings" %}';
+                    break;
+            }
+        });
+    })();
     </script>
     
     {% block extra_js %}{% endblock %}
