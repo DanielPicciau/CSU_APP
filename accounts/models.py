@@ -368,9 +368,10 @@ class UserMedication(models.Model):
         ordering = ["-is_current", "-updated_at"]
     
     def __str__(self) -> str:
-        name = self.display_name
-        status = "current" if self.is_current else "past"
-        return f"{name} ({status}) - {self.user.email}"
+        """Privacy-safe string representation - NO medication details exposed."""
+        # PRIVACY: Do not expose medication name in string representation
+        # This prevents leaking health data through admin, logs, etc.
+        return f"Medication record #{self.pk} - {self.user.email}"
     
     @property
     def display_name(self) -> str:

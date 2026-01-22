@@ -1,9 +1,14 @@
 """
 Admin configuration for notifications app.
 
-PRIVACY NOTE: Notification settings are less sensitive but still
-show user behavior patterns. Access is limited to what's needed
-for debugging notification delivery issues.
+PRIVACY & SECURITY NOTE:
+========================
+Notification settings reveal user behavior patterns (when they want reminders).
+While less sensitive than health data, access is still limited to:
+- Debugging notification delivery issues
+- Only superusers can access
+
+Regular staff CANNOT access notification data.
 """
 
 from django.contrib import admin
@@ -17,7 +22,7 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
     Admin for push subscriptions.
     
     PRIVACY: Only shows subscription status for debugging delivery issues.
-    Full endpoint URLs are hidden as they're not needed for debugging.
+    Full endpoint URLs are HIDDEN as they contain device identifiers.
     """
 
     list_display = [
@@ -27,10 +32,11 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
     ]
     list_filter = ["is_active"]
     search_fields = ["user__email"]
-    readonly_fields = ["user", "created_at", "updated_at", "is_active"]
     
-    # Hide the full endpoint URL - just show that a subscription exists
-    fields = ["user", "is_active", "created_at", "updated_at"]
+    # Hide ALL technical details - just show status
+    fields = []
+    readonly_fields = []
+    exclude = ["user", "endpoint", "auth_key", "p256dh_key", "is_active", "created_at", "updated_at"]
     
     def user_email(self, obj):
         """Show user email for support lookups."""
@@ -44,6 +50,10 @@ class PushSubscriptionAdmin(admin.ModelAdmin):
     
     def has_change_permission(self, request, obj=None):
         return False
+    
+    def has_view_permission(self, request, obj=None):
+        # Only superusers can view
+        return request.user.is_superuser
 
 
 @admin.register(ReminderPreferences)
@@ -51,9 +61,8 @@ class ReminderPreferencesAdmin(admin.ModelAdmin):
     """
     Admin for reminder preferences.
     
-    PRIVACY: Shows reminder settings for debugging.
-    Reminder time could reveal user habits but is needed for
-    debugging "why didn't I get my reminder" issues.
+    PRIVACY: Reminder times could reveal user habits/routines.
+    Access restricted to superusers only for debugging.
     """
 
     list_display = [
@@ -64,9 +73,11 @@ class ReminderPreferencesAdmin(admin.ModelAdmin):
     ]
     list_filter = ["enabled"]
     search_fields = ["user__email"]
-    readonly_fields = ["user", "created_at", "updated_at"]
     
-    fields = ["user", "enabled", "time_of_day", "timezone", "created_at", "updated_at"]
+    # Hide specific times - just show general settings
+    fields = []
+    readonly_fields = []
+    exclude = ["user", "enabled", "time_of_day", "timezone", "created_at", "updated_at"]
     
     def user_email(self, obj):
         """Show user email for support lookups."""
@@ -79,8 +90,11 @@ class ReminderPreferencesAdmin(admin.ModelAdmin):
         return False
     
     def has_change_permission(self, request, obj=None):
-        # Users manage their own preferences
         return False
+    
+    def has_view_permission(self, request, obj=None):
+        # Only superusers can view
+        return request.user.is_superuser
 
 
 @admin.register(ReminderLog)
@@ -88,24 +102,25 @@ class ReminderLogAdmin(admin.ModelAdmin):
     """
     Admin for reminder logs.
     
-    This is primarily for debugging notification delivery.
-    Contains minimal personal data.
+    Used for debugging notification delivery issues.
+    Access restricted to superusers only.
     """
 
     list_display = [
         "user_email",
         "date",
         "success",
-        "subscriptions_notified",
         "sent_at",
     ]
     list_filter = ["success", "date"]
     search_fields = ["user__email"]
     date_hierarchy = "date"
     ordering = ["-sent_at"]
-    readonly_fields = ["user", "date", "success", "subscriptions_notified", "sent_at"]
     
-    fields = ["user", "date", "success", "subscriptions_notified", "sent_at"]
+    # Show minimal debug info
+    fields = []
+    readonly_fields = []
+    exclude = ["user", "date", "success", "subscriptions_notified", "sent_at"]
     
     def user_email(self, obj):
         """Show user email for support lookups."""
@@ -120,5 +135,9 @@ class ReminderLogAdmin(admin.ModelAdmin):
         return False
     
     def has_delete_permission(self, request, obj=None):
-        # Allow cleanup of old logs
-        return True
+        # Allow cleanup of old logs - superusers only
+        return request.user.is_superuser
+    
+    def has_view_permission(self, request, obj=None):
+        # Only superusers can view
+        return request.user.is_superuser

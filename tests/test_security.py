@@ -323,3 +323,188 @@ class TestInjectionPrevention:
             if entry:
                 # Notes should be stored as-is, not executed
                 assert "|" in entry.notes or ";" in entry.notes
+
+
+# =============================================================================
+# ADMIN HEALTH DATA PRIVACY TESTS
+# =============================================================================
+
+@pytest.mark.django_db
+class TestAdminHealthDataPrivacy:
+    """Tests to ensure admin cannot access sensitive health data."""
+    
+    def test_staff_cannot_view_daily_entries(self, client, create_user):
+        """Staff users cannot view daily entries (health data)."""
+        from tracking.models import DailyEntry
+        from datetime import date
+        
+        # Create a regular user with health data
+        user = create_user(email="patient@example.com")
+        DailyEntry.objects.create(
+            user=user,
+            date=date.today(),
+            score=5,
+            itch_score=2,
+            hive_count_score=3,
+            notes="Private health notes",
+            took_antihistamine=True,
+        )
+        
+        # Create staff user (not superuser)
+        staff = create_user(email="staff@example.com", is_staff=True)
+        client.force_login(staff)
+        
+        # Try to access daily entries in admin
+        response = client.get("/admin/tracking/dailyentry/")
+        # Should be forbidden or empty
+        assert response.status_code in [403, 302] or b"0 daily entries" in response.content
+    
+    def test_staff_cannot_view_medications(self, client, create_user):
+        """Staff users cannot view user medications."""
+        from accounts.models import UserMedication
+        
+        # Create a regular user with medication data
+        user = create_user(email="patient@example.com")
+        UserMedication.objects.create(
+            user=user,
+            medication_key="omalizumab",
+            medication_type="biologic",
+            is_current=True,
+        )
+        
+        # Create staff user (not superuser)
+        staff = create_user(email="staff@example.com", is_staff=True)
+        client.force_login(staff)
+        
+        # Try to access medications in admin
+        response = client.get("/admin/accounts/usermedication/")
+        # Should be forbidden or empty
+        assert response.status_code in [403, 302] or b"0 user medications" in response.content
+    
+    def test_superuser_cannot_see_health_details(self, client, create_user):
+        """Even superusers cannot see actual health data values."""
+        from tracking.models import DailyEntry
+        from datetime import date
+        
+        # Create a regular user with health data
+        user = create_user(email="patient@example.com")
+        DailyEntry.objects.create(
+            user=user,
+            date=date.today(),
+            score=5,
+            itch_score=2,
+            hive_count_score=3,
+            notes="Very private symptom notes",
+            took_antihistamine=True,
+        )
+        
+        # Create superuser
+        superuser = User.objects.create_superuser(
+            email="super@example.com",
+            password="XkT9$mNq@2rSvW#4pLz!",
+        )
+        client.force_login(superuser)
+        
+        # View the list - should only show metadata, not health values
+        response = client.get("/admin/tracking/dailyentry/")
+        content = response.content.decode()
+        
+        # The actual health data should NOT appear
+        assert "Very private symptom notes" not in content
+        # Score values should not be visible in list
+        assert ">5<" not in content  # score=5 should not appear as a cell value
+    
+    def test_admin_cannot_add_health_entries(self, client, create_user):
+        """Admin cannot add health entries for users."""
+        superuser = User.objects.create_superuser(
+            email="super@example.com",
+            password="XkT9$mNq@2rSvW#4pLz!",
+        )
+        client.force_login(superuser)
+        
+        # Try to access add page
+        response = client.get("/admin/tracking/dailyentry/add/")
+        # Should be forbidden
+        assert response.status_code == 403
+    
+    def test_admin_cannot_edit_health_entries(self, client, create_user):
+        """Admin cannot edit health entries."""
+        from tracking.models import DailyEntry
+        from datetime import date
+        
+        user = create_user(email="patient@example.com")
+        entry = DailyEntry.objects.create(
+            user=user,
+            date=date.today(),
+            score=3,
+        )
+        
+        superuser = User.objects.create_superuser(
+            email="super@example.com",
+            password="XkT9$mNq@2rSvW#4pLz!",
+        )
+        client.force_login(superuser)
+        
+        # Try to access change page
+        response = client.get(f"/admin/tracking/dailyentry/{entry.pk}/change/")
+        # Should be forbidden
+        assert response.status_code == 403
+    
+    def test_profile_personal_data_hidden(self, client, create_user):
+        """Profile personal data (DOB, gender, diagnosis) is hidden from admin."""
+        from accounts.models import Profile
+        from datetime import date
+        
+        user = create_user(email="patient@example.com")
+        profile = user.profile
+        profile.date_of_birth = date(1990, 5, 15)
+        profile.age = 35
+        profile.gender = "female"
+        profile.csu_diagnosis = "yes"
+        profile.has_prescribed_medication = "yes"
+        profile.save()
+        
+        superuser = User.objects.create_superuser(
+            email="super@example.com",
+            password="XkT9$mNq@2rSvW#4pLz!",
+        )
+        client.force_login(superuser)
+        
+        # View profile list
+        response = client.get("/admin/accounts/profile/")
+        content = response.content.decode()
+        
+        # Personal/health data should not appear
+        assert "1990" not in content  # DOB year
+        assert "female" not in content
+        assert "csu_diagnosis" not in content.lower() or "yes" not in content
+    
+    def test_medication_details_completely_hidden(self, client, create_user):
+        """Medication names and details are completely hidden."""
+        from accounts.models import UserMedication
+        
+        user = create_user(email="patient@example.com")
+        UserMedication.objects.create(
+            user=user,
+            medication_key="omalizumab",
+            custom_name="Xolair 150mg",
+            medication_type="biologic",
+            dose_amount=150,
+            is_current=True,
+        )
+        
+        superuser = User.objects.create_superuser(
+            email="super@example.com",
+            password="XkT9$mNq@2rSvW#4pLz!",
+        )
+        client.force_login(superuser)
+        
+        # View medication list
+        response = client.get("/admin/accounts/usermedication/")
+        content = response.content.decode()
+        
+        # Medication details should not appear
+        assert "omalizumab" not in content.lower()
+        assert "xolair" not in content.lower()
+        assert "biologic" not in content.lower()
+        assert "150" not in content  # dose
