@@ -1,63 +1,65 @@
-{% extends 'base.html' %}
+{% extends 'base_new.html' %}
 
 {% block title %}Push Subscriptions - CSU Tracker{% endblock %}
 
+{% block header_title %}Your Devices{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'notifications:settings' %}" class="btn btn--icon btn--ghost" aria-label="Back to settings">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
+    </svg>
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="px-4 py-6 max-w-md mx-auto fade-in">
-    <!-- Header -->
-    <div class="mb-6">
-        <a href="{% url 'notifications:settings' %}" class="inline-flex items-center text-gray-600 mb-2">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-            </svg>
-            Back
-        </a>
-        <h1 class="text-2xl font-bold text-gray-900">Your Devices</h1>
-        <p class="text-gray-600 mt-1">Manage push notification subscriptions</p>
-    </div>
+<div class="app-content fade-in">
+    <p class="text-secondary mb-5">Manage push notification subscriptions</p>
     
     {% if subscriptions %}
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="divide-y">
+    <div class="card">
+        <div class="card__body card__body--compact">
             {% for sub in subscriptions %}
-            <div class="p-4">
-                <div class="flex items-start justify-between">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {% if sub.is_active %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
-                                {% if sub.is_active %}Active{% else %}Inactive{% endif %}
-                            </span>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-1 truncate" title="{{ sub.user_agent }}">
-                            {{ sub.user_agent|truncatechars:50 }}
-                        </p>
-                        <p class="text-xs text-gray-400 mt-1">
-                            Added {{ sub.created_at|date:"M j, Y" }}
-                        </p>
+            <div class="flex items-start justify-between py-4 {% if not forloop.last %}border-b{% endif %}" style="border-color: var(--border-subtle);">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="badge {% if sub.is_active %}badge--success{% else %}badge--neutral{% endif %}">
+                            {% if sub.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
                     </div>
-                    <form method="post" action="{% url 'notifications:delete_subscription' sub.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="ml-4 text-red-500 hover:text-red-700">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                        </button>
-                    </form>
+                    <p class="text-sm text-secondary truncate" title="{{ sub.user_agent }}">
+                        {{ sub.user_agent|truncatechars:50 }}
+                    </p>
+                    <p class="text-xs text-tertiary mt-1">
+                        Added {{ sub.created_at|date:"M j, Y" }}
+                    </p>
                 </div>
+                <form method="post" action="{% url 'notifications:delete_subscription' sub.id %}" class="ml-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--icon btn--ghost btn--destructive" aria-label="Delete subscription">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
             {% endfor %}
         </div>
     </div>
     {% else %}
-    <div class="bg-white rounded-2xl shadow-sm p-8 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+    <div class="empty-state">
+        <div class="empty-state__icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">No Subscriptions</h3>
-        <p class="text-gray-500 mb-4">You haven't enabled push notifications on any device yet.</p>
-        <a href="{% url 'notifications:settings' %}" class="text-indigo-600 font-medium">Enable Notifications →</a>
+        <h3 class="empty-state__title">No Subscriptions</h3>
+        <p class="empty-state__description">You haven't enabled push notifications on any device yet.</p>
+        <a href="{% url 'notifications:settings' %}" class="btn btn--primary mt-4">Enable Notifications</a>
     </div>
     {% endif %}
 </div>

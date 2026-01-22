@@ -1,66 +1,126 @@
-{% extends 'base.html' %}
+{% extends 'base_new.html' %}
+{% load static %}
 
 {% block title %}Login - CSU Tracker{% endblock %}
 
+{% block header %}{% endblock %}
+
 {% block content %}
-<div class="min-h-screen flex flex-col justify-center px-6 py-12 bg-gradient-to-b from-indigo-500 to-indigo-700">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+<div class="auth-container">
+    <div class="auth-card fade-in">
         <!-- Logo -->
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
-                <svg class="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        <div class="auth-logo">
+            <div class="auth-logo__icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-white">CSU Tracker</h1>
-            <p class="text-indigo-200 mt-2">Track your urticaria symptoms daily</p>
+            <h1 class="auth-logo__title">CSU Tracker</h1>
+            <p class="auth-logo__subtitle">Track your urticaria symptoms daily</p>
         </div>
         
         <!-- Login Form -->
-        <div class="bg-white rounded-2xl shadow-xl p-8">
-            <h2 class="text-2xl font-bold text-gray-900 text-center mb-6">Welcome back</h2>
-            
-            <form method="post" action="{% url 'accounts:login' %}">
-                {% csrf_token %}
+        <div class="card">
+            <div class="card__body">
+                <h2 class="text-xl font-semibold text-primary text-center mb-5">Welcome back</h2>
                 
-                {% if form.non_field_errors %}
-                <div class="mb-4 p-4 bg-red-50 rounded-lg">
-                    {% for error in form.non_field_errors %}
-                    <p class="text-red-600 text-sm">{{ error }}</p>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                
-                <div class="space-y-4">
-                    <div>
-                        <label for="id_username" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        {{ form.username }}
+                <form method="post" action="{% url 'accounts:login' %}">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="feedback-banner feedback-banner--error mb-4">
+                        <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                        <span class="feedback-banner__text">
+                            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        <label for="id_username" class="form-label">Email</label>
+                        <input type="email" name="username" id="id_username" 
+                               class="form-input{% if form.username.errors %} form-input--error{% endif %}"
+                               placeholder="your@email.com"
+                               value="{{ form.username.value|default:'' }}"
+                               required autofocus>
                         {% if form.username.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.username.errors.0 }}</p>
+                        <p class="form-error">{{ form.username.errors.0 }}</p>
                         {% endif %}
                     </div>
                     
-                    <div>
-                        <label for="id_password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        {{ form.password }}
+                    <div class="form-group">
+                        <label for="id_password" class="form-label">Password</label>
+                        <input type="password" name="password" id="id_password" 
+                               class="form-input{% if form.password.errors %} form-input--error{% endif %}"
+                               placeholder="••••••••"
+                               required>
                         {% if form.password.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.password.errors.0 }}</p>
+                        <p class="form-error">{{ form.password.errors.0 }}</p>
                         {% endif %}
                     </div>
                     
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    <button type="submit" class="btn btn--primary btn--lg btn--full mt-5">
                         Sign In
                     </button>
+                </form>
+                
+                <div class="mt-5 text-center">
+                    <p class="text-secondary">
+                        Don't have an account?
+                        <a href="{% url 'accounts:onboarding_welcome' %}" class="text-brand font-semibold">Get started</a>
+                    </p>
                 </div>
-            </form>
-            
-            <div class="mt-6 text-center">
-                <p class="text-gray-600">
-                    Don't have an account?
-                    <a href="{% url 'accounts:onboarding_welcome' %}" class="text-indigo-600 font-semibold hover:text-indigo-500">Get started</a>
-                </p>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+    background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 100%);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: var(--space-6);
+}
+
+.auth-logo__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: var(--surface-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    margin-bottom: var(--space-4);
+    color: var(--color-primary-600);
+}
+
+.auth-logo__title {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    color: white;
+    margin: 0;
+}
+
+.auth-logo__subtitle {
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: var(--space-2);
+}
+</style>
 {% endblock %}
