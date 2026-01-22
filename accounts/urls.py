@@ -23,6 +23,7 @@ urlpatterns = [
     path("change-password/", views.change_password_view, name="change_password"),
     path("delete-account/", views.delete_account_view, name="delete_account"),
     path("privacy/", views.privacy_view, name="privacy"),
+    path("consent/accept/", views.accept_consent_view, name="accept_consent"),
     
     # Onboarding flow
     path("onboarding/", views.onboarding_welcome, name="onboarding_welcome"),

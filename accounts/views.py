@@ -5,6 +5,7 @@ Views for the accounts app (Django templates).
 import logging
 
 from django.contrib import messages
+from django.http import HttpResponse
 import secrets
 from datetime import timedelta
 
@@ -475,6 +476,18 @@ def privacy_view(request):
     return render(request, "accounts/privacy.html", {
         "profile": profile,
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def accept_consent_view(request):
+    """Handle privacy consent acceptance."""
+    profile = request.user.profile
+    profile.privacy_consent_given = True
+    profile.privacy_consent_date = timezone.now()
+    profile.save(update_fields=['privacy_consent_given', 'privacy_consent_date'])
+    
+    return HttpResponse("")
 
 
 # =============================================================================

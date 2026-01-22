@@ -48,6 +48,9 @@ urlpatterns = [
     
     # Home
     path("", include("tracking.home_urls")),
+    
+    # Legal
+    path("legal/privacy-policy/", TemplateView.as_view(template_name="legal/privacy_policy.html"), name="privacy_policy"),
 ]
 
 if settings.DEBUG:

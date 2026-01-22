@@ -1,0 +1,19 @@
+<div id="consent-banner" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 p-4 transform transition-transform duration-300 {% if not show_consent_banner %}translate-y-full{% endif %}">
+    <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="text-sm text-gray-600">
+            <p class="font-medium text-gray-900 mb-1">We value your privacy</p>
+            <p>
+                We use strict encryption to protect your health data. 
+                We need your consent to store your data as described in our
+                <a href="{% url 'privacy_policy' %}" class="text-indigo-600 hover:text-indigo-800 underline">Privacy Policy</a>.
+            </p>
+        </div>
+        
+        <form hx-post="{% url 'accounts:accept_consent' %}" hx-swap="outerHTML" hx-target="#consent-banner" class="flex-shrink-0">
+            {% csrf_token %}
+            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors shadow-sm text-sm whitespace-nowrap">
+                I Agree & Accept
+            </button>
+        </form>
+    </div>
+</div>

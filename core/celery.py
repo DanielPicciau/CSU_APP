@@ -30,4 +30,9 @@ app.conf.beat_schedule = {
         "task": "reporting.tasks.enqueue_scheduled_reports",
         "schedule": crontab(minute=15, hour="*/6"),
     },
+    # Data retention policy enforcement (GDPR)
+    "purge-inactive-accounts": {
+        "task": "accounts.tasks.purge_inactive_accounts",
+        "schedule": crontab(minute=0, hour=4),  # Run at 4 AM daily
+    },
 }
