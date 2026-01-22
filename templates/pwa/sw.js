@@ -1,166 +1,138 @@
-// CSU Tracker Service Worker
-const CACHE_NAME = 'csu-tracker-v3';
+// CSU Tracker Service Worker - Safari Compatible
+const CACHE_VERSION = 'v4';
+const STATIC_CACHE = `csu-static-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline/';
 
-// Assets to cache on install
+// ONLY cache truly static assets (never HTML pages that might redirect)
 const STATIC_ASSETS = [
-    '/',
     '/offline/',
     '/static/icons/icon-192x192.png',
+    '/static/icons/apple-touch-icon.png',
 ];
 
-// Install event - cache static assets
+// Install event - cache only static assets
 self.addEventListener('install', (event) => {
+    console.log('[SW] Installing version:', CACHE_VERSION);
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(STATIC_ASSETS))
+        caches.open(STATIC_CACHE)
+            .then((cache) => {
+                return Promise.allSettled(
+                    STATIC_ASSETS.map(url => 
+                        fetch(url).then(response => {
+                            if (response.ok && !response.redirected) {
+                                return cache.put(url, response);
+                            }
+                        }).catch(() => console.log('[SW] Failed to cache:', url))
+                    )
+                );
+            })
             .then(() => self.skipWaiting())
     );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches
 self.addEventListener('activate', (event) => {
+    console.log('[SW] Activating version:', CACHE_VERSION);
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames
-                    .filter((name) => name !== CACHE_NAME)
-                    .map((name) => caches.delete(name))
+                    .filter((name) => name !== STATIC_CACHE)
+                    .map((name) => {
+                        console.log('[SW] Deleting cache:', name);
+                        return caches.delete(name);
+                    })
             );
         }).then(() => self.clients.claim())
     );
 });
 
-// Fetch event - stale-while-revalidate for navigation, network-first for others
+// Fetch event - NEVER intercept navigation/HTML requests
 self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const url = new URL(request.url);
+    
     // Skip non-GET requests
-    if (event.request.method !== 'GET') return;
+    if (request.method !== 'GET') return;
     
-    // Skip API requests (don't cache)
-    if (event.request.url.includes('/api/')) return;
+    // Skip cross-origin
+    if (url.origin !== location.origin) return;
     
-    // Use stale-while-revalidate for navigation requests (instant page loads)
-    if (event.request.mode === 'navigate') {
+    // NEVER intercept navigation - prevents Safari redirect issue
+    if (request.mode === 'navigate') return;
+    
+    // NEVER intercept HTML requests
+    if (request.headers.get('accept')?.includes('text/html')) return;
+    
+    // Skip API
+    if (url.pathname.includes('/api/')) return;
+    
+    // Only handle /static/ assets
+    if (url.pathname.startsWith('/static/')) {
         event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                // Start network fetch in background
-                const networkFetch = fetch(event.request).then((networkResponse) => {
-                    // Only cache successful, non-redirect responses (Safari compatibility)
-                    if (networkResponse.status === 200 && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
-                        const responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
+            caches.match(request).then((cached) => {
+                if (cached) return cached;
+                return fetch(request).then((response) => {
+                    if (response.ok && !response.redirected) {
+                        const clone = response.clone();
+                        caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone));
                     }
-                    return networkResponse;
+                    return response;
                 });
-                
-                // Return cached response immediately, or wait for network
-                return cachedResponse || networkFetch.catch(() => caches.match(OFFLINE_URL));
-            })
+            }).catch(() => new Response('', { status: 404 }))
         );
-        return;
     }
-    
-    // Network-first for other resources (CSS, JS, images)
-    event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // Only cache successful, non-redirect responses (Safari compatibility)
-                if (response.status === 200 && !response.redirected && response.type !== 'opaqueredirect') {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return response;
-            })
-            .catch(() => {
-                // Return cached response or offline page
-                return caches.match(event.request)
-                    .then((response) => {
-                        if (response) {
-                            return response;
-                        }
-                        return new Response('Offline', { status: 503 });
-                    });
-            })
-    );
 });
 
-// Push event - handle incoming push notifications
+// Push notifications
 self.addEventListener('push', (event) => {
-    console.log('Push received:', event);
-    
     let data = {
         title: 'CSU Tracker',
         body: 'Time to log your daily score!',
         icon: '/static/icons/icon-192x192.png',
         badge: '/static/icons/badge-72x72.png',
         tag: 'csu-reminder',
-        data: { url: '/' }
+        data: { url: '/tracking/log/' }
     };
     
     if (event.data) {
         try {
-            const payload = event.data.json();
-            data = { ...data, ...payload };
-        } catch (e) {
-            console.error('Failed to parse push data:', e);
-        }
+            data = { ...data, ...event.data.json() };
+        } catch (e) {}
     }
     
-    const options = {
-        body: data.body,
-        icon: data.icon,
-        badge: data.badge,
-        tag: data.tag,
-        data: data.data,
-        vibrate: [100, 50, 100],
-        requireInteraction: true,
-        actions: [
-            { action: 'log', title: 'Log Now' },
-            { action: 'dismiss', title: 'Later' }
-        ]
-    };
-    
     event.waitUntil(
-        self.registration.showNotification(data.title, options)
+        self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: data.icon,
+            badge: data.badge,
+            tag: data.tag,
+            data: data.data,
+            vibrate: [100, 50, 100],
+            requireInteraction: true,
+            actions: [
+                { action: 'log', title: 'Log Now' },
+                { action: 'dismiss', title: 'Later' }
+            ]
+        })
     );
 });
 
-// Notification click event
+// Notification click
 self.addEventListener('notificationclick', (event) => {
-    console.log('Notification clicked:', event);
-    
     event.notification.close();
-    
-    const action = event.action;
-    let url = '/';
-    
-    if (action === 'log' || !action) {
-        url = event.notification.data?.url || '/tracking/log/';
-    }
+    const url = event.notification.data?.url || '/tracking/log/';
     
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((clientList) => {
-                // Focus existing window if available
                 for (const client of clientList) {
-                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    if ('focus' in client) {
                         client.navigate(url);
                         return client.focus();
                     }
                 }
-                // Open new window
-                if (clients.openWindow) {
-                    return clients.openWindow(url);
-                }
+                if (clients.openWindow) return clients.openWindow(url);
             })
     );
-});
-
-// Handle notification close
-self.addEventListener('notificationclose', (event) => {
-    console.log('Notification closed:', event);
 });

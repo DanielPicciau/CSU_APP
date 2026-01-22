@@ -1,12 +1,10 @@
-// CSU Tracker Service Worker - Optimized for Performance
-const CACHE_VERSION = 'v3';
+// CSU Tracker Service Worker - Safari Compatible
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `csu-static-${CACHE_VERSION}`;
-const DYNAMIC_CACHE = `csu-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline/';
 
-// Static assets to cache immediately (critical for app shell)
+// ONLY cache truly static assets (never HTML pages that might redirect)
 const STATIC_ASSETS = [
-    '/',
     '/offline/',
     '/static/icons/icon-192x192.png',
     '/static/icons/apple-touch-icon.png',
@@ -14,127 +12,50 @@ const STATIC_ASSETS = [
     '/static/js/performance.js',
 ];
 
-// Assets to cache opportunistically
-const CACHE_ON_DEMAND = [
-    '/tracking/',
-    '/tracking/log/',
-    '/tracking/history/',
-    '/notifications/settings/',
-];
-
-// Cache size limits
-const MAX_DYNAMIC_CACHE_SIZE = 50;
-
-// Install event - cache critical static assets
+// Install event - cache only static assets
 self.addEventListener('install', (event) => {
+    console.log('[SW] Installing version:', CACHE_VERSION);
     event.waitUntil(
         caches.open(STATIC_CACHE)
             .then((cache) => {
                 console.log('[SW] Pre-caching static assets');
-                return cache.addAll(STATIC_ASSETS);
+                return Promise.allSettled(
+                    STATIC_ASSETS.map(url => 
+                        fetch(url).then(response => {
+                            if (response.ok && !response.redirected) {
+                                return cache.put(url, response);
+                            }
+                        }).catch(() => {
+                            console.log('[SW] Failed to cache:', url);
+                        })
+                    )
+                );
             })
             .then(() => self.skipWaiting())
     );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches aggressively
 self.addEventListener('activate', (event) => {
+    console.log('[SW] Activating version:', CACHE_VERSION);
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames
-                    .filter((name) => {
-                        // Delete old version caches
-                        return name.startsWith('csu-') && 
-                               name !== STATIC_CACHE && 
-                               name !== DYNAMIC_CACHE;
-                    })
+                    .filter((name) => name !== STATIC_CACHE)
                     .map((name) => {
-                        console.log('[SW] Deleting old cache:', name);
+                        console.log('[SW] Deleting cache:', name);
                         return caches.delete(name);
                     })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => {
+            console.log('[SW] Claiming clients');
+            return self.clients.claim();
+        })
     );
 });
 
-// Trim dynamic cache to max size
-async function trimCache(cacheName, maxSize) {
-    const cache = await caches.open(cacheName);
-    const keys = await cache.keys();
-    if (keys.length > maxSize) {
-        // Delete oldest entries first
-        await cache.delete(keys[0]);
-        return trimCache(cacheName, maxSize);
-    }
-}
-
-// Strategy: Stale-While-Revalidate for HTML pages
-async function staleWhileRevalidate(request) {
-    const cache = await caches.open(DYNAMIC_CACHE);
-    const cachedResponse = await cache.match(request);
-    
-    // Fetch fresh copy in background
-    const fetchPromise = fetch(request).then((networkResponse) => {
-        // Only cache successful, non-redirect responses
-        if (networkResponse.ok && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
-            cache.put(request, networkResponse.clone());
-            trimCache(DYNAMIC_CACHE, MAX_DYNAMIC_CACHE_SIZE);
-        }
-        return networkResponse;
-    }).catch(() => null);
-    
-    // Return cached version immediately, or wait for network
-    return cachedResponse || fetchPromise;
-}
-
-// Strategy: Cache-First for static assets
-async function cacheFirst(request) {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-        return cachedResponse;
-    }
-    
-    try {
-        const networkResponse = await fetch(request);
-        // Only cache successful, non-redirect responses
-        if (networkResponse.ok && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
-            const cache = await caches.open(STATIC_CACHE);
-            cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-    } catch (error) {
-        // Return offline page for navigation
-        if (request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-        }
-        throw error;
-    }
-}
-
-// Strategy: Network-First for API and dynamic content
-async function networkFirst(request) {
-    try {
-        const networkResponse = await fetch(request);
-        // Only cache successful, non-redirect responses
-        if (networkResponse.ok && !networkResponse.redirected && networkResponse.type !== 'opaqueredirect') {
-            const cache = await caches.open(DYNAMIC_CACHE);
-            cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-    } catch (error) {
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
-        }
-        if (request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-        }
-        throw error;
-    }
-}
-
-// Fetch event with optimized caching strategies
+// Fetch event - NEVER cache HTML/navigation, only static assets
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
@@ -142,44 +63,52 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (request.method !== 'GET') return;
     
-    // Skip cross-origin requests (except CDNs)
-    if (url.origin !== location.origin && 
-        !url.hostname.includes('cdn') &&
-        !url.hostname.includes('unpkg')) {
+    // Skip cross-origin requests
+    if (url.origin !== location.origin) return;
+    
+    // NEVER intercept navigation requests - let them go to network
+    // This prevents the Safari redirect caching issue
+    if (request.mode === 'navigate') {
         return;
     }
     
-    // API requests - don't cache, always network
+    // NEVER intercept HTML requests
+    if (request.headers.get('accept')?.includes('text/html')) {
+        return;
+    }
+    
+    // API requests - always network
     if (url.pathname.includes('/api/')) {
         return;
     }
     
-    // Static assets - cache first (faster)
-    if (url.pathname.startsWith('/static/') || 
-        url.pathname.endsWith('.js') ||
-        url.pathname.endsWith('.css') ||
-        url.pathname.endsWith('.png') ||
-        url.pathname.endsWith('.jpg') ||
-        url.pathname.endsWith('.svg') ||
-        url.pathname.endsWith('.woff2')) {
-        event.respondWith(cacheFirst(request));
+    // Only handle static assets
+    if (url.pathname.startsWith('/static/')) {
+        event.respondWith(
+            caches.match(request).then((cachedResponse) => {
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+                return fetch(request).then((networkResponse) => {
+                    if (networkResponse.ok && !networkResponse.redirected) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(STATIC_CACHE).then((cache) => {
+                            cache.put(request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                });
+            }).catch(() => {
+                return new Response('', { status: 404 });
+            })
+        );
         return;
     }
-    
-    // HTML pages - stale-while-revalidate (fast + fresh)
-    if (request.mode === 'navigate' || 
-        request.headers.get('accept')?.includes('text/html')) {
-        event.respondWith(staleWhileRevalidate(request));
-        return;
-    }
-    
-    // Everything else - network first
-    event.respondWith(networkFirst(request));
 });
 
 // Push event - handle incoming push notifications
 self.addEventListener('push', (event) => {
-    console.log('Push received:', event);
+    console.log('[SW] Push received:', event);
     
     let data = {
         title: 'CSU Tracker',
@@ -187,7 +116,7 @@ self.addEventListener('push', (event) => {
         icon: '/static/icons/icon-192x192.png',
         badge: '/static/icons/badge-72x72.png',
         tag: 'csu-reminder',
-        data: { url: '/' }
+        data: { url: '/tracking/log/' }
     };
     
     if (event.data) {
@@ -195,7 +124,7 @@ self.addEventListener('push', (event) => {
             const payload = event.data.json();
             data = { ...data, ...payload };
         } catch (e) {
-            console.error('Failed to parse push data:', e);
+            console.error('[SW] Failed to parse push data:', e);
         }
     }
     
@@ -220,12 +149,12 @@ self.addEventListener('push', (event) => {
 
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
-    console.log('Notification clicked:', event);
+    console.log('[SW] Notification clicked:', event);
     
     event.notification.close();
     
     const action = event.action;
-    let url = '/';
+    let url = '/tracking/log/';
     
     if (action === 'log' || !action) {
         url = event.notification.data?.url || '/tracking/log/';
@@ -234,14 +163,12 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((clientList) => {
-                // Focus existing window if available
                 for (const client of clientList) {
                     if (client.url.includes(self.location.origin) && 'focus' in client) {
                         client.navigate(url);
                         return client.focus();
                     }
                 }
-                // Open new window
                 if (clients.openWindow) {
                     return clients.openWindow(url);
                 }
@@ -251,5 +178,5 @@ self.addEventListener('notificationclick', (event) => {
 
 // Handle notification close
 self.addEventListener('notificationclose', (event) => {
-    console.log('Notification closed:', event);
+    console.log('[SW] Notification closed:', event);
 });

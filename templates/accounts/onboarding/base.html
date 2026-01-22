@@ -78,11 +78,20 @@
     </div>
 
     <script>
-        // Register service worker for push notifications
+        // Force clear all caches and re-register service worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker registered'))
-                .catch(err => console.error('SW registration failed:', err));
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) caches.delete(name);
+                });
+            }
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) registration.unregister();
+            }).then(function() {
+                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                    .then(reg => { console.log('SW registered'); reg.update(); })
+                    .catch(err => console.error('SW failed:', err));
+            });
         }
         
         // Smooth transition effects

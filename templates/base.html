@@ -253,13 +253,34 @@
     <script>
         const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
         
-        // Register service worker
+        // Force clear all caches and re-register service worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => {
-                    console.log('Service Worker registered');
-                })
-                .catch(err => console.error('SW registration failed:', err));
+            // First, clear ALL caches to fix Safari redirect issue
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                        console.log('Cleared cache:', name);
+                    }
+                });
+            }
+            
+            // Unregister any existing service workers first
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) {
+                    registration.unregister().then(function() {
+                        console.log('Unregistered old SW');
+                    });
+                }
+            }).then(function() {
+                // Register fresh service worker
+                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                    .then(reg => {
+                        console.log('Service Worker registered');
+                        reg.update();
+                    })
+                    .catch(err => console.error('SW registration failed:', err));
+            });
         }
         
         // Instant navigation feedback for bottom nav
