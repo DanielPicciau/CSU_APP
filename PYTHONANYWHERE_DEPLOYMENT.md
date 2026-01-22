@@ -101,7 +101,7 @@ CSU_MAX_SCORE=42
 CSRF_TRUSTED_ORIGINS=https://csu-webflareuk.pythonanywhere.com
 
 # Backups (optional but recommended)
-# BACKUP_ENCRYPTION_KEY should be a Fernet key
+# BACKUP_ENCRYPTION_KEY should be a Fernet key (recommended separate from FERNET_KEYS)
 # Example: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 BACKUP_ENCRYPTION_KEY=your-backup-fernet-key
 CSU_BACKUP_DIR=/home/WebFlareUK/CSU_backups
@@ -259,7 +259,9 @@ Daily backups (free tier):
 If you want more frequent backups (paid tier), schedule hourly with the same command.
 
 Notes:
-- Backups are encrypted on disk with `BACKUP_ENCRYPTION_KEY` (falls back to `FERNET_KEYS` if unset).
+- `BACKUP_ENCRYPTION_KEY` encrypts the backup files at rest. Use a dedicated key if possible; if unset, the script falls back to `FERNET_KEYS`.
+- `CSU_BACKUP_DIR` is where encrypted backup files are stored.
+- `CSU_BACKUP_RETENTION_DAYS` controls pruning of old backups (DB files + snapshot records/files).
 - Keep `/media/` and `/home/WebFlareUK/CSU_backups` **unmapped** from public static files.
 
 ## 11. Reload and Test
