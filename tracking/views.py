@@ -621,9 +621,12 @@ def export_csv_view(request):
     from subscriptions.models import user_is_premium
     from .exports import CSUExporter
     
-    # Check premium access
-    if not user_is_premium(request.user):
-        messages.error(request, "CSV export is a Cura Premium feature. Upgrade to access this feature.")
+    is_premium = user_is_premium(request.user)
+    report_type = request.GET.get("report_type", "quick")
+    
+    # Free users can only export quick summary
+    if not is_premium and report_type != "quick":
+        messages.error(request, "Detailed reports are a Cura Premium feature. Upgrade to access full reports.")
         return redirect("subscriptions:premium")
     
     today = get_user_today(request.user)
@@ -670,9 +673,12 @@ def export_pdf_view(request):
     from subscriptions.models import user_is_premium
     from .exports import CSUExporter
     
-    # Check premium access
-    if not user_is_premium(request.user):
-        messages.error(request, "PDF export is a Cura Premium feature. Upgrade to access this feature.")
+    is_premium = user_is_premium(request.user)
+    report_type = request.GET.get("report_type", "quick")
+    
+    # Free users can only export quick summary
+    if not is_premium and report_type != "quick":
+        messages.error(request, "Detailed reports are a Cura Premium feature. Upgrade to access full reports.")
         return redirect("subscriptions:premium")
     
     today = get_user_today(request.user)

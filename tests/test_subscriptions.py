@@ -137,37 +137,47 @@ class TestPremiumLandingView:
 
 
 class TestExportPremiumGate:
-    """Test that export features are gated behind premium."""
+    """Test that detailed export features are gated behind premium."""
     
     def test_export_page_accessible_to_all(self, client_logged_in):
-        """Export page should be accessible (shows premium prompt)."""
+        """Export page should be accessible (shows premium prompt for detailed)."""
         response = client_logged_in.get(reverse("tracking:export"))
         assert response.status_code == 200
     
-    def test_csv_export_blocked_for_free_user(self, client_logged_in):
-        """Free user should be redirected when trying to export CSV."""
-        response = client_logged_in.get(reverse("tracking:export_csv"))
-        assert response.status_code == 302
-        assert "premium" in response.url
-    
-    def test_pdf_export_blocked_for_free_user(self, client_logged_in):
-        """Free user should be redirected when trying to export PDF."""
-        response = client_logged_in.get(reverse("tracking:export_pdf"))
-        assert response.status_code == 302
-        assert "premium" in response.url
-    
-    def test_csv_export_allowed_for_premium_user(self, premium_client_logged_in):
-        """Premium user should be able to download CSV."""
-        # This may fail if there are no entries, but shouldn't redirect to premium
-        response = premium_client_logged_in.get(reverse("tracking:export_csv"))
-        # Should either succeed (200) or fail gracefully, not redirect to premium
+    def test_quick_csv_export_allowed_for_free_user(self, client_logged_in):
+        """Free user should be able to export quick summary CSV."""
+        response = client_logged_in.get(reverse("tracking:export_csv") + "?report_type=quick")
+        # Should not redirect to premium (may fail for other reasons like no data)
         assert "premium" not in response.get("Location", "")
     
-    def test_pdf_export_allowed_for_premium_user(self, premium_client_logged_in):
-        """Premium user should be able to download PDF."""
-        # This may fail if there are no entries, but shouldn't redirect to premium
-        response = premium_client_logged_in.get(reverse("tracking:export_pdf"))
-        # Should either succeed (200) or fail gracefully, not redirect to premium
+    def test_quick_pdf_export_allowed_for_free_user(self, client_logged_in):
+        """Free user should be able to export quick summary PDF."""
+        response = client_logged_in.get(reverse("tracking:export_pdf") + "?report_type=quick")
+        # Should not redirect to premium
+        assert "premium" not in response.get("Location", "")
+    
+    def test_detailed_csv_export_blocked_for_free_user(self, client_logged_in):
+        """Free user should be redirected when trying to export detailed CSV."""
+        response = client_logged_in.get(reverse("tracking:export_csv") + "?report_type=detailed")
+        assert response.status_code == 302
+        assert "premium" in response.url
+    
+    def test_detailed_pdf_export_blocked_for_free_user(self, client_logged_in):
+        """Free user should be redirected when trying to export detailed PDF."""
+        response = client_logged_in.get(reverse("tracking:export_pdf") + "?report_type=detailed")
+        assert response.status_code == 302
+        assert "premium" in response.url
+    
+    def test_detailed_csv_export_allowed_for_premium_user(self, premium_client_logged_in):
+        """Premium user should be able to download detailed CSV."""
+        response = premium_client_logged_in.get(reverse("tracking:export_csv") + "?report_type=detailed")
+        # Should not redirect to premium
+        assert "premium" not in response.get("Location", "")
+    
+    def test_detailed_pdf_export_allowed_for_premium_user(self, premium_client_logged_in):
+        """Premium user should be able to download detailed PDF."""
+        response = premium_client_logged_in.get(reverse("tracking:export_pdf") + "?report_type=detailed")
+        # Should not redirect to premium
         assert "premium" not in response.get("Location", "")
 
 
