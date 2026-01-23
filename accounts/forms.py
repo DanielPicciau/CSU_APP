@@ -623,3 +623,61 @@ class OnboardingReminderForm(forms.Form):
         }),
         label="Your timezone",
     )
+
+
+class PauseAccountForm(forms.Form):
+    """Form for pausing account - Right to Restrict Processing (GDPR Article 18)."""
+    
+    current_password = forms.CharField(
+        label="Current Password",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-input",
+            "placeholder": "Enter your password to confirm",
+            "autocomplete": "current-password",
+        }),
+        help_text="Enter your password to confirm this action.",
+    )
+    
+    understand = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={
+            "class": "form-checkbox",
+        }),
+        label="I understand that while my account is paused, my data will be retained but not processed.",
+    )
+    
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
+    def clean_current_password(self):
+        """Verify the user's password."""
+        password = self.cleaned_data.get("current_password")
+        if not self.user.check_password(password):
+            raise forms.ValidationError("Incorrect password.")
+        return password
+
+
+class ResumeAccountForm(forms.Form):
+    """Form for resuming a paused account."""
+    
+    current_password = forms.CharField(
+        label="Current Password",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-input",
+            "placeholder": "Enter your password to confirm",
+            "autocomplete": "current-password",
+        }),
+        help_text="Enter your password to resume your account.",
+    )
+    
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
+    def clean_current_password(self):
+        """Verify the user's password."""
+        password = self.cleaned_data.get("current_password")
+        if not self.user.check_password(password):
+            raise forms.ValidationError("Incorrect password.")
+        return password

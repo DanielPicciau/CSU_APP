@@ -233,6 +233,18 @@ class Profile(models.Model):
         help_text="When account deletion was requested (30-day grace period)",
     )
     
+    # Account pause (Right to Restrict Processing - GDPR Article 18)
+    account_paused = models.BooleanField(
+        default=False,
+        help_text="Account is paused - data retained but not processed",
+    )
+    
+    account_paused_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the account was paused",
+    )
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

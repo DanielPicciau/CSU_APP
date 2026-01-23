@@ -51,6 +51,7 @@ urlpatterns = [
     
     # Legal
     path("legal/privacy-policy/", TemplateView.as_view(template_name="legal/privacy_policy.html"), name="privacy_policy"),
+    path("legal/terms-of-service/", TemplateView.as_view(template_name="legal/terms_of_service.html"), name="terms_of_service"),
 ]
 
 if settings.DEBUG:
