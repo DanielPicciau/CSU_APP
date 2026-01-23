@@ -32,6 +32,8 @@ from .forms import (
     ProfileForm,
     CustomPasswordChangeForm,
     DeleteAccountForm,
+    PauseAccountForm,
+    ResumeAccountForm,
     PasswordResetRequestForm,
     PasswordResetConfirmForm,
     MFASetupForm,
@@ -246,6 +248,75 @@ def delete_account_view(request):
 
     return render(request, "accounts/delete_account.html", {
         "form": form,
+    })
+
+
+@login_required
+def pause_account_view(request):
+    """Pause user account - Right to Restrict Processing (GDPR Article 18).
+    
+    When an account is paused:
+    - Data is retained but not actively processed
+    - User can still login but sees limited functionality
+    - User can resume at any time
+    """
+    profile = request.user.profile
+    
+    # If account is already paused, redirect to resume
+    if profile.account_paused:
+        return redirect("accounts:resume_account")
+    
+    if request.method == "POST":
+        form = PauseAccountForm(request.user, request.POST)
+        if form.is_valid():
+            profile.account_paused = True
+            profile.account_paused_at = timezone.now()
+            profile.save()
+            
+            audit_logger.log_action('ACCOUNT_PAUSED', request.user, request)
+            messages.success(
+                request, 
+                "Your account has been paused. Your data will be retained but not processed. "
+                "You can resume your account at any time."
+            )
+            return redirect("accounts:privacy")
+    else:
+        form = PauseAccountForm(request.user)
+    
+    return render(request, "accounts/pause_account.html", {
+        "form": form,
+    })
+
+
+@login_required
+def resume_account_view(request):
+    """Resume a paused user account."""
+    profile = request.user.profile
+    
+    # If account is not paused, redirect to privacy settings
+    if not profile.account_paused:
+        messages.info(request, "Your account is not paused.")
+        return redirect("accounts:privacy")
+    
+    if request.method == "POST":
+        form = ResumeAccountForm(request.user, request.POST)
+        if form.is_valid():
+            profile.account_paused = False
+            profile.account_paused_at = None
+            profile.save()
+            
+            audit_logger.log_action('ACCOUNT_RESUMED', request.user, request)
+            messages.success(
+                request, 
+                "Your account has been resumed. All features are now available again."
+            )
+            return redirect("tracking:dashboard")
+    else:
+        form = ResumeAccountForm(request.user)
+    
+    return render(request, "accounts/resume_account.html", {
+        "form": form,
+        "paused_at": profile.account_paused_at,
     })
 
 

@@ -400,3 +400,82 @@ class OnboardingMiddleware(MiddlewareMixin):
             return redirect(target)
         
         return None
+
+
+class AccountPausedMiddleware(MiddlewareMixin):
+    """
+    Restrict processing for users with paused accounts.
+    
+    Implements GDPR Article 18 - Right to Restriction of Processing.
+    When a user pauses their account, their data is retained but not processed.
+    This middleware ensures data processing views are blocked for paused accounts.
+    
+    Users with paused accounts can still:
+    - View their privacy settings
+    - Resume their account
+    - Delete their account
+    - Export their data
+    - Log out
+    """
+    
+    # Paths that are allowed for paused accounts
+    ALLOWED_PATHS = [
+        '/accounts/privacy/',
+        '/accounts/pause-account/',
+        '/accounts/resume-account/',
+        '/accounts/delete-account/',
+        '/accounts/logout/',
+        '/accounts/profile/',
+        '/tracking/export/',  # Allow data export
+        '/static/',
+        '/favicon.ico',
+        '/admin/',  # Admin can still access
+        '/legal/',  # Legal pages
+    ]
+    
+    # API endpoints allowed for paused accounts
+    ALLOWED_API_PATHS = [
+        '/api/accounts/profile/',
+        '/api/accounts/privacy/',
+        '/api/tracking/export/',
+    ]
+    
+    def process_request(self, request: HttpRequest) -> HttpResponse | None:
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return None
+        
+        # Admin and staff users are exempt
+        if user.is_staff or user.is_superuser:
+            return None
+        
+        # Check if account is paused
+        profile = getattr(user, 'profile', None)
+        if not profile or not profile.account_paused:
+            return None
+        
+        # Allow specific paths for paused accounts
+        for allowed_path in self.ALLOWED_PATHS:
+            if request.path.startswith(allowed_path):
+                return None
+        
+        # Allow specific API paths
+        for allowed_api in self.ALLOWED_API_PATHS:
+            if request.path.startswith(allowed_api):
+                return None
+        
+        # For API requests, return JSON response
+        if request.path.startswith('/api/'):
+            return JsonResponse({
+                'error': 'account_paused',
+                'message': 'Your account is paused. Data processing is restricted until you resume your account.',
+                'resume_url': '/accounts/resume-account/',
+            }, status=403)
+        
+        # For regular requests, redirect to resume page with message
+        from django.contrib import messages
+        messages.warning(
+            request,
+            'Your account is currently paused. Please resume your account to access this feature.'
+        )
+        return redirect('accounts:resume_account')

@@ -22,6 +22,8 @@ urlpatterns = [
     path("profile/", views.profile_view, name="profile"),
     path("change-password/", views.change_password_view, name="change_password"),
     path("delete-account/", views.delete_account_view, name="delete_account"),
+    path("pause-account/", views.pause_account_view, name="pause_account"),
+    path("resume-account/", views.resume_account_view, name="resume_account"),
     path("privacy/", views.privacy_view, name="privacy"),
     path("consent/accept/", views.accept_consent_view, name="accept_consent"),
     

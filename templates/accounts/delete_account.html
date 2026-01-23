@@ -15,6 +15,12 @@
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--color-error-900);
 }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .danger-zone {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: var(--color-error-900);
+    }
+}
 .danger-zone__header {
     display: flex;
     align-items: center;
@@ -32,6 +38,11 @@
 }
 [data-theme="dark"] .danger-zone__icon {
     background: rgba(239, 68, 68, 0.2);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .danger-zone__icon {
+        background: rgba(239, 68, 68, 0.2);
+    }
 }
 .danger-zone__title {
     font-size: var(--text-lg);

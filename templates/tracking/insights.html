@@ -270,6 +270,12 @@
     background: rgba(245, 158, 11, 0.1);
     border-color: rgba(245, 158, 11, 0.3);
 }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .history-limit-banner {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.3);
+    }
+}
 
 .disclaimer-text {
     font-size: var(--text-xs);

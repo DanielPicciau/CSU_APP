@@ -91,6 +91,8 @@ MIDDLEWARE = [
     "core.middleware.AuditMiddleware",
     # Onboarding redirect for new users
     "core.middleware.OnboardingMiddleware",
+    # Restrict processing for paused accounts (GDPR Article 18)
+    "core.middleware.AccountPausedMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"

@@ -260,6 +260,65 @@
         </form>
     </div>
     
+    <!-- Account Controls -->
+    <div class="privacy-section">
+        <div class="privacy-section__header">
+            <div class="privacy-section__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-500)" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+            </div>
+            <h2 class="privacy-section__title">Account Controls</h2>
+        </div>
+        
+        <div class="privacy-content mb-4">
+            <p>
+                You have full control over your account. You can pause data processing while keeping your data, 
+                or permanently delete your account and all associated data.
+            </p>
+        </div>
+        
+        {% if profile.account_paused %}
+        <!-- Account is paused - show resume option -->
+        <div class="feedback-banner feedback-banner--warning mb-4">
+            <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="10" y1="15" x2="10" y2="9"/>
+                <line x1="14" y1="15" x2="14" y2="9"/>
+            </svg>
+            <span class="feedback-banner__text">
+                Your account is currently paused. Data processing is restricted.
+            </span>
+        </div>
+        
+        <a href="{% url 'accounts:resume_account' %}" class="btn btn--primary btn--full mb-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Resume Account
+        </a>
+        {% else %}
+        <!-- Account is active - show pause option -->
+        <a href="{% url 'accounts:pause_account' %}" class="btn btn--outline btn--full mb-3" style="border-color: var(--color-warning-500); color: var(--color-warning-600);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="10" y1="15" x2="10" y2="9"/>
+                <line x1="14" y1="15" x2="14" y2="9"/>
+            </svg>
+            Pause Account
+        </a>
+        {% endif %}
+        
+        <a href="{% url 'accounts:delete_account' %}" class="btn btn--ghost btn--full" style="color: var(--color-error-500);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Delete Account
+        </a>
+    </div>
+    
     <!-- Medical Disclaimer -->
     <div class="feedback-banner feedback-banner--warning">
         <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

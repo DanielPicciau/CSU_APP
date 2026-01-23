@@ -15,6 +15,11 @@
 [data-theme="dark"] .profile-header {
     background: linear-gradient(180deg, var(--color-primary-900) 0%, transparent 100%);
 }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .profile-header {
+        background: linear-gradient(180deg, var(--color-primary-900) 0%, transparent 100%);
+    }
+}
 .profile-avatar {
     width: 80px;
     height: 80px;
