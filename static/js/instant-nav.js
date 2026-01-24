@@ -26,8 +26,9 @@
 
     init() {
       this.setupLinkPrefetching();
-      this.setupViewTransitions();
-      this.setupSkeletonScreens();
+      // Disable skeleton screens - they were causing issues with page rendering
+      // this.setupViewTransitions();
+      // this.setupSkeletonScreens();
       this.preloadPriorityPages();
       this.setupNavigationTiming();
     },
@@ -145,18 +146,16 @@
      * Fallback transitions for browsers without View Transitions API
      */
     setupFallbackTransitions() {
-      document.addEventListener('click', (e) => {
-        const link = e.target.closest('a[href]');
-        if (!link || !this.shouldTransition(link)) return;
-        
-        // Show skeleton before navigation
-        this.showSkeleton();
-        
-        // Let the click proceed naturally
+      // Disabled skeleton transitions - they were causing issues
+      // Just use the prefetching for performance instead
+      
+      // Clear any stuck skeleton on page load
+      window.addEventListener('pageshow', () => {
+        this.hideSkeleton();
       });
       
-      // Hide skeleton on page load (for back/forward navigation)
-      window.addEventListener('pageshow', () => {
+      // Also clear on DOMContentLoaded for safety
+      document.addEventListener('DOMContentLoaded', () => {
         this.hideSkeleton();
       });
     },
