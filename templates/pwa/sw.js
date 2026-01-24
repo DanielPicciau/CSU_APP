@@ -1,5 +1,5 @@
 // CSU Tracker Service Worker - Safari Compatible
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v6';
 const STATIC_CACHE = `csu-static-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline/';
 

@@ -132,63 +132,13 @@
 
     /**
      * Setup View Transitions API for smooth page changes
+     * NOTE: Disabled for now - the partial content swap breaks page state.
+     * Instead, we use prefetching + skeleton screens for perceived performance.
      */
     setupViewTransitions() {
-      if (!('startViewTransition' in document)) {
-        // Fallback: add loading class during navigation
-        this.setupFallbackTransitions();
-        return;
-      }
-      
-      // Intercept navigation for view transitions
-      document.addEventListener('click', async (e) => {
-        const link = e.target.closest('a[href]');
-        if (!link || !this.shouldTransition(link)) return;
-        
-        e.preventDefault();
-        
-        // Show skeleton immediately
-        this.showSkeleton();
-        
-        try {
-          // Start view transition
-          const transition = document.startViewTransition(async () => {
-            const response = await fetch(link.href, {
-              credentials: 'same-origin'
-            });
-            const html = await response.text();
-            
-            // Parse and swap content
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            // Update page content
-            const newMain = doc.querySelector('.app-content, main, #main-content');
-            const oldMain = document.querySelector('.app-content, main, #main-content');
-            
-            if (newMain && oldMain) {
-              oldMain.innerHTML = newMain.innerHTML;
-            }
-            
-            // Update title
-            document.title = doc.title;
-            
-            // Update active nav states
-            this.updateActiveNav(link.href);
-          });
-          
-          await transition.finished;
-          
-          // Update URL
-          history.pushState({}, '', link.href);
-          
-        } catch (err) {
-          // Fallback: normal navigation
-          location.href = link.href;
-        } finally {
-          this.hideSkeleton();
-        }
-      });
+      // View transitions disabled - using fallback transitions only
+      // The prefetching already makes pages feel instant
+      this.setupFallbackTransitions();
     },
 
     /**
