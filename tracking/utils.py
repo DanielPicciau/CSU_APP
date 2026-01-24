@@ -10,18 +10,42 @@ from django.utils import timezone
 
 from subscriptions.entitlements import has_entitlement
 
+# Per-request cache attribute names (stored on user object)
+_USER_TODAY_CACHE = "_user_today_cache"
+_HISTORY_LIMIT_CACHE = "_history_limit_days_cache"
+
 
 def get_user_today(user):
-    """Get today's date in the user's timezone."""
+    """
+    Get today's date in the user's timezone.
+    
+    Caches result on the user object to avoid repeated profile lookups.
+    """
+    if hasattr(user, _USER_TODAY_CACHE):
+        return getattr(user, _USER_TODAY_CACHE)
+    
     user_tz = pytz.timezone(user.profile.default_timezone)
-    return timezone.now().astimezone(user_tz).date()
+    today = timezone.now().astimezone(user_tz).date()
+    setattr(user, _USER_TODAY_CACHE, today)
+    return today
 
 
 def get_history_limit_days(user) -> int | None:
-    """Return history limit in days for the user (None means unlimited)."""
+    """
+    Return history limit in days for the user (None means unlimited).
+    
+    Caches result on the user object to avoid repeated entitlement checks.
+    """
+    if hasattr(user, _HISTORY_LIMIT_CACHE):
+        return getattr(user, _HISTORY_LIMIT_CACHE)
+    
     if has_entitlement(user, "history_unlimited"):
-        return None
-    return getattr(settings, "FREE_HISTORY_DAYS", 30)
+        limit = None
+    else:
+        limit = getattr(settings, "FREE_HISTORY_DAYS", 30)
+    
+    setattr(user, _HISTORY_LIMIT_CACHE, limit)
+    return limit
 
 
 def get_history_start_date(user, today=None):

@@ -26,6 +26,9 @@ FREE_ENTITLEMENTS = {
     "achievements": False,
 }
 
+# Per-request cache attribute name (stored on user object)
+_REQUEST_CACHE_ATTR = "_entitlements_cache"
+
 PREMIUM_ENTITLEMENTS = {
     "premium_access": True,
     "history_unlimited": True,
@@ -42,7 +45,7 @@ PREMIUM_ENTITLEMENTS = {
     "achievements": True,
 }
 
-ENTITLEMENTS_CACHE_TTL = 0 if settings.DEBUG else getattr(settings, "ENTITLEMENTS_CACHE_TTL", 300)
+m
 
 
 def _cache_key(user_id: int) -> str:
@@ -75,14 +78,23 @@ def resolve_entitlements(user) -> dict:
 
     Premium is granted if the user has an active/trialing/grace subscription
     or is a superuser. Overrides are applied last.
+    
+    Uses per-request caching (stored on user object) to avoid repeated DB queries
+    within the same request, plus global cache for cross-request performance.
     """
     if not user or not user.is_authenticated:
         return FREE_ENTITLEMENTS.copy()
+
+    # Check per-request cache first (avoids DB hits within same request)
+    if hasattr(user, _REQUEST_CACHE_ATTR):
+        return getattr(user, _REQUEST_CACHE_ATTR)
 
     cache_key = _cache_key(user.id)
     if ENTITLEMENTS_CACHE_TTL > 0:
         cached = cache.get(cache_key)
         if cached:
+            # Store in per-request cache too
+            setattr(user, _REQUEST_CACHE_ATTR, cached)
             return cached
 
     entitlements = FREE_ENTITLEMENTS.copy()
@@ -96,6 +108,10 @@ def resolve_entitlements(user) -> dict:
             entitlements.update(subscription.plan.entitlements_json)
 
     entitlements = apply_overrides(entitlements, user.id)
+    
+    # Store in per-request cache
+    setattr(user, _REQUEST_CACHE_ATTR, entitlements)
+    
     if ENTITLEMENTS_CACHE_TTL > 0:
         cache.set(cache_key, entitlements, ENTITLEMENTS_CACHE_TTL)
     return entitlements

@@ -5,6 +5,7 @@ Pytest fixtures for CSU Tracker tests.
 import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 User = get_user_model()
@@ -15,6 +16,14 @@ def pytest_configure():
     settings.TESTING = True
     # Disable rate limiting in tests
     settings.RATELIMIT_ENABLE = False
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear Django cache before and after each test to prevent cache pollution."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture
