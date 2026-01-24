@@ -81,6 +81,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Prefetch user profile early to avoid N+1 queries in downstream middleware
+    "core.middleware.UserProfilePrefetchMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Security middleware
@@ -328,6 +330,10 @@ SESSION_COOKIE_NAME = "sessionid"  # Avoid __Host- prefix for Safari PWA compati
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Allow persistent sessions for PWA
 SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
 
+# Use cached sessions to reduce database hits
+# Falls back to database if cache is unavailable
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+
 # CSRF Cookie settings - Safari PWA compatible
 CSRF_COOKIE_NAME = "csrftoken"  # Avoid __Host- prefix for Safari PWA compatibility
 CSRF_COOKIE_SAMESITE = "Lax"
@@ -460,11 +466,16 @@ else:
             }
         }
     else:
+        # Use LocMemCache as fallback instead of DatabaseCache
+        # DatabaseCache with SQLite causes severe performance issues due to locking
         CACHES = {
             'default': {
-                'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-                'LOCATION': 'django_cache_table',
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'csu-fallback-cache',
                 'TIMEOUT': 300,
+                'OPTIONS': {
+                    'MAX_ENTRIES': 10000
+                }
             }
         }
 

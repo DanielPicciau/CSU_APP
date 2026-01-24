@@ -41,11 +41,8 @@
     <!-- Desktop Layout CSS -->
     <link rel="stylesheet" href="{% static 'css/desktop.css' %}">
     
-    <!-- Preconnect to CDN -->
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    
     <!-- HTMX for dynamic interactions -->
-    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+    <script src="{% static 'js/htmx.min.js' %}" defer></script>
     
     {% block extra_head %}{% endblock %}
 </head>

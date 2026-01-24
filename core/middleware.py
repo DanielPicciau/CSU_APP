@@ -22,6 +22,36 @@ from .security import (
 logger = logging.getLogger('security')
 
 
+class UserProfilePrefetchMiddleware(MiddlewareMixin):
+    """
+    Prefetch user profile to avoid N+1 queries in downstream middleware.
+    
+    This middleware runs early and pre-loads the user's profile with a single
+    query, caching it on the user object. This prevents multiple database
+    queries when other middleware or views access user.profile.
+    """
+    
+    def process_request(self, request: HttpRequest) -> None:
+        # Only process for authenticated users
+        if not hasattr(request, 'user') or not request.user.is_authenticated:
+            return None
+        
+        # Prefetch profile if not already loaded (uses select_related pattern)
+        # This single query replaces multiple profile lookups throughout the request
+        try:
+            # Access the profile to trigger the cache
+            # Django's OneToOneField caches the related object after first access
+            if not hasattr(request.user, '_profile_prefetched'):
+                # Force a single query to load profile
+                _ = request.user.profile
+                request.user._profile_prefetched = True
+        except Exception:
+            # Profile doesn't exist - that's OK, downstream will handle
+            pass
+        
+        return None
+
+
 class SecurityHeadersMiddleware(MiddlewareMixin):
     """Add security headers to all responses."""
     

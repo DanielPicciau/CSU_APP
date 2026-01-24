@@ -8,10 +8,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CSU Tracker">
     
-    <!-- Performance: DNS prefetch for external resources -->
-    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
-    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-    
     <title>{% block title %}CSU Tracker{% endblock %}</title>
     
     <!-- PWA Manifest -->
@@ -31,8 +27,8 @@
     - HTMX: Download and serve from /static/js/htmx.min.js
     -->
     
-    <!-- Tailwind CSS (CDN for dev - see security note above) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Local resources to avoid CDN delays -->
+    <script src="/static/js/tailwindcss.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -46,10 +42,8 @@
         }
     </script>
     
-    <!-- HTMX with SRI hash -->
-    <script src="https://unpkg.com/htmx.org@1.9.10" 
-            integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHez7Nber6bPLCIHCDHBMQc0lfmjzJgDLCz0w" 
-            crossorigin="anonymous"></script>
+    <!-- HTMX -->
+    <script src="/static/js/htmx.min.js"></script>
     
     <!-- Animation & Performance CSS -->
     <link rel="stylesheet" href="/static/css/animations.css">
