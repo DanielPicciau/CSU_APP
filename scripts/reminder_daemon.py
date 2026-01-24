@@ -46,15 +46,21 @@ logger = logging.getLogger(__name__)
 # How often to check (in seconds)
 CHECK_INTERVAL = 60  # Every minute
 
-# Window for sending reminders (in seconds)
-# If reminder time was within this many seconds ago, send it
-# Duplicate prevention is handled by ReminderLog, so a larger window is safe
-REMINDER_WINDOW = 300  # 5 minutes to account for timing variations
+# UK timezone - all times are UK time
+UK_TZ = pytz.timezone("Europe/London")
+
+
+def get_uk_now():
+    """Get current UK time."""
+    return timezone.now().astimezone(UK_TZ)
 
 
 def process_reminders():
     """Check and send any due reminders."""
-    utc_now = timezone.now()
+    uk_now = get_uk_now()
+    uk_today = uk_now.date()
+    current_hour = uk_now.hour
+    current_minute = uk_now.minute
     sent_count = 0
     
     # Get all users with reminders enabled
@@ -63,6 +69,7 @@ def process_reminders():
     ).select_related('user')
     
     logger.debug(f"Found {preferences.count()} user(s) with reminders enabled")
+    logger.debug(f"Current UK time: {uk_now.strftime('%H:%M')} on {uk_today}")
     
     for pref in preferences:
         user = pref.user
@@ -70,29 +77,22 @@ def process_reminders():
         user_id = f"user_{user.id}"
         
         try:
-            # Get current time in user's timezone
-            try:
-                user_tz = pytz.timezone(pref.timezone)
-            except pytz.UnknownTimeZoneError:
-                user_tz = pytz.timezone('UTC')
+            # Get reminder time (stored as UK time)
+            reminder_hour = pref.time_of_day.hour
+            reminder_minute = pref.time_of_day.minute
             
-            user_now = utc_now.astimezone(user_tz)
-            user_today = user_now.date()
+            # Simple comparison: convert to total minutes since midnight
+            current_minutes = current_hour * 60 + current_minute
+            reminder_minutes = reminder_hour * 60 + reminder_minute
             
-            # Build the reminder datetime for today
-            reminder_datetime = user_tz.localize(
-                datetime.combine(user_today, pref.time_of_day)
-            )
-            
-            # Calculate time since reminder
-            time_since = (user_now - reminder_datetime).total_seconds()
-            
-            # Check if within the window (just passed, not too long ago)
-            if time_since < 0:
-                logger.debug(f"{user_id}: Reminder time not yet reached")
+            # Not time yet - haven't reached the reminder minute
+            if current_minutes < reminder_minutes:
+                logger.debug(f"{user_id}: Not time yet ({reminder_hour:02d}:{reminder_minute:02d} > current {current_hour:02d}:{current_minute:02d})")
                 continue
-            if time_since > REMINDER_WINDOW:
-                logger.debug(f"{user_id}: Outside window (>{REMINDER_WINDOW}s ago)")
+            
+            # Already past by more than 5 minutes - skip
+            if current_minutes > reminder_minutes + 5:
+                logger.debug(f"{user_id}: Missed window ({reminder_hour:02d}:{reminder_minute:02d} + 5min < current {current_hour:02d}:{current_minute:02d})")
                 continue
             
             # Check if already reminded today

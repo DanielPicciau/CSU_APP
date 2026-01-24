@@ -126,6 +126,14 @@ def test_notification_view(request):
 # We prevent duplicates via ReminderLog and last_reminder_date guards
 REMINDER_WINDOW = 3600  # 1 hour window to catch the reminder
 
+# UK timezone for all time calculations
+UK_TZ = pytz.timezone("Europe/London")
+
+
+def get_uk_now():
+    """Get current datetime in UK timezone."""
+    return timezone.now().astimezone(UK_TZ)
+
 
 @require_http_methods(["GET", "POST"])
 def cron_send_reminders(request):
@@ -135,26 +143,34 @@ def cron_send_reminders(request):
     Authentication: Use Authorization header with Bearer token (preferred)
     Example: Authorization: Bearer YOUR_SECRET
     
-    Alternative: X-Cron-Token header
-    
     Add ?force=1 to bypass all checks and send immediately (for testing).
+    Add ?debug=1 to see detailed info about each user.
     
-    IMPORTANT: This function ensures exactly ONE reminder per user per day:
-    1. Checks ReminderLog for existing reminder on this date
-    2. Checks ReminderPreferences.last_reminder_date as a secondary guard
-    3. Updates both after sending to prevent duplicates
+    SIMPLIFIED LOGIC (all times in UK timezone):
+    1. Get current UK time
+    2. For each user with reminders enabled:
+       - If current UK time >= their reminder time (today)
+       - AND we haven't reminded them today
+       - AND they haven't logged an entry today
+       - Then send the reminder
     """
     # Verify the secret token using secure comparison
     if not verify_cron_token(request):
         return JsonResponse({"error": "Unauthorized"}, status=401)
     
     force = request.GET.get('force') == '1'
+    debug = request.GET.get('debug') == '1'
     
-    # Process reminders
-    utc_now = timezone.now()
+    # Get current UK time (this is the ONLY timezone we use)
+    uk_now = get_uk_now()
+    uk_today = uk_now.date()
+    current_hour = uk_now.hour
+    current_minute = uk_now.minute
+    
     sent_count = 0
     checked_count = 0
-    skipped_reasons = {}  # Aggregate skip reasons for privacy
+    skipped_reasons = {}
+    debug_info = [] if debug else None
     
     preferences = ReminderPreferences.objects.filter(
         enabled=True,
@@ -165,55 +181,42 @@ def cron_send_reminders(request):
         checked_count += 1
         
         try:
-            # Get current time in user's timezone
-            try:
-                user_tz = pytz.timezone(pref.timezone)
-            except pytz.UnknownTimeZoneError:
-                # Log invalid timezone for debugging/alerting
-                import logging
-                logging.getLogger('notifications').warning(
-                    f"Invalid timezone '{pref.timezone}' for user_id={user.id}, defaulting to UTC"
-                )
-                user_tz = pytz.timezone('UTC')
+            # Get the reminder time (hour and minute)
+            reminder_hour = pref.time_of_day.hour
+            reminder_minute = pref.time_of_day.minute
             
-            user_now = utc_now.astimezone(user_tz)
-            user_today = user_now.date()
+            if debug:
+                debug_info.append({
+                    "user_id": user.id,
+                    "reminder_time": f"{reminder_hour:02d}:{reminder_minute:02d}",
+                    "current_uk_time": f"{current_hour:02d}:{current_minute:02d}",
+                    "last_reminder_date": str(pref.last_reminder_date),
+                    "uk_today": str(uk_today),
+                })
             
-            # Build the reminder datetime for today
-            reminder_datetime = user_tz.localize(
-                datetime.combine(user_today, pref.time_of_day)
-            )
-            
-            # Calculate time since reminder
-            time_since = (user_now - reminder_datetime).total_seconds()
-            
-            # Skip checks if force mode
             if not force:
-                # PRIMARY GUARD: Check if already reminded today via preferences field
-                # This is the most reliable check since it's on the same record we're processing
-                if pref.last_reminder_date == user_today:
+                # Check if already reminded today
+                if pref.last_reminder_date == uk_today:
                     skipped_reasons["already_reminded"] = skipped_reasons.get("already_reminded", 0) + 1
+                    if debug:
+                        debug_info[-1]["status"] = "already_reminded"
                     continue
                 
-                # Check if within the window (just passed, not too long ago)
-                if time_since < 0:
+                # Check if it's past the reminder time (simple comparison)
+                current_minutes = current_hour * 60 + current_minute
+                reminder_minutes = reminder_hour * 60 + reminder_minute
+                
+                if current_minutes < reminder_minutes:
                     skipped_reasons["not_time_yet"] = skipped_reasons.get("not_time_yet", 0) + 1
-                    continue
-                if time_since > REMINDER_WINDOW:
-                    skipped_reasons["outside_window"] = skipped_reasons.get("outside_window", 0) + 1
-                    continue
-                
-                # SECONDARY GUARD: Check ReminderLog (for redundancy)
-                if ReminderLog.objects.filter(user=user, date=user_today).exists():
-                    skipped_reasons["already_logged_reminder"] = skipped_reasons.get("already_logged_reminder", 0) + 1
-                    # Also update pref guard to stay in sync
-                    pref.last_reminder_date = user_today
-                    pref.save(update_fields=['last_reminder_date'])
+                    if debug:
+                        debug_info[-1]["status"] = "not_time_yet"
                     continue
                 
-                # Check if already logged today (no need to remind)
-                if DailyEntry.objects.filter(user=user, date=user_today).exists():
+                # Check if already logged today
+                if DailyEntry.objects.filter(user=user, date=uk_today).exists():
                     skipped_reasons["already_logged_entry"] = skipped_reasons.get("already_logged_entry", 0) + 1
+                    if debug:
+                        debug_info[-1]["status"] = "already_logged"
                     continue
             
             # Get active subscriptions
@@ -224,6 +227,8 @@ def cron_send_reminders(request):
             
             if not subscriptions.exists():
                 skipped_reasons["no_subscriptions"] = skipped_reasons.get("no_subscriptions", 0) + 1
+                if debug:
+                    debug_info[-1]["status"] = "no_subscriptions"
                 continue
             
             # Send notifications
@@ -235,39 +240,50 @@ def cron_send_reminders(request):
                         title="CSU Tracker Reminder",
                         body="Time to log your CSU score for today!",
                         url="/tracking/today/",
-                        tag=f"reminder-{user_today.isoformat()}"
+                        tag=f"reminder-{uk_today.isoformat()}"
                     ):
                         success_count += 1
                 except Exception as e:
                     pass
             
             # Log the reminder in ReminderLog table
-            ReminderLog.objects.create(
+            ReminderLog.objects.update_or_create(
                 user=user,
-                date=user_today,
-                success=success_count > 0,
-                subscriptions_notified=success_count
+                date=uk_today,
+                defaults={
+                    "success": success_count > 0,
+                    "subscriptions_notified": success_count,
+                }
             )
             
-            # Update the guard fields on ReminderPreferences to prevent re-sending
-            pref.last_reminder_date = user_today
-            pref.last_reminder_sent_at = utc_now
-            pref.save(update_fields=['last_reminder_date', 'last_reminder_sent_at'])
+            # Update the guard field on ReminderPreferences to prevent re-sending
+            pref.last_reminder_date = uk_today
+            pref.save(update_fields=['last_reminder_date'])
             
             if success_count > 0:
                 sent_count += 1
+                if debug:
+                    debug_info[-1]["status"] = f"sent_{success_count}"
             
         except Exception as e:
             # Log error without exposing user info in response
             import logging
             logging.getLogger('notifications').error(f"Reminder error for user {user.id}: {e}")
             skipped_reasons["error"] = skipped_reasons.get("error", 0) + 1
+            if debug:
+                debug_info[-1]["status"] = f"error: {str(e)}"
     
-    # Return anonymized summary (no user emails or PII)
-    return JsonResponse({
+    # Build response
+    response_data = {
         "status": "ok",
-        "timestamp": utc_now.isoformat(),
+        "uk_time": uk_now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "uk_date": str(uk_today),
         "checked": checked_count,
         "sent": sent_count,
         "skipped": skipped_reasons,
-    })
+    }
+    
+    if debug:
+        response_data["debug"] = debug_info
+    
+    return JsonResponse(response_data)

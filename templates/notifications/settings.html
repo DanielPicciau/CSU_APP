@@ -55,15 +55,9 @@
                 
                 <!-- Time -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Reminder time</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reminder time (UK time)</label>
                     {{ form.time_of_day }}
-                    <p class="text-xs text-gray-500 mt-1">We'll remind you if you haven't logged by this time</p>
-                </div>
-                
-                <!-- Timezone -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Your timezone</label>
-                    {{ form.timezone }}
+                    <p class="text-xs text-gray-500 mt-1">We'll remind you if you haven't logged by this time (GMT/BST)</p>
                 </div>
                 
                 <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">

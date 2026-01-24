@@ -4,7 +4,6 @@ Django forms for the notifications app.
 
 from django import forms
 
-from accounts.forms import TIMEZONE_CHOICES
 from .models import ReminderPreferences
 
 
@@ -24,17 +23,10 @@ class ReminderPreferencesForm(forms.ModelForm):
             "class": "form-input",
             "type": "time",
         }),
-        label="Reminder time",
-    )
-    
-    timezone = forms.ChoiceField(
-        choices=TIMEZONE_CHOICES,
-        widget=forms.Select(attrs={
-            "class": "form-input",
-        }),
-        label="Your timezone",
+        label="Reminder time (UK time)",
+        help_text="All times are in UK time (GMT/BST)",
     )
 
     class Meta:
         model = ReminderPreferences
-        fields = ["enabled", "time_of_day", "timezone"]
+        fields = ["enabled", "time_of_day"]
