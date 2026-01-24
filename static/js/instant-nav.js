@@ -97,6 +97,12 @@
       // Skip admin
       if (link.pathname.startsWith('/admin/')) return false;
       
+      // Skip auth pages (login, register, password reset) - these have rate limits
+      if (link.pathname.startsWith('/accounts/login')) return false;
+      if (link.pathname.startsWith('/accounts/register')) return false;
+      if (link.pathname.startsWith('/accounts/password-reset')) return false;
+      if (link.pathname.startsWith('/accounts/logout')) return false;
+      
       return true;
     },
 

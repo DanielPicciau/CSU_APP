@@ -122,20 +122,20 @@ class RateLimitMiddleware(MiddlewareMixin):
     
     # Rate limit configurations (max_requests, window_seconds)
     LIMITS = {
-        '/accounts/login/': (5, 60),
+        '/accounts/login/': (10, 60),
         '/accounts/password-reset/': (5, 900),
         '/accounts/password-reset/confirm/': (10, 900),
         '/accounts/mfa/verify/': (10, 600),
         '/accounts/mfa/': (10, 600),
-        '/accounts/onboarding/account/': (3, 60),
-        '/accounts/register/': (3, 60),
-        '/admin/login/': (5, 60),
-        '/api/accounts/register/': (3, 60),
+        '/accounts/onboarding/account/': (10, 60),
+        '/accounts/register/': (5, 60),
+        '/admin/login/': (10, 60),
+        '/api/accounts/register/': (5, 60),
         '/api/accounts/password/change/': (10, 600),
-        '/api/token/': (10, 60),
-        '/api/token/refresh/': (10, 60),
-        '/api/': (100, 60),
-        'default': (200, 60),
+        '/api/token/': (20, 60),
+        '/api/token/refresh/': (20, 60),
+        '/api/': (200, 60),
+        'default': (300, 60),
     }
 
     SENSITIVE_PATHS = [
@@ -181,6 +181,11 @@ class RateLimitMiddleware(MiddlewareMixin):
         for excluded in self.EXCLUDED_PATHS:
             if request.path.startswith(excluded):
                 return None
+        
+        # Skip rate limiting for prefetch requests (used by instant-nav.js)
+        # These are read-only requests to warm the cache
+        if request.headers.get('X-Prefetch') == '1':
+            return None
         
         # Skip rate limiting for cron endpoints with valid Authorization header
         # SECURITY: Query string tokens are no longer accepted
