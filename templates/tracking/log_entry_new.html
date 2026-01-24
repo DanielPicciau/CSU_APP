@@ -536,7 +536,7 @@
         </p>
     </div>
     
-    <form method="post" id="log-form">
+    <form method="post" id="log-form" data-offline-enabled="true" data-entry-date="{{ entry_date|date:'Y-m-d' }}">
         {% csrf_token %}
         
         <!-- Itch Severity Section -->

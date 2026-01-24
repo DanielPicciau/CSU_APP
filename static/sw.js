@@ -1,5 +1,5 @@
 // CSU Tracker Service Worker - Safari Compatible
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const STATIC_CACHE = `csu-static-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline/';
 
@@ -9,7 +9,12 @@ const STATIC_ASSETS = [
     '/static/icons/icon-192x192.png',
     '/static/icons/apple-touch-icon.png',
     '/static/css/animations.css',
+    '/static/css/design-tokens.css',
+    '/static/css/components.css',
     '/static/js/performance.js',
+    '/static/js/instant-nav.js',
+    '/static/js/offline-storage.js',
+    '/static/js/htmx.min.js',
 ];
 
 // Install event - cache only static assets

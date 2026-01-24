@@ -30,6 +30,17 @@ class UserProfilePrefetchMiddleware(MiddlewareMixin):
     query, caching it on the user object. This prevents multiple database
     queries when other middleware or views access user.profile.
     """
+
+    PROFILE_PREFETCH_FIELDS = (
+        "id",
+        "user_id",
+        "display_name",
+        "default_timezone",
+        "onboarding_completed",
+        "onboarding_step",
+        "privacy_consent_given",
+        "account_paused",
+    )
     
     def process_request(self, request: HttpRequest) -> None:
         # Only process for authenticated users
@@ -42,8 +53,12 @@ class UserProfilePrefetchMiddleware(MiddlewareMixin):
             # Access the profile to trigger the cache
             # Django's OneToOneField caches the related object after first access
             if not hasattr(request.user, '_profile_prefetched'):
-                # Force a single query to load profile
-                _ = request.user.profile
+                # Load only the fields needed for middleware/layout to reduce decrypt overhead.
+                profile_model = request.user._meta.get_field("profile").related_model
+                profile = profile_model.objects.only(
+                    *self.PROFILE_PREFETCH_FIELDS,
+                ).get(user_id=request.user.id)
+                request.user._profile_cache = profile
                 request.user._profile_prefetched = True
         except Exception:
             # Profile doesn't exist - that's OK, downstream will handle

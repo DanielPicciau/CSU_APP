@@ -44,6 +44,14 @@
     <!-- HTMX for dynamic interactions -->
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
     
+    <!-- Performance & Offline Support -->
+    <script src="{% static 'js/instant-nav.js' %}" defer></script>
+    <script src="{% static 'js/offline-storage.js' %}" defer></script>
+    
+    <!-- Prefetch key pages -->
+    <link rel="prefetch" href="{% url 'tracking:today' %}" as="document">
+    <link rel="prefetch" href="{% url 'tracking:log_entry' %}" as="document">
+    
     {% block extra_head %}{% endblock %}
 </head>
 <body class="app-shell">
