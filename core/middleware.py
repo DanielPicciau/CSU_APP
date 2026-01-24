@@ -52,6 +52,33 @@ class UserProfilePrefetchMiddleware(MiddlewareMixin):
         return None
 
 
+class SessionRefreshMiddleware(MiddlewareMixin):
+    """
+    Refresh session expiry at a controlled interval to avoid DB writes on
+    every request while still providing sliding session expiration.
+    """
+
+    def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return response
+
+        if not hasattr(request, "session"):
+            return response
+
+        refresh_interval = getattr(settings, "SESSION_REFRESH_INTERVAL", 300)
+        if refresh_interval <= 0:
+            return response
+
+        now_ts = int(time.time())
+        last_touch = request.session.get("_last_activity_ts")
+        if last_touch is None or now_ts - int(last_touch) >= refresh_interval:
+            request.session["_last_activity_ts"] = now_ts
+            request.session.modified = True
+
+        return response
+
+
 class SecurityHeadersMiddleware(MiddlewareMixin):
     """Add security headers to all responses."""
     

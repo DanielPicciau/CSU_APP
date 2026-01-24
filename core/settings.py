@@ -22,6 +22,7 @@ env = environ.Env(
     FREE_HISTORY_DAYS=(int, 30),
     SUBSCRIPTION_GRACE_DAYS=(int, 7),
     ENTITLEMENTS_CACHE_TTL=(int, 300),
+    SESSION_REFRESH_INTERVAL=(int, 300),
 )
 
 # Read .env file
@@ -83,6 +84,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Prefetch user profile early to avoid N+1 queries in downstream middleware
     "core.middleware.UserProfilePrefetchMiddleware",
+    "core.middleware.SessionRefreshMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Security middleware
@@ -262,6 +264,9 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
+# Redis URL (shared for cache/session configuration)
+REDIS_URL = env("REDIS_URL", default="")
+
 # Redis Cloud uses SSL - detect and configure
 # SECURITY: Always require SSL certificate verification in production
 if CELERY_BROKER_URL.startswith("rediss://"):
@@ -328,11 +333,15 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_NAME = "sessionid"  # Avoid __Host- prefix for Safari PWA compatibility
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Allow persistent sessions for PWA
-SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
+SESSION_SAVE_EVERY_REQUEST = False  # Avoid write on every request (see SessionRefreshMiddleware)
+SESSION_REFRESH_INTERVAL = env("SESSION_REFRESH_INTERVAL")
 
-# Use cached sessions to reduce database hits
-# Falls back to database if cache is unavailable
-SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+# Use cache-only sessions when Redis is available to avoid DB lock contention
+if REDIS_URL:
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
+else:
+    SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 
 # CSRF Cookie settings - Safari PWA compatible
 CSRF_COOKIE_NAME = "csrftoken"  # Avoid __Host- prefix for Safari PWA compatibility
@@ -455,8 +464,7 @@ if DEBUG:
         }
     }
 else:
-    # Production: Use Redis if available, otherwise use database cache
-    REDIS_URL = env("REDIS_URL", default="")
+    # Production: Use Redis if available, otherwise use local memory cache
     if REDIS_URL:
         CACHES = {
             'default': {
