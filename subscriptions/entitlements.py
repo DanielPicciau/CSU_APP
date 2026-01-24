@@ -45,7 +45,7 @@ PREMIUM_ENTITLEMENTS = {
     "achievements": True,
 }
 
-m
+ENTITLEMENTS_CACHE_TTL = getattr(settings, "ENTITLEMENTS_CACHE_TTL", 300)
 
 
 def _cache_key(user_id: int) -> str:
