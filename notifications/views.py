@@ -121,8 +121,10 @@ def test_notification_view(request):
     return JsonResponse({"error": "POST required"}, status=405)
 
 
-# Window for sending reminders (in seconds) - reduced to prevent overlap
-REMINDER_WINDOW = 60  # 1 minute (cron runs every minute)
+# Window for sending reminders (in seconds)
+# This allows flexibility for cron timing - if cron runs late, we still send
+# We prevent duplicates via ReminderLog and last_reminder_date guards
+REMINDER_WINDOW = 3600  # 1 hour window to catch the reminder
 
 
 @require_http_methods(["GET", "POST"])

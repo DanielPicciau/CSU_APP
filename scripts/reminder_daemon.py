@@ -48,7 +48,8 @@ CHECK_INTERVAL = 60  # Every minute
 
 # Window for sending reminders (in seconds)
 # If reminder time was within this many seconds ago, send it
-REMINDER_WINDOW = 90  # 1.5 minutes to account for slight timing variations
+# Duplicate prevention is handled by ReminderLog, so a larger window is safe
+REMINDER_WINDOW = 300  # 5 minutes to account for timing variations
 
 
 def process_reminders():
