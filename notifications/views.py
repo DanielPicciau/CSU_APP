@@ -186,6 +186,12 @@ def cron_send_reminders(request):
         checked_count += 1
         
         try:
+            # Reset "sent" status if we're on a new day (keeps status current).
+            if pref.last_reminder_date and pref.last_reminder_date < uk_today:
+                pref.last_reminder_date = None
+                pref.last_reminder_sent_at = None
+                pref.save(update_fields=["last_reminder_date", "last_reminder_sent_at"])
+
             # Get the reminder time (hour and minute)
             reminder_hour = pref.time_of_day.hour
             reminder_minute = pref.time_of_day.minute
@@ -263,7 +269,8 @@ def cron_send_reminders(request):
             
             # Update the guard field on ReminderPreferences to prevent re-sending
             pref.last_reminder_date = uk_today
-            pref.save(update_fields=['last_reminder_date'])
+            pref.last_reminder_sent_at = timezone.now()
+            pref.save(update_fields=['last_reminder_date', 'last_reminder_sent_at'])
             
             if success_count > 0:
                 sent_count += 1

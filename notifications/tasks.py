@@ -52,6 +52,12 @@ def process_daily_reminders():
             user_tz = pytz.timezone(pref.timezone)
             user_now = timezone.now().astimezone(user_tz)
             user_today = user_now.date()
+
+            # Reset "sent" status when the day rolls over in the user's timezone.
+            if pref.last_reminder_date and pref.last_reminder_date < user_today:
+                pref.last_reminder_date = None
+                pref.last_reminder_sent_at = None
+                pref.save(update_fields=["last_reminder_date", "last_reminder_sent_at"])
             
             # Create reminder datetime for today
             reminder_time = datetime.combine(
@@ -88,6 +94,11 @@ def process_daily_reminders():
                 success=success_count > 0,
                 subscriptions_notified=success_count,
             )
+
+            # Store guard fields for UI/status consistency
+            pref.last_reminder_date = user_today
+            pref.last_reminder_sent_at = timezone.now()
+            pref.save(update_fields=["last_reminder_date", "last_reminder_sent_at"])
             
             if success_count > 0:
                 reminders_sent += 1
