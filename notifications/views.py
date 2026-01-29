@@ -54,8 +54,10 @@ def verify_cron_token(request) -> bool:
 @login_required
 def reminder_settings_view(request):
     """View and update reminder preferences."""
-    # Get or create preferences
-    preferences, created = ReminderPreferences.objects.get_or_create(user=request.user)
+    # Avoid DB writes on GET; create only when saving.
+    preferences = ReminderPreferences.objects.filter(user=request.user).first()
+    if not preferences:
+        preferences = ReminderPreferences(user=request.user)
     
     # Get active subscriptions count
     subscriptions_count = PushSubscription.objects.filter(
@@ -66,7 +68,10 @@ def reminder_settings_view(request):
     if request.method == "POST":
         form = ReminderPreferencesForm(request.POST, instance=preferences)
         if form.is_valid():
-            form.save()
+            pref = form.save(commit=False)
+            if not pref.user_id:
+                pref.user = request.user
+            pref.save()
             messages.success(request, "Reminder settings updated!")
             return redirect("notifications:settings")
     else:

@@ -500,7 +500,8 @@ CACHE_TIMEOUTS = {
 # =============================================================================
 
 # Enable persistent database connections (reduces connection overhead)
-CONN_MAX_AGE = 60 if not DEBUG else 0  # Keep connections alive for 60 seconds
+# Allow override via env to avoid new connections on each request.
+CONN_MAX_AGE = env.int("CONN_MAX_AGE", default=60 if not DEBUG else 0)
 
 # For PostgreSQL: enable connection health checks
 if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
