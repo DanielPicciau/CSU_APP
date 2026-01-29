@@ -40,6 +40,9 @@ def today_view(request):
         user=request.user,
         date__gte=week_ago,
         date__lte=today,
+    ).only(
+        "date",
+        "score",
     ).order_by("date"))
     
     # Build chart data (fill in missing days with None)
@@ -241,23 +244,32 @@ def history_view(request):
         date__gte=start_date,
         date__lte=today,
     )
-    entries = list(apply_history_limit(entries_query, request.user, today=today).order_by("-date"))
+    entries_query = apply_history_limit(entries_query, request.user, today=today)
     
-    # Apply score filters
+    # Apply score filters at the DB layer
     if min_score:
         try:
             min_val = int(min_score)
-            entries = [e for e in entries if e.score >= min_val]
+            entries_query = entries_query.filter(score__gte=min_val)
         except (ValueError, TypeError):
             pass
     if max_score:
         try:
             max_val = int(max_score)
-            entries = [e for e in entries if e.score <= max_val]
+            entries_query = entries_query.filter(score__lte=max_val)
         except (ValueError, TypeError):
             pass
     if antihistamine:
-        entries = [e for e in entries if e.took_antihistamine]
+        entries_query = entries_query.filter(took_antihistamine=True)
+    
+    entries = list(entries_query.only(
+        "id",
+        "date",
+        "score",
+        "itch_score",
+        "hive_count_score",
+        "took_antihistamine",
+    ).order_by("-date"))
     
     # Create entry lookup
     entry_by_date = {e.date: e for e in entries}
@@ -343,7 +355,16 @@ def history_view(request):
             date__gte=current_month,
             date__lte=month_end,
         )
-        month_entries = apply_history_limit(month_entries_query, request.user, today=today)
+        month_entries = apply_history_limit(
+            month_entries_query,
+            request.user,
+            today=today,
+        ).only(
+            "date",
+            "score",
+            "itch_score",
+            "hive_count_score",
+        )
         month_entry_by_date = {e.date: e for e in month_entries}
         
         # Add days of the month
@@ -419,7 +440,17 @@ def insights_view(request):
         date__gte=start_date,
         date__lte=today,
     )
-    entries = list(apply_history_limit(entries_query, request.user, today=today).order_by("date"))
+    entries = list(apply_history_limit(
+        entries_query,
+        request.user,
+        today=today,
+    ).only(
+        "date",
+        "score",
+        "itch_score",
+        "hive_count_score",
+        "took_antihistamine",
+    ).order_by("date"))
     
     logged_days = len(entries)
     missing_days = period - logged_days
@@ -663,8 +694,8 @@ def export_page_view(request):
     entries_query = DailyEntry.objects.filter(user=request.user)
     if history_start:
         entries_query = entries_query.filter(date__gte=history_start)
-    first_entry = entries_query.order_by("date").first()
-    last_entry = entries_query.order_by("-date").first()
+    first_entry = entries_query.only("date").order_by("date").first()
+    last_entry = entries_query.only("date").order_by("-date").first()
     
     # Calculate total entries
     total_entries = entries_query.count()

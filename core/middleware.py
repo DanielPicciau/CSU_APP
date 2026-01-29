@@ -58,6 +58,11 @@ class UserProfilePrefetchMiddleware(MiddlewareMixin):
                 profile = profile_model.objects.only(
                     *self.PROFILE_PREFETCH_FIELDS,
                 ).get(user_id=request.user.id)
+                # Populate Django's relation cache to avoid a second DB hit later.
+                try:
+                    request.user._state.fields_cache["profile"] = profile
+                except Exception:
+                    pass
                 request.user._profile_cache = profile
                 request.user._profile_prefetched = True
         except Exception:
