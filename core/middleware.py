@@ -21,6 +21,27 @@ from .security import (
 
 logger = logging.getLogger('security')
 
+# ---------------------------------------------------------------------------
+# Paths that should NEVER touch the database / session / profile.
+# Any middleware that does DB work must check this first.
+# ---------------------------------------------------------------------------
+SKIP_PATHS: tuple[str, ...] = (
+    '/static/',
+    '/favicon.ico',
+    '/sw.js',
+    '/manifest.json',
+    '/offline/',
+    '/legal/',
+)
+
+
+def _is_skip_path(path: str) -> bool:
+    """Return True if the request path should bypass heavy middleware."""
+    for prefix in SKIP_PATHS:
+        if path.startswith(prefix):
+            return True
+    return False
+
 
 class UserProfilePrefetchMiddleware(MiddlewareMixin):
     """
@@ -42,33 +63,73 @@ class UserProfilePrefetchMiddleware(MiddlewareMixin):
         "account_paused",
     )
     
+    # How long to cache profiles in Redis / LocMem (seconds)
+    PROFILE_CACHE_TTL = 600  # 10 minutes
+
     def process_request(self, request: HttpRequest) -> None:
+        # ---- fast-path: skip for static / PWA assets ----
+        if _is_skip_path(request.path):
+            return None
+
         # Only process for authenticated users
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             return None
-        
-        # Prefetch profile if not already loaded (uses select_related pattern)
-        # This single query replaces multiple profile lookups throughout the request
+
+        if hasattr(request.user, '_profile_prefetched'):
+            return None
+
+        user_id = request.user.id
+        cache_key = f"user_profile:{user_id}"
+
+        # 1. Try cache first (Redis or LocMem — whatever CACHES['default'] is)
         try:
-            # Access the profile to trigger the cache
-            # Django's OneToOneField caches the related object after first access
-            if not hasattr(request.user, '_profile_prefetched'):
-                # Load only the fields needed for middleware/layout to reduce decrypt overhead.
+            cached = cache.get(cache_key)
+        except Exception:
+            cached = None
+
+        if cached is not None:
+            # Reconstruct a lightweight profile object from cached dict
+            try:
                 profile_model = request.user._meta.get_field("profile").related_model
-                profile = profile_model.objects.only(
-                    *self.PROFILE_PREFETCH_FIELDS,
-                ).get(user_id=request.user.id)
-                # Populate Django's relation cache to avoid a second DB hit later.
+                profile = profile_model(**cached)
+                # Mark as coming from cache so Django doesn't try to UPDATE
+                profile._state.adding = False
                 try:
                     request.user._state.fields_cache["profile"] = profile
                 except Exception:
                     pass
                 request.user._profile_cache = profile
                 request.user._profile_prefetched = True
+                return None
+            except Exception:
+                pass  # fall through to DB
+
+        # 2. Cache miss — hit the database once and store in cache
+        try:
+            profile_model = request.user._meta.get_field("profile").related_model
+            profile = profile_model.objects.only(
+                *self.PROFILE_PREFETCH_FIELDS,
+            ).get(user_id=user_id)
+            # Populate Django's relation cache
+            try:
+                request.user._state.fields_cache["profile"] = profile
+            except Exception:
+                pass
+            request.user._profile_cache = profile
+            request.user._profile_prefetched = True
+
+            # Store in cache as a plain dict (serialisable)
+            try:
+                cache.set(cache_key, {
+                    field: getattr(profile, field)
+                    for field in self.PROFILE_PREFETCH_FIELDS
+                }, self.PROFILE_CACHE_TTL)
+            except Exception:
+                pass  # non-critical
         except Exception:
-            # Profile doesn't exist - that's OK, downstream will handle
+            # Profile doesn't exist — downstream will handle
             pass
-        
+
         return None
 
 
@@ -79,6 +140,10 @@ class SessionRefreshMiddleware(MiddlewareMixin):
     """
 
     def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
+        # Skip for static / PWA assets — no session work needed
+        if _is_skip_path(request.path):
+            return response
+
         user = getattr(request, "user", None)
         if not user or not user.is_authenticated:
             return response
@@ -181,7 +246,11 @@ class RateLimitMiddleware(MiddlewareMixin):
         # Skip rate limiting in tests
         if getattr(settings, 'TESTING', False):
             return None
-        
+
+        # Fast-path: skip for static / PWA assets
+        if _is_skip_path(request.path):
+            return None
+
         # Skip excluded paths
         for excluded in self.EXCLUDED_PATHS:
             if request.path.startswith(excluded):
@@ -402,11 +471,13 @@ class AdminMFAEnforcementMiddleware(MiddlewareMixin):
         '/accounts/mfa/',
         '/accounts/logout/',
         '/accounts/login/',
-        '/static/',
-        '/favicon.ico',
     ]
 
     def process_request(self, request: HttpRequest) -> HttpResponse | None:
+        # Fast-path: skip for static / PWA assets
+        if _is_skip_path(request.path):
+            return None
+
         user = getattr(request, 'user', None)
         if not user or not user.is_authenticated:
             return None
@@ -443,12 +514,13 @@ class OnboardingMiddleware(MiddlewareMixin):
         '/accounts/login/',
         '/api/',
         '/admin/',
-        '/static/',
-        '/manifest.json',
-        '/sw.js',
     ]
     
     def process_request(self, request: HttpRequest):
+        # Fast-path: skip for static / PWA assets
+        if _is_skip_path(request.path):
+            return None
+
         # Skip for unauthenticated users
         if not request.user.is_authenticated:
             return None
@@ -509,10 +581,7 @@ class AccountPausedMiddleware(MiddlewareMixin):
         '/accounts/logout/',
         '/accounts/profile/',
         '/tracking/export/',  # Allow data export
-        '/static/',
-        '/favicon.ico',
         '/admin/',  # Admin can still access
-        '/legal/',  # Legal pages
     ]
     
     # API endpoints allowed for paused accounts
@@ -523,6 +592,10 @@ class AccountPausedMiddleware(MiddlewareMixin):
     ]
     
     def process_request(self, request: HttpRequest) -> HttpResponse | None:
+        # Fast-path: skip for static / PWA assets
+        if _is_skip_path(request.path):
+            return None
+
         user = getattr(request, 'user', None)
         if not user or not user.is_authenticated:
             return None

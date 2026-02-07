@@ -429,12 +429,6 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO',
         },
-        # TEMP: Performance profiling — logs per-section timing breakdown
-        'perf': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
         # TEMP: SQL query logging — uncomment to see every query
         # 'django.db.backends': {
         #     'handlers': ['console'],

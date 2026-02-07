@@ -5,20 +5,42 @@ URL configuration for CSU Tracker project.
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.urls import include, path
+from django.views.decorators.cache import cache_control
 from django.views.generic import TemplateView
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
+# ---------------------------------------------------------------------------
+# PWA views — rendered once, then served from cache for 15 minutes.
+# These MUST NOT hit the database or session on every request.
+# ---------------------------------------------------------------------------
+@cache_control(public=True, max_age=900)
 def service_worker_view(request):
     """Serve service worker with proper headers for root scope."""
-    sw_content = render_to_string('pwa/sw.js')
-    response = HttpResponse(sw_content, content_type='application/javascript')
+    cache_key = "pwa:sw.js"
+    content = cache.get(cache_key)
+    if content is None:
+        content = render_to_string('pwa/sw.js')
+        cache.set(cache_key, content, 900)  # 15 min
+    response = HttpResponse(content, content_type='application/javascript')
     response['Service-Worker-Allowed'] = '/'
     return response
+
+
+@cache_control(public=True, max_age=900)
+def manifest_view(request):
+    """Serve manifest.json with caching — no DB, no session."""
+    cache_key = "pwa:manifest.json"
+    content = cache.get(cache_key)
+    if content is None:
+        content = render_to_string('pwa/manifest.json')
+        cache.set(cache_key, content, 900)  # 15 min
+    return HttpResponse(content, content_type='application/json')
 
 
 urlpatterns = [
@@ -39,10 +61,7 @@ urlpatterns = [
     path("subscriptions/", include("subscriptions.urls")),
     
     # PWA
-    path("manifest.json", TemplateView.as_view(
-        template_name="pwa/manifest.json",
-        content_type="application/json"
-    ), name="manifest"),
+    path("manifest.json", manifest_view, name="manifest"),
     path("sw.js", service_worker_view, name="service_worker"),
     path("offline/", TemplateView.as_view(template_name="pwa/offline.html"), name="offline"),
     
