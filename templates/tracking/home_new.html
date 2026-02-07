@@ -92,30 +92,42 @@
         </div>
         <div class="card__body">
             <!-- Mini Chart -->
-            <div class="flex justify-between items-end gap-1" style="height: 100px;" role="img" aria-label="Weekly score chart">
+            <div class="flex justify-between items-end gap-1" style="height: 100px; position: relative;" role="img" aria-label="Weekly score chart">
+                <!-- Subtle grid lines -->
+                <div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; padding-bottom: 28px;" aria-hidden="true">
+                    <div style="height: 1px; background: var(--border-subtle); width: 100%;"></div>
+                    <div style="height: 1px; background: var(--border-subtle); width: 100%;"></div>
+                    <div style="height: 1px; background: var(--border-subtle); width: 100%;"></div>
+                </div>
                 {% for day in chart_data %}
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full flex flex-col justify-end" style="height: 64px;">
+                <div class="flex-1 flex flex-col items-center" style="position: relative; z-index: 1;">
+                    <div class="w-full flex flex-col justify-end items-center" style="height: 64px;">
                         {% if day.has_entry %}
                         <div 
-                            class="w-full rounded-t-md score-bg-{{ day.score }}" 
-                            style="height: {{ day.score|add:1 }}0px; min-height: 8px;"
-                            title="{{ day.date|date:'M j' }}: Score {{ day.score }}"
+                            class="w-full rounded-t-md" 
+                            style="height: {% widthratio day.score 6 56 %}px; min-height: 8px; max-width: 28px; margin: 0 auto; background: linear-gradient(180deg, var(--color-score-{{ day.score }}), color-mix(in srgb, var(--color-score-{{ day.score }}) 80%, black)); border-radius: 6px 6px 2px 2px; transform-origin: bottom; animation: miniBarGrow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; animation-delay: {{ forloop.counter0 }}00ms; transform: scaleY(0);"
+                            title="{{ day.date|date:'M j' }}: Score {{ day.score }}/6"
                             aria-label="{{ day.date|date:'M j' }}: Score {{ day.score }}"
                         ></div>
                         {% else %}
                         <div 
                             class="w-full rounded" 
-                            style="height: 4px; background-color: var(--border-default);"
+                            style="height: 4px; max-width: 16px; margin: 0 auto; background-color: var(--border-default);"
                             title="{{ day.date|date:'M j' }}: No entry"
                             aria-label="{{ day.date|date:'M j' }}: No entry"
                         ></div>
                         {% endif %}
                     </div>
-                    <span class="text-xs text-tertiary mt-2">{{ day.date|date:"D" }}</span>
+                    <span class="text-xs mt-2" style="color: {% if day.date == today %}var(--text-brand); font-weight: 700;{% else %}var(--text-tertiary);{% endif %}">{{ day.date|date:"D" }}</span>
                 </div>
                 {% endfor %}
             </div>
+            <style>
+                @keyframes miniBarGrow {
+                    from { transform: scaleY(0); opacity: 0.5; }
+                    to { transform: scaleY(1); opacity: 1; }
+                }
+            </style>
             
             {% if not uas7_complete %}
             <p class="text-xs text-tertiary mt-3">*Incomplete week - log daily for accurate UAS7</p>

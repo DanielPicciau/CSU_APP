@@ -595,22 +595,57 @@ def insights_view(request):
         
         if entries:
             # Filter to only days with entries for clean chart
-            point_width = (chart_width - 30) / max(len(entries) - 1, 1)
+            padding_left = 25
+            padding_right = 5
+            usable_width = chart_width - padding_left - padding_right
+            point_width = usable_width / max(len(entries) - 1, 1)
             
             for i, entry in enumerate(entries):
-                x = 25 + i * point_width
-                y = 130 - (entry.score / 6 * 105)  # Invert Y axis
-                chart_points.append({"x": x, "y": y, "score": entry.score})
+                x = round(padding_left + i * point_width, 1)
+                y = round(130 - (entry.score / 6 * 105), 1)  # Invert Y axis
+                chart_points.append({
+                    "x": x,
+                    "y": y,
+                    "score": entry.score,
+                    "date": entry.date.strftime("%b %d"),
+                })
             
             if len(chart_points) > 1:
-                # Build line path
+                # Build smooth bezier curve path for nicer line chart
+                tension = 0.3  # Controls curve smoothness (0 = straight, 1 = very curved)
                 path_parts = [f"M {chart_points[0]['x']} {chart_points[0]['y']}"]
-                for point in chart_points[1:]:
-                    path_parts.append(f"L {point['x']} {point['y']}")
+                
+                for i in range(1, len(chart_points)):
+                    p0 = chart_points[max(i - 2, 0)]
+                    p1 = chart_points[i - 1]
+                    p2 = chart_points[i]
+                    p3 = chart_points[min(i + 1, len(chart_points) - 1)]
+                    
+                    # Catmull-Rom to Bezier control points
+                    cp1x = round(p1['x'] + (p2['x'] - p0['x']) * tension, 1)
+                    cp1y = round(p1['y'] + (p2['y'] - p0['y']) * tension, 1)
+                    cp2x = round(p2['x'] - (p3['x'] - p1['x']) * tension, 1)
+                    cp2y = round(p2['y'] - (p3['y'] - p1['y']) * tension, 1)
+                    
+                    path_parts.append(
+                        f"C {cp1x} {cp1y}, {cp2x} {cp2y}, {p2['x']} {p2['y']}"
+                    )
+                
                 chart_path = " ".join(path_parts)
                 
-                # Build area path
-                chart_area_path = chart_path + f" L {chart_points[-1]['x']} 130 L {chart_points[0]['x']} 130 Z"
+                # Build area path (line down to baseline, across, and close)
+                chart_area_path = (
+                    chart_path
+                    + f" L {chart_points[-1]['x']} 130"
+                    + f" L {chart_points[0]['x']} 130 Z"
+                )
+            elif len(chart_points) == 1:
+                # Single point — just show it, no line needed
+                chart_path = ""
+                chart_area_path = ""
+        
+        # Compute average score Y position for SVG overlay line
+        avg_score_y = round(130 - (avg_score / 6 * 105), 1) if avg_score else None
 
     with timed_section("insights:template_render", request):
         rendered = render(request, "tracking/insights.html", {
@@ -632,10 +667,12 @@ def insights_view(request):
         "antihistamine_days": antihistamine_days,
         "antihistamine_pct": antihistamine_pct,
         "weekly_scores": weekly_scores,
+        "entries": entries,
         "chart_points": chart_points,
         "chart_path": chart_path,
         "chart_area_path": chart_area_path,
         "chart_width": chart_width,
+        "avg_score_y": avg_score_y,
         "history_limit_days": limit_days,
         "history_limited": limit_days is not None,
     })

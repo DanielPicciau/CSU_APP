@@ -280,6 +280,23 @@
     }
     .week-chart {
         padding: var(--space-3) var(--space-5) var(--space-5);
+        position: relative;
+    }
+    .week-chart__grid {
+        position: absolute;
+        top: var(--space-3);
+        left: var(--space-5);
+        right: var(--space-5);
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        pointer-events: none;
+    }
+    .week-chart__grid-line {
+        height: 1px;
+        background: var(--border-subtle);
+        width: 100%;
     }
     .week-chart__bars {
         display: flex;
@@ -287,6 +304,8 @@
         align-items: flex-end;
         gap: var(--space-2);
         height: 120px;
+        position: relative;
+        z-index: 1;
     }
     .week-chart__col {
         flex: 1;
@@ -294,6 +313,8 @@
         flex-direction: column;
         align-items: center;
         height: 100%;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
     }
     .week-chart__bar-wrap {
         flex: 1;
@@ -302,27 +323,58 @@
         flex-direction: column;
         justify-content: flex-end;
         align-items: center;
+        position: relative;
     }
     .week-chart__bar {
         width: 100%;
-        max-width: 32px;
-        border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm);
-        transition: height 0.4s ease;
+        max-width: 36px;
+        border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-sm);
+        transform: scaleY(0);
+        transform-origin: bottom;
+        animation: weekBarGrow 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        transition: filter 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+    }
+    .week-chart__col:nth-child(1) .week-chart__bar { animation-delay: 0.05s; }
+    .week-chart__col:nth-child(2) .week-chart__bar { animation-delay: 0.1s; }
+    .week-chart__col:nth-child(3) .week-chart__bar { animation-delay: 0.15s; }
+    .week-chart__col:nth-child(4) .week-chart__bar { animation-delay: 0.2s; }
+    .week-chart__col:nth-child(5) .week-chart__bar { animation-delay: 0.25s; }
+    .week-chart__col:nth-child(6) .week-chart__bar { animation-delay: 0.3s; }
+    .week-chart__col:nth-child(7) .week-chart__bar { animation-delay: 0.35s; }
+    @keyframes weekBarGrow {
+        from { transform: scaleY(0); opacity: 0.5; }
+        to { transform: scaleY(1); opacity: 1; }
+    }
+    .week-chart__col:active .week-chart__bar {
+        filter: brightness(1.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
     .week-chart__bar--empty {
         height: 6px;
         background: var(--border-default);
         border-radius: var(--radius-sm);
         width: 60%;
-        max-width: 20px;
+        max-width: 24px;
+        animation: none;
+        transform: scaleY(1);
     }
     .week-chart__bar--future {
         height: 4px;
         background: var(--border-default);
         border-radius: var(--radius-sm);
         width: 60%;
-        max-width: 20px;
-        opacity: 0.3;
+        max-width: 24px;
+        opacity: 0.25;
+        animation: none;
+        transform: scaleY(1);
+        background: repeating-linear-gradient(
+            90deg,
+            var(--border-default) 0px,
+            var(--border-default) 4px,
+            transparent 4px,
+            transparent 8px
+        );
     }
     .week-chart__label {
         font-size: 11px;
@@ -330,6 +382,7 @@
         color: var(--text-tertiary);
         margin-top: var(--space-2);
         text-align: center;
+        transition: color 0.2s ease;
     }
     .week-chart__label--today {
         color: var(--text-brand);
@@ -344,6 +397,21 @@
         color: var(--text-secondary);
         margin-bottom: var(--space-1);
         line-height: 1;
+        opacity: 0;
+        animation: fadeInDown 0.3s ease forwards;
+        animation-delay: 0.6s;
+    }
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    /* Today indicator dot */
+    .week-chart__today-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--text-brand);
+        margin-top: 3px;
     }
     .week-chart__severity {
         font-size: var(--text-xs);
@@ -772,9 +840,15 @@
             </div>
         </div>
         <div class="week-chart">
-            <div class="week-chart__bars" role="img" aria-label="Weekly score chart">
+            <!-- Subtle grid lines for visual reference -->
+            <div class="week-chart__grid" aria-hidden="true">
+                <div class="week-chart__grid-line"></div>
+                <div class="week-chart__grid-line"></div>
+                <div class="week-chart__grid-line"></div>
+            </div>
+            <div class="week-chart__bars" role="img" aria-label="Weekly score chart showing scores for 7 days">
                 {% for day in chart_data %}
-                <div class="week-chart__col">
+                <div class="week-chart__col" {% if day.has_entry %}role="button" tabindex="0" aria-label="{{ day.date|date:'l, M j' }}: Score {{ day.score }} of 6"{% endif %}>
                     <div class="week-chart__bar-wrap">
                         {% if day.is_future %}
                         <div class="week-chart__bar--future"
@@ -783,9 +857,9 @@
                         {% elif day.has_entry %}
                         <span class="week-chart__score-tip">{{ day.score }}</span>
                         <div class="week-chart__bar"
-                            style="height: {% widthratio day.score 6 90 %}px; min-height: 8px; background-color: var(--color-score-{{ day.score }});"
-                            title="{{ day.date|date:'M j' }}: Score {{ day.score }}"
-                            aria-label="{{ day.date|date:'l' }}: Score {{ day.score }}"></div>
+                            style="height: {% widthratio day.score 6 96 %}px; min-height: 10px; background: linear-gradient(180deg, var(--color-score-{{ day.score }}), color-mix(in srgb, var(--color-score-{{ day.score }}) 80%, black));"
+                            title="{{ day.date|date:'M j' }}: Score {{ day.score }}/6"
+                            aria-label="{{ day.date|date:'l' }}: Score {{ day.score }} of 6"></div>
                         {% else %}
                         <div class="week-chart__bar--empty"
                             title="{{ day.date|date:'M j' }}: No entry"
@@ -795,6 +869,9 @@
                     <span class="week-chart__label {% if day.date == today %}week-chart__label--today{% elif day.is_future %}week-chart__label--future{% endif %}">
                         {{ day.date|date:"D" }}
                     </span>
+                    {% if day.date == today %}
+                    <span class="week-chart__today-dot" aria-hidden="true"></span>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

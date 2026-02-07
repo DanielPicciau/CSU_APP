@@ -100,7 +100,8 @@
     stroke: var(--color-primary-500);
     stroke-width: 8;
     stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s ease;
+    transition: stroke-dashoffset 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
 }
 .progress-ring__text {
     position: absolute;
@@ -113,6 +114,7 @@
     font-size: var(--text-2xl);
     font-weight: var(--font-bold);
     color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
 .progress-ring__label {
     font-size: var(--text-xs);
@@ -120,37 +122,110 @@
 }
 
 .trend-chart {
-    height: 180px;
+    height: 200px;
     position: relative;
-    padding: var(--space-4) 0;
+    padding: var(--space-4) 0 var(--space-2);
+    overflow: visible;
 }
-.trend-chart__svg { width: 100%; height: 100%; }
+.trend-chart__svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
 .trend-chart__line {
     fill: none;
     stroke: var(--color-primary-500);
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
+    filter: drop-shadow(0 1px 2px rgba(99, 102, 241, 0.3));
+    stroke-dasharray: 2000;
+    stroke-dashoffset: 2000;
+    animation: trendLineIn 1.2s ease forwards 0.2s;
 }
-.trend-chart__area { fill: url(#gradient); opacity: 0.15; }
+@keyframes trendLineIn {
+    to { stroke-dashoffset: 0; }
+}
+.trend-chart__area {
+    fill: url(#gradient);
+    opacity: 0.25;
+    animation: trendAreaIn 0.8s ease forwards 0.4s;
+    opacity: 0;
+}
+@keyframes trendAreaIn {
+    to { opacity: 0.25; }
+}
 .trend-chart__point {
     fill: var(--color-primary-500);
     stroke: var(--surface-primary);
-    stroke-width: 2;
+    stroke-width: 2.5;
+    r: 4;
+    cursor: pointer;
+    transition: r 0.2s ease, filter 0.2s ease;
+    opacity: 0;
+    animation: pointFadeIn 0.3s ease forwards;
+}
+.trend-chart__point:hover,
+.trend-chart__point:focus {
+    r: 7;
+    filter: drop-shadow(0 0 4px var(--color-primary-400));
+}
+/* Touch target — invisible larger circle for mobile tap */
+.trend-chart__point-target {
+    fill: transparent;
+    r: 16;
+    cursor: pointer;
+}
+@keyframes pointFadeIn {
+    from { opacity: 0; transform: scale(0); }
+    to { opacity: 1; transform: scale(1); }
 }
 .trend-chart__grid-line {
     stroke: var(--border-subtle);
     stroke-dasharray: 4 4;
+    stroke-width: 0.5;
 }
 .trend-chart__label {
     fill: var(--text-tertiary);
     font-size: 10px;
+    font-weight: 500;
+}
+.trend-chart__x-label {
+    fill: var(--text-tertiary);
+    font-size: 9px;
+    text-anchor: middle;
+}
+.trend-chart__severity-zone {
+    opacity: 0.04;
+}
+.trend-chart__avg-line {
+    stroke: var(--color-primary-300);
+    stroke-width: 1;
+    stroke-dasharray: 6 4;
+    opacity: 0.6;
+}
+.trend-chart__tooltip {
+    position: absolute;
+    background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+    white-space: nowrap;
+}
+.trend-chart__tooltip--visible {
+    opacity: 1;
 }
 
 .average-bars {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-4);
 }
 .average-bar {
     display: flex;
@@ -162,26 +237,39 @@
     font-size: var(--text-sm);
     color: var(--text-secondary);
     flex-shrink: 0;
+    font-weight: var(--font-medium);
 }
 .average-bar__track {
     flex: 1;
-    height: 8px;
+    height: 10px;
     background: var(--bg-tertiary);
     border-radius: var(--radius-full);
     overflow: hidden;
+    position: relative;
 }
 .average-bar__fill {
     height: 100%;
     border-radius: var(--radius-full);
-    transition: width 0.5s ease;
+    position: relative;
+}
+.average-bar__fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2));
+    border-radius: var(--radius-full);
 }
 .average-bar__value {
-    width: 40px;
+    width: 44px;
     text-align: right;
     font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
+    font-weight: var(--font-bold);
     color: var(--text-primary);
     flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .week-comparison {
@@ -191,18 +279,50 @@
 }
 .week-block {
     text-align: center;
-    padding: var(--space-3);
+    padding: var(--space-3) var(--space-2);
     background: var(--bg-secondary);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+.week-block:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 .week-block--current {
     background: var(--bg-brand-subtle);
     border: 2px solid var(--border-brand);
 }
+.week-block--current::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--color-primary-500);
+    border-radius: var(--radius-full);
+}
+.week-block__bar {
+    width: 60%;
+    margin: 0 auto var(--space-2);
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+.week-block__bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 .week-block__score {
     font-size: var(--text-xl);
     font-weight: var(--font-bold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
 }
 .week-block__label {
     font-size: var(--text-xs);
@@ -210,12 +330,27 @@
     margin-top: var(--space-1);
 }
 .week-block__change {
-    font-size: var(--text-xs);
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: var(--font-semibold);
     margin-top: var(--space-1);
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
 }
-.week-block__change--up { color: var(--color-error-500); }
-.week-block__change--down { color: var(--color-success-500); }
-.week-block__change--same { color: var(--text-tertiary); }
+.week-block__change--up {
+    color: var(--color-error-600);
+    background: var(--color-error-50);
+}
+.week-block__change--down {
+    color: var(--color-success-600);
+    background: var(--color-success-50);
+}
+.week-block__change--same {
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+}
 
 .period-toggle {
     display: inline-flex;
@@ -448,40 +583,64 @@
         
         <div class="insight-card__body">
             <div class="trend-chart" id="trend-chart">
-            <svg class="trend-chart__svg" viewBox="0 0 {{ chart_width }} 150" preserveAspectRatio="none">
+            <svg class="trend-chart__svg" viewBox="0 0 {{ chart_width }} 160" preserveAspectRatio="xMidYMid meet">
                 <defs>
                     <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color: var(--color-primary-500);"/>
+                        <stop offset="0%" style="stop-color: var(--color-primary-500); stop-opacity: 0.4;"/>
+                        <stop offset="70%" style="stop-color: var(--color-primary-500); stop-opacity: 0.08;"/>
                         <stop offset="100%" style="stop-color: var(--color-primary-500); stop-opacity: 0;"/>
                     </linearGradient>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
                 </defs>
                 
+                <!-- Severity zone backgrounds -->
+                <rect class="trend-chart__severity-zone" x="20" y="5" width="{{ chart_width|add:-25 }}" height="35" fill="var(--color-error-500)" rx="2"/>
+                <rect class="trend-chart__severity-zone" x="20" y="40" width="{{ chart_width|add:-25 }}" height="35" fill="var(--color-warning-500)" rx="2"/>
+                <rect class="trend-chart__severity-zone" x="20" y="75" width="{{ chart_width|add:-25 }}" height="55" fill="var(--color-success-500)" rx="2"/>
+                
                 <!-- Grid lines -->
-                <line class="trend-chart__grid-line" x1="0" y1="25" x2="{{ chart_width }}" y2="25"/>
-                <line class="trend-chart__grid-line" x1="0" y1="75" x2="{{ chart_width }}" y2="75"/>
-                <line class="trend-chart__grid-line" x1="0" y1="125" x2="{{ chart_width }}" y2="125"/>
+                <line class="trend-chart__grid-line" x1="20" y1="25" x2="{{ chart_width }}" y2="25"/>
+                <line class="trend-chart__grid-line" x1="20" y1="75" x2="{{ chart_width }}" y2="75"/>
+                <line class="trend-chart__grid-line" x1="20" y1="130" x2="{{ chart_width }}" y2="130"/>
                 
                 <!-- Y-axis labels -->
-                <text class="trend-chart__label" x="5" y="30">6</text>
-                <text class="trend-chart__label" x="5" y="80">3</text>
-                <text class="trend-chart__label" x="5" y="130">0</text>
+                <text class="trend-chart__label" x="16" y="29" text-anchor="end">6</text>
+                <text class="trend-chart__label" x="16" y="79" text-anchor="end">3</text>
+                <text class="trend-chart__label" x="16" y="134" text-anchor="end">0</text>
                 
                 {% if chart_path %}
+                <!-- Average line -->
+                {% if avg_score_y %}
+                <line class="trend-chart__avg-line" x1="20" y1="{{ avg_score_y }}" x2="{{ chart_width }}" y2="{{ avg_score_y }}"/>
+                {% endif %}
+                
                 <!-- Area fill -->
                 <path class="trend-chart__area" d="{{ chart_area_path }}"/>
                 
-                <!-- Line -->
-                <path class="trend-chart__line" d="{{ chart_path }}"/>
+                <!-- Line with glow -->
+                <path class="trend-chart__line" d="{{ chart_path }}" filter="url(#glow)"/>
                 
-                <!-- Points -->
+                <!-- Interactive points with larger touch targets -->
                 {% for point in chart_points %}
-                <circle class="trend-chart__point" cx="{{ point.x }}" cy="{{ point.y }}" r="4"/>
+                <circle class="trend-chart__point-target" cx="{{ point.x }}" cy="{{ point.y }}" data-score="{{ point.score }}"/>
+                <circle class="trend-chart__point" cx="{{ point.x }}" cy="{{ point.y }}" r="4" data-score="{{ point.score }}" style="animation-delay: {{ forloop.counter0 }}50ms;"/>
                 {% endfor %}
+                
+                <!-- X-axis date labels (first and last) -->
+                {% if chart_points %}
+                {% with first=chart_points.0 last_point=chart_points|last %}
+                <text class="trend-chart__x-label" x="{{ first.x }}" y="148">{{ first.date }}</text>
+                <text class="trend-chart__x-label" x="{{ last_point.x }}" y="148">{{ last_point.date }}</text>
+                {% endwith %}
+                {% endif %}
                 {% else %}
                 <!-- No data message -->
-                <text x="150" y="75" text-anchor="middle" fill="var(--text-tertiary)" font-size="12">
+                <text x="{{ chart_width|floatformat:0|add:0 }}" y="75" text-anchor="middle" fill="var(--text-tertiary)" font-size="13" x="150">
                     {% if logged_days == 0 %}
-                    No entries yet - log your first day!
+                    No entries yet — log your first day!
                     {% elif logged_days == 1 %}
                     Log one more day to see trends
                     {% else %}
@@ -490,6 +649,8 @@
                 </text>
                 {% endif %}
             </svg>
+            <!-- Tooltip (positioned via JS) -->
+            <div class="trend-chart__tooltip" id="trend-tooltip"></div>
             </div>
         </div>
     </div>
@@ -569,6 +730,9 @@
             <div class="week-comparison">
             {% for week in weekly_scores %}
             <div class="week-block {% if forloop.first %}week-block--current{% endif %}">
+                <div class="week-block__bar">
+                    <div class="week-block__bar-fill" style="width: {% widthratio week.uas7 42 100 %}%; background: {% if week.uas7 <= 6 %}var(--color-score-0){% elif week.uas7 <= 15 %}var(--color-score-2){% elif week.uas7 <= 27 %}var(--color-score-4){% else %}var(--color-score-6){% endif %};"></div>
+                </div>
                 <div class="week-block__score" style="color: {% if week.uas7 <= 6 %}var(--color-score-0){% elif week.uas7 <= 15 %}var(--color-score-2){% elif week.uas7 <= 27 %}var(--color-score-4){% else %}var(--color-score-6){% endif %};">
                     {% if week.complete %}{{ week.uas7 }}{% else %}{{ week.uas7 }}*{% endif %}
                 </div>
@@ -577,7 +741,7 @@
                 </div>
                 {% if not forloop.first and week.change is not None %}
                 <div class="week-block__change {% if week.change > 0 %}week-block__change--up{% elif week.change < 0 %}week-block__change--down{% else %}week-block__change--same{% endif %}">
-                    {% if week.change > 0 %}↑{% elif week.change < 0 %}↓{% else %}→{% endif %} {{ week.change|abs }}
+                    {% if week.change > 0 %}↑ {{ week.change }}{% elif week.change < 0 %}↓ {{ week.change|abs }}{% else %}→ 0{% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -677,5 +841,115 @@
 
 {% block extra_js %}
 <script src="{% static 'js/components.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Trend chart tooltip interaction ──
+    const trendChart = document.getElementById('trend-chart');
+    const tooltip = document.getElementById('trend-tooltip');
+    if (trendChart && tooltip) {
+        const points = trendChart.querySelectorAll('.trend-chart__point, .trend-chart__point-target');
+        const chartRect = () => trendChart.getBoundingClientRect();
+        const svgEl = trendChart.querySelector('.trend-chart__svg');
+        
+        function showTooltip(e) {
+            const target = e.target.closest('.trend-chart__point, .trend-chart__point-target');
+            if (!target) return;
+            const score = target.getAttribute('data-score');
+            if (score === null) return;
+            
+            const cx = parseFloat(target.getAttribute('cx'));
+            const cy = parseFloat(target.getAttribute('cy'));
+            const svgRect = svgEl.getBoundingClientRect();
+            const viewBox = svgEl.viewBox.baseVal;
+            
+            // Convert SVG coords to pixel coords
+            const scaleX = svgRect.width / viewBox.width;
+            const scaleY = svgRect.height / viewBox.height;
+            const px = cx * scaleX;
+            const py = cy * scaleY;
+            
+            const severityLabels = ['None', 'Mild', 'Low-Mod', 'Moderate', 'High-Mod', 'Severe', 'V. Severe'];
+            tooltip.innerHTML = '<strong>' + score + '/6</strong> <span style="color: var(--text-tertiary);">' + severityLabels[parseInt(score)] + '</span>';
+            tooltip.classList.add('trend-chart__tooltip--visible');
+            
+            // Position tooltip
+            const tw = tooltip.offsetWidth;
+            let left = px - tw / 2;
+            if (left < 0) left = 4;
+            if (left + tw > svgRect.width) left = svgRect.width - tw - 4;
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = (py - 36) + 'px';
+        }
+        
+        function hideTooltip() {
+            tooltip.classList.remove('trend-chart__tooltip--visible');
+        }
+        
+        points.forEach(function(pt) {
+            pt.addEventListener('mouseenter', showTooltip);
+            pt.addEventListener('mouseleave', hideTooltip);
+            pt.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                showTooltip(e);
+                setTimeout(hideTooltip, 2000);
+            }, { passive: false });
+        });
+    }
+    
+    // ── Animate average bars on scroll into view ──
+    const avgBars = document.querySelectorAll('.average-bar__fill');
+    if (avgBars.length && 'IntersectionObserver' in window) {
+        const obs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.style.width = entry.target.getAttribute('data-width');
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+        
+        avgBars.forEach(function(bar) {
+            // Store target width and start at 0
+            const targetWidth = bar.style.width;
+            bar.setAttribute('data-width', targetWidth);
+            bar.style.width = '0';
+            bar.style.transition = 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            obs.observe(bar);
+        });
+    }
+    
+    // ── Animate progress ring on load ──
+    const ringProgress = document.querySelector('.progress-ring__progress');
+    if (ringProgress) {
+        const targetOffset = ringProgress.getAttribute('stroke-dashoffset');
+        ringProgress.setAttribute('stroke-dashoffset', '327');
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                ringProgress.style.strokeDashoffset = targetOffset;
+            });
+        });
+    }
+    
+    // ── Animate week comparison bars on scroll ──
+    const weekBars = document.querySelectorAll('.week-block__bar-fill');
+    if (weekBars.length && 'IntersectionObserver' in window) {
+        const weekObs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.style.width = entry.target.getAttribute('data-width');
+                    weekObs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+        
+        weekBars.forEach(function(bar) {
+            const targetWidth = bar.style.width;
+            bar.setAttribute('data-width', targetWidth);
+            bar.style.width = '0';
+            weekObs.observe(bar);
+        });
+    }
+});
+</script>
 
 {% endblock %}
