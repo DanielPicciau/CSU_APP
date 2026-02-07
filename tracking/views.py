@@ -23,6 +23,7 @@ from .utils import (
 )
 from core.cache import CacheManager, get_user_cache_key, CACHE_TIMEOUTS
 from subscriptions.entitlements import has_entitlement
+from .diagnostics import timed_section  # TEMP: performance profiling
 
 
 @login_required
@@ -36,125 +37,134 @@ def today_view(request):
     """Today screen - premium mobile-first experience."""
     from django.core.cache import cache
 
-    today = get_user_today(request.user)
-    user_id = request.user.id
+    with timed_section("today:get_user_today", request):
+        today = get_user_today(request.user)
+        user_id = request.user.id
 
-    # Try to serve today's entry from cache (warmed on login, invalidated on save)
-    today_cache_key = get_user_cache_key(user_id, 'today_entry', str(today))
-    today_entry = cache.get(today_cache_key)
-    if today_entry is None:
-        today_entry = DailyEntry.objects.filter(user=request.user, date=today).first()
-        cache.set(today_cache_key, today_entry, CACHE_TIMEOUTS['dashboard_stats'])
+    with timed_section("today:today_entry_query", request):
+        # Try to serve today's entry from cache (warmed on login, invalidated on save)
+        today_cache_key = get_user_cache_key(user_id, 'today_entry', str(today))
+        today_entry = cache.get(today_cache_key)
+        if today_entry is None:
+            today_entry = DailyEntry.objects.filter(user=request.user, date=today).first()
+            cache.set(today_cache_key, today_entry, CACHE_TIMEOUTS['dashboard_stats'])
 
-    # Determine the 7-day tracking window.
-    # For users on a biologic injection schedule the week starts on the
-    # same weekday as their injection date so the chart doesn't show
-    # "missing" days before the treatment cycle began.
-    week_start, week_end = get_user_week_bounds(request.user, today)
+    with timed_section("today:week_bounds+entries", request):
+        # Determine the 7-day tracking window.
+        week_start, week_end = get_user_week_bounds(request.user, today)
 
-    # Try to serve recent entries from cache (warmed on login, invalidated on save)
-    week_cache_key = get_user_cache_key(user_id, 'week_entries', str(week_start))
-    recent_entries = cache.get(week_cache_key)
-    if recent_entries is None:
-        recent_entries = list(DailyEntry.objects.filter(
-            user=request.user,
-            date__gte=week_start,
-            date__lte=min(week_end, today),
-        ).only("date", "score").order_by("date"))
-        cache.set(week_cache_key, recent_entries, CACHE_TIMEOUTS['dashboard_stats'])
+        # Try to serve recent entries from cache (warmed on login, invalidated on save)
+        week_cache_key = get_user_cache_key(user_id, 'week_entries', str(week_start))
+        recent_entries = cache.get(week_cache_key)
+        if recent_entries is None:
+            recent_entries = list(DailyEntry.objects.filter(
+                user=request.user,
+                date__gte=week_start,
+                date__lte=min(week_end, today),
+            ).only("date", "score").order_by("date"))
+            cache.set(week_cache_key, recent_entries, CACHE_TIMEOUTS['dashboard_stats'])
 
-    # Build chart data with O(1) dict lookup instead of linear scan
-    entry_by_date = {e.date: e for e in recent_entries}
-    chart_data = []
-    for i in range(7):
-        day = week_start + timedelta(days=i)
-        is_future = day > today
-        entry = entry_by_date.get(day)
-        chart_data.append({
-            "date": day,
-            "score": entry.score if entry else None,
-            "has_entry": entry is not None,
-            "is_future": is_future,
+    with timed_section("today:chart_data_build", request):
+        # Build chart data with O(1) dict lookup instead of linear scan
+        entry_by_date = {e.date: e for e in recent_entries}
+        chart_data = []
+        for i in range(7):
+            day = week_start + timedelta(days=i)
+            is_future = day > today
+            entry = entry_by_date.get(day)
+            chart_data.append({
+                "date": day,
+                "score": entry.score if entry else None,
+                "has_entry": entry is not None,
+                "is_future": is_future,
+            })
+
+    with timed_section("today:uas7_calc", request):
+        # Calculate UAS7 (sum of scores in this tracking week so far)
+        uas7_score = sum(e.score for e in recent_entries)
+        expected_days = min(7, (today - week_start).days + 1)
+        uas7_complete = len(recent_entries) == expected_days and expected_days == 7
+
+    with timed_section("today:adherence_30d_query", request):
+        # Cache the 30-day adherence count (changes at most once/day)
+        adherence_key = get_user_cache_key(user_id, 'adherence_30d', str(today))
+        logged_in_30_days = cache.get(adherence_key)
+        if logged_in_30_days is None:
+            thirty_days_ago = today - timedelta(days=29)
+            logged_in_30_days = DailyEntry.objects.filter(
+                user=request.user,
+                date__gte=thirty_days_ago,
+                date__lte=today,
+            ).count()
+            cache.set(adherence_key, logged_in_30_days, CACHE_TIMEOUTS['dashboard_stats'])
+
+    with timed_section("today:total_entries_query", request):
+        # Cache total entries count
+        total_key = get_user_cache_key(user_id, 'total_entries', '')
+        total_entries = cache.get(total_key)
+        if total_entries is None:
+            total_entries = apply_history_limit(
+                DailyEntry.objects.filter(user=request.user),
+                request.user,
+                today=today,
+            ).count()
+            cache.set(total_key, total_entries, CACHE_TIMEOUTS['dashboard_stats'])
+
+    with timed_section("today:notification_check", request):
+        # Check if notifications are actually enabled (not just if preferences exist)
+        has_notification_setup = False
+        if hasattr(request.user, 'reminder_preferences'):
+            has_notification_setup = request.user.reminder_preferences.enabled
+
+    with timed_section("today:template_render", request):
+        response = render(request, "tracking/today.html", {
+            "today": today,
+            "today_entry": today_entry,
+            "chart_data": chart_data,
+            "uas7_score": uas7_score,
+            "uas7_complete": uas7_complete,
+            "logged_in_30_days": logged_in_30_days,
+            "total_entries": total_entries,
+            "has_notification_setup": has_notification_setup,
         })
 
-    # Calculate UAS7 (sum of scores in this tracking week so far)
-    uas7_score = sum(e.score for e in recent_entries)
-    # The week is complete when all 7 days up to today have entries
-    expected_days = min(7, (today - week_start).days + 1)
-    uas7_complete = len(recent_entries) == expected_days and expected_days == 7
-
-    # Cache the 30-day adherence count (changes at most once/day)
-    adherence_key = get_user_cache_key(user_id, 'adherence_30d', str(today))
-    logged_in_30_days = cache.get(adherence_key)
-    if logged_in_30_days is None:
-        thirty_days_ago = today - timedelta(days=29)
-        logged_in_30_days = DailyEntry.objects.filter(
-            user=request.user,
-            date__gte=thirty_days_ago,
-            date__lte=today,
-        ).count()
-        cache.set(adherence_key, logged_in_30_days, CACHE_TIMEOUTS['dashboard_stats'])
-
-    # Cache total entries count
-    total_key = get_user_cache_key(user_id, 'total_entries', '')
-    total_entries = cache.get(total_key)
-    if total_entries is None:
-        total_entries = apply_history_limit(
-            DailyEntry.objects.filter(user=request.user),
-            request.user,
-            today=today,
-        ).count()
-        cache.set(total_key, total_entries, CACHE_TIMEOUTS['dashboard_stats'])
-
-    # Check if notifications are actually enabled (not just if preferences exist)
-    has_notification_setup = False
-    if hasattr(request.user, 'reminder_preferences'):
-        has_notification_setup = request.user.reminder_preferences.enabled
-
-    return render(request, "tracking/today.html", {
-        "today": today,
-        "today_entry": today_entry,
-        "chart_data": chart_data,
-        "uas7_score": uas7_score,
-        "uas7_complete": uas7_complete,
-        "logged_in_30_days": logged_in_30_days,
-        "total_entries": total_entries,
-        "has_notification_setup": has_notification_setup,
-    })
+    return response
 
 
 @login_required
 def log_entry_view(request, date_str=None):
     """Log or update a daily entry."""
-    user_today = get_user_today(request.user)
-    
-    if date_str:
-        try:
-            entry_date = date.fromisoformat(date_str)
-        except ValueError:
-            messages.error(request, "Invalid date format.")
+    with timed_section("log:get_user_today+validate", request):
+        user_today = get_user_today(request.user)
+        
+        if date_str:
+            try:
+                entry_date = date.fromisoformat(date_str)
+            except ValueError:
+                messages.error(request, "Invalid date format.")
+                return redirect("tracking:today")
+        else:
+            entry_date = user_today
+        
+        # Prevent logging future dates
+        if entry_date > user_today:
+            messages.error(request, "Cannot log entries for future dates.")
             return redirect("tracking:today")
-    else:
-        entry_date = user_today
-    
-    # Prevent logging future dates
-    if entry_date > user_today:
-        messages.error(request, "Cannot log entries for future dates.")
-        return redirect("tracking:today")
 
-    history_start = get_history_start_date(request.user, today=user_today)
-    if history_start and entry_date < history_start:
-        messages.error(
-            request,
-            "Free tier access is limited to the last 30 days. Upgrade to edit older entries.",
-        )
-        return redirect("subscriptions:premium")
-    
-    # Check if entry exists (for update)
-    existing_entry = DailyEntry.objects.filter(
-        user=request.user,
-        date=entry_date,
-    ).first()
+        history_start = get_history_start_date(request.user, today=user_today)
+        if history_start and entry_date < history_start:
+            messages.error(
+                request,
+                "Free tier access is limited to the last 30 days. Upgrade to edit older entries.",
+            )
+            return redirect("subscriptions:premium")
+
+    with timed_section("log:existing_entry_query", request):
+        # Check if entry exists (for update)
+        existing_entry = DailyEntry.objects.filter(
+            user=request.user,
+            date=entry_date,
+        ).first()
     
     # Handle structured quick mode (itch_score + hive_count_score)
     if request.method == "POST" and request.POST.get("structured_quick_mode"):
@@ -232,50 +242,55 @@ def log_entry_view(request, date_str=None):
     # Determine which template to use (check for new design preference)
     template = "tracking/log_entry_new.html"
     
-    return render(request, template, {
-        "form": form,
-        "entry_date": entry_date,
-        "today": entry_date,
-        "is_today": entry_date == user_today,
-        "existing_entry": existing_entry,
-        "editing": existing_entry is not None,
-        "entry": existing_entry,
-        "itch_choices": ITCH_CHOICES,
-        "hive_choices": HIVE_CHOICES,
-    })
+    with timed_section("log:template_render", request):
+        rendered = render(request, template, {
+            "form": form,
+            "entry_date": entry_date,
+            "today": entry_date,
+            "is_today": entry_date == user_today,
+            "existing_entry": existing_entry,
+            "editing": existing_entry is not None,
+            "entry": existing_entry,
+            "itch_choices": ITCH_CHOICES,
+            "hive_choices": HIVE_CHOICES,
+        })
+    return rendered
 
 
 @login_required
 def history_view(request):
     """View entry history with filters and calendar view."""
-    today = get_user_today(request.user)
-    
-    # Get filter parameters - default to 10 days for the new grid view
-    try:
-        days = max(1, min(365, int(request.GET.get("days", 10))))
-    except (ValueError, TypeError):
-        days = 10
-    limit_days = get_history_limit_days(request.user)
-    if limit_days is not None:
-        days = min(days, limit_days)
-    view = request.GET.get("view", "grid")  # Default to grid view
-    show = request.GET.get("show", "all")
-    min_score = request.GET.get("min_score")
-    max_score = request.GET.get("max_score")
-    antihistamine = request.GET.get("antihistamine")
-    month_str = request.GET.get("month")
-    
-    start_date = today - timedelta(days=days - 1)
-    
-    history_start = get_history_start_date(request.user, today=today)
 
-    # Get all entries in range
-    entries_query = DailyEntry.objects.filter(
-        user=request.user,
-        date__gte=start_date,
-        date__lte=today,
-    )
-    entries_query = apply_history_limit(entries_query, request.user, today=today)
+    with timed_section("history:get_user_today+params", request):
+        today = get_user_today(request.user)
+        
+        # Get filter parameters - default to 10 days for the new grid view
+        try:
+            days = max(1, min(365, int(request.GET.get("days", 10))))
+        except (ValueError, TypeError):
+            days = 10
+        limit_days = get_history_limit_days(request.user)
+        if limit_days is not None:
+            days = min(days, limit_days)
+        view = request.GET.get("view", "grid")  # Default to grid view
+        show = request.GET.get("show", "all")
+        min_score = request.GET.get("min_score")
+        max_score = request.GET.get("max_score")
+        antihistamine = request.GET.get("antihistamine")
+        month_str = request.GET.get("month")
+        
+        start_date = today - timedelta(days=days - 1)
+        
+        history_start = get_history_start_date(request.user, today=today)
+
+    with timed_section("history:main_entries_query", request):
+        # Get all entries in range
+        entries_query = DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=start_date,
+            date__lte=today,
+        )
+        entries_query = apply_history_limit(entries_query, request.user, today=today)
     
     # Apply score filters at the DB layer
     if min_score:
@@ -301,44 +316,46 @@ def history_view(request):
         "hive_count_score",
         "took_antihistamine",
     ).order_by("-date"))
-    
-    # Create entry lookup
-    entry_by_date = {e.date: e for e in entries}
-    
-    # Build list data (all days in range)
-    list_data = []
-    entries_count = 0
-    missing_count = 0
-    
-    for i in range(days):
-        day = today - timedelta(days=i)
-        entry = entry_by_date.get(day)
-        is_missing = entry is None
+
+    with timed_section("history:list_data_loop", request):
+        # Create entry lookup
+        entry_by_date = {e.date: e for e in entries}
         
-        if is_missing:
-            missing_count += 1
-        else:
-            entries_count += 1
+        # Build list data (all days in range)
+        list_data = []
+        entries_count = 0
+        missing_count = 0
         
-        # Filter based on show parameter
-        if show == "logged" and is_missing:
-            continue
-        if show == "missing" and not is_missing:
-            continue
+        for i in range(days):
+            day = today - timedelta(days=i)
+            entry = entry_by_date.get(day)
+            is_missing = entry is None
+            
+            if is_missing:
+                missing_count += 1
+            else:
+                entries_count += 1
+            
+            # Filter based on show parameter
+            if show == "logged" and is_missing:
+                continue
+            if show == "missing" and not is_missing:
+                continue
+            
+            list_data.append({
+                "date": day,
+                "entry": entry,
+                "is_today": day == today,
+                "is_missing": is_missing,
+            })
         
-        list_data.append({
-            "date": day,
-            "entry": entry,
-            "is_today": day == today,
-            "is_missing": is_missing,
-        })
-    
-    # Calculate adherence percentage
-    adherence_pct = (entries_count / days * 100) if days > 0 else 0
+        # Calculate adherence percentage
+        adherence_pct = (entries_count / days * 100) if days > 0 else 0
     
     # Build calendar data for calendar view
     calendar_data = []
     if view == "calendar":
+      with timed_section("history:calendar_build", request):
         # Determine which month to show
         if month_str:
             try:
@@ -410,14 +427,15 @@ def history_view(request):
                 "future": is_future,
             })
             day += timedelta(days=1)
-    
-    max_days = limit_days or 365
-    has_older_entries = False
-    if history_start:
-        has_older_entries = DailyEntry.objects.filter(
-            user=request.user,
-            date__lt=history_start,
-        ).exists()
+
+    with timed_section("history:has_older_entries", request):
+        max_days = limit_days or 365
+        has_older_entries = False
+        if history_start:
+            has_older_entries = DailyEntry.objects.filter(
+                user=request.user,
+                date__lt=history_start,
+            ).exists()
 
     context = {
         "list_data": list_data,
@@ -447,144 +465,155 @@ def history_view(request):
             "next_month": next_month,
         })
     
-    return render(request, "tracking/history_premium.html", context)
+    with timed_section("history:template_render", request):
+        rendered = render(request, "tracking/history_premium.html", context)
+    return rendered
 
 
 @login_required
 def insights_view(request):
     """View insights and analytics."""
-    today = get_user_today(request.user)
-    
-    # Get period parameter with safe parsing
-    try:
-        period = max(1, min(365, int(request.GET.get("period", 30))))
-    except (ValueError, TypeError):
-        period = 30
-    limit_days = get_history_limit_days(request.user)
-    if limit_days is not None:
-        period = min(period, limit_days)
-    start_date = today - timedelta(days=period - 1)
-    
-    # Get entries for period
-    entries_query = DailyEntry.objects.filter(
-        user=request.user,
-        date__gte=start_date,
-        date__lte=today,
-    )
-    entries = list(apply_history_limit(
-        entries_query,
-        request.user,
-        today=today,
-    ).only(
-        "date",
-        "score",
-        "itch_score",
-        "hive_count_score",
-        "took_antihistamine",
-    ).order_by("date"))
-    
-    logged_days = len(entries)
-    missing_days = period - logged_days
-    adherence_pct = (logged_days / period * 100) if period > 0 else 0
-    adherence_offset = 327 - (327 * adherence_pct / 100)  # For SVG circle
-    
-    # Total entries count (non-judgmental lifetime metric)
-    total_entries = apply_history_limit(
-        DailyEntry.objects.filter(user=request.user),
-        request.user,
-        today=today,
-    ).count()
-    
-    # Calculate averages
-    if entries:
-        avg_score = sum(e.score for e in entries) / len(entries)
-        avg_itch = sum(e.itch_score for e in entries) / len(entries)
-        avg_hives = sum(e.hive_count_score for e in entries) / len(entries)
-        best_score = min(e.score for e in entries)
-        worst_score = max(e.score for e in entries)
-    else:
-        avg_score = avg_itch = avg_hives = 0
-        best_score = worst_score = "-"
-    
-    avg_score_pct = (avg_score / 6 * 100) if avg_score else 0
-    avg_itch_pct = (avg_itch / 3 * 100) if avg_itch else 0
-    avg_hives_pct = (avg_hives / 3 * 100) if avg_hives else 0
-    
-    # Antihistamine stats
-    antihistamine_days = sum(1 for e in entries if e.took_antihistamine)
-    antihistamine_pct = (antihistamine_days / logged_days * 100) if logged_days > 0 else 0
-    
-    # Weekly UAS7 comparison (last 4 weeks) - Optimized: single query
-    four_weeks_ago = today - timedelta(days=27)
-    weekly_query = DailyEntry.objects.filter(
-        user=request.user,
-        date__gte=four_weeks_ago,
-        date__lte=today,
-    )
-    all_weekly_entries = list(
-        apply_history_limit(weekly_query, request.user, today=today).values("date", "score")
-    )
-    
-    # Build a lookup for entries by date
-    entries_by_date = {e['date']: e['score'] for e in all_weekly_entries}
-    
-    weekly_scores = []
-    for week_num in range(4):
-        w_start, w_end = get_aligned_week_bounds(request.user, today, week_num)
+
+    with timed_section("insights:get_user_today+params", request):
+        today = get_user_today(request.user)
         
-        # Calculate from in-memory data instead of DB query
-        week_uas7 = 0
-        week_count = 0
-        for day_offset in range(7):
-            day = w_start + timedelta(days=day_offset)
-            if day in entries_by_date:
-                week_uas7 += entries_by_date[day]
-                week_count += 1
+        # Get period parameter with safe parsing
+        try:
+            period = max(1, min(365, int(request.GET.get("period", 30))))
+        except (ValueError, TypeError):
+            period = 30
+        limit_days = get_history_limit_days(request.user)
+        if limit_days is not None:
+            period = min(period, limit_days)
+        start_date = today - timedelta(days=period - 1)
+
+    with timed_section("insights:main_entries_query", request):
+        # Get entries for period
+        entries_query = DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=start_date,
+            date__lte=today,
+        )
+        entries = list(apply_history_limit(
+            entries_query,
+            request.user,
+            today=today,
+        ).only(
+            "date",
+            "score",
+            "itch_score",
+            "hive_count_score",
+            "took_antihistamine",
+        ).order_by("date"))
+
+    with timed_section("insights:total_entries_count", request):
+        logged_days = len(entries)
+        missing_days = period - logged_days
+        adherence_pct = (logged_days / period * 100) if period > 0 else 0
+        adherence_offset = 327 - (327 * adherence_pct / 100)  # For SVG circle
         
-        uas7 = week_uas7
-        complete = week_count == 7
+        # Total entries count (non-judgmental lifetime metric)
+        total_entries = apply_history_limit(
+            DailyEntry.objects.filter(user=request.user),
+            request.user,
+            today=today,
+        ).count()
+
+    with timed_section("insights:avg_stats_calc", request):
+        # Calculate averages
+        if entries:
+            avg_score = sum(e.score for e in entries) / len(entries)
+            avg_itch = sum(e.itch_score for e in entries) / len(entries)
+            avg_hives = sum(e.hive_count_score for e in entries) / len(entries)
+            best_score = min(e.score for e in entries)
+            worst_score = max(e.score for e in entries)
+        else:
+            avg_score = avg_itch = avg_hives = 0
+            best_score = worst_score = "-"
         
-        # Calculate change from previous week
-        change = None
-        if week_num > 0 and weekly_scores:
-            prev_uas7 = weekly_scores[-1]["uas7"]
-            change = uas7 - prev_uas7
+        avg_score_pct = (avg_score / 6 * 100) if avg_score else 0
+        avg_itch_pct = (avg_itch / 3 * 100) if avg_itch else 0
+        avg_hives_pct = (avg_hives / 3 * 100) if avg_hives else 0
         
-        weekly_scores.append({
-            "week_start": w_start,
-            "week_end": w_end,
-            "uas7": uas7,
-            "complete": complete,
-            "change": change,
-            "label": f"{week_num + 1}w ago",
-        })
-    
-    # Build chart data
-    chart_points = []
-    chart_path = ""
-    chart_area_path = ""
-    chart_width = 300
-    
-    if entries:
-        # Filter to only days with entries for clean chart
-        point_width = (chart_width - 30) / max(len(entries) - 1, 1)
+        # Antihistamine stats
+        antihistamine_days = sum(1 for e in entries if e.took_antihistamine)
+        antihistamine_pct = (antihistamine_days / logged_days * 100) if logged_days > 0 else 0
+
+    with timed_section("insights:weekly_uas7_query", request):
+        # Weekly UAS7 comparison (last 4 weeks) - Optimized: single query
+        four_weeks_ago = today - timedelta(days=27)
+        weekly_query = DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=four_weeks_ago,
+            date__lte=today,
+        )
+        all_weekly_entries = list(
+            apply_history_limit(weekly_query, request.user, today=today).values("date", "score")
+        )
+
+    with timed_section("insights:weekly_loop_calc", request):
+        # Build a lookup for entries by date
+        entries_by_date = {e['date']: e['score'] for e in all_weekly_entries}
         
-        for i, entry in enumerate(entries):
-            x = 25 + i * point_width
-            y = 130 - (entry.score / 6 * 105)  # Invert Y axis
-            chart_points.append({"x": x, "y": y, "score": entry.score})
-        
-        if len(chart_points) > 1:
-            # Build line path
-            path_parts = [f"M {chart_points[0]['x']} {chart_points[0]['y']}"]
-            for point in chart_points[1:]:
-                path_parts.append(f"L {point['x']} {point['y']}")
-            chart_path = " ".join(path_parts)
+        weekly_scores = []
+        for week_num in range(4):
+            w_start, w_end = get_aligned_week_bounds(request.user, today, week_num)
             
-            # Build area path
-            chart_area_path = chart_path + f" L {chart_points[-1]['x']} 130 L {chart_points[0]['x']} 130 Z"
-    
-    return render(request, "tracking/insights.html", {
+            # Calculate from in-memory data instead of DB query
+            week_uas7 = 0
+            week_count = 0
+            for day_offset in range(7):
+                day = w_start + timedelta(days=day_offset)
+                if day in entries_by_date:
+                    week_uas7 += entries_by_date[day]
+                    week_count += 1
+            
+            uas7 = week_uas7
+            complete = week_count == 7
+            
+            # Calculate change from previous week
+            change = None
+            if week_num > 0 and weekly_scores:
+                prev_uas7 = weekly_scores[-1]["uas7"]
+                change = uas7 - prev_uas7
+            
+            weekly_scores.append({
+                "week_start": w_start,
+                "week_end": w_end,
+                "uas7": uas7,
+                "complete": complete,
+                "change": change,
+                "label": f"{week_num + 1}w ago",
+            })
+
+    with timed_section("insights:chart_building", request):
+        # Build chart data
+        chart_points = []
+        chart_path = ""
+        chart_area_path = ""
+        chart_width = 300
+        
+        if entries:
+            # Filter to only days with entries for clean chart
+            point_width = (chart_width - 30) / max(len(entries) - 1, 1)
+            
+            for i, entry in enumerate(entries):
+                x = 25 + i * point_width
+                y = 130 - (entry.score / 6 * 105)  # Invert Y axis
+                chart_points.append({"x": x, "y": y, "score": entry.score})
+            
+            if len(chart_points) > 1:
+                # Build line path
+                path_parts = [f"M {chart_points[0]['x']} {chart_points[0]['y']}"]
+                for point in chart_points[1:]:
+                    path_parts.append(f"L {point['x']} {point['y']}")
+                chart_path = " ".join(path_parts)
+                
+                # Build area path
+                chart_area_path = chart_path + f" L {chart_points[-1]['x']} 130 L {chart_points[0]['x']} 130 Z"
+
+    with timed_section("insights:template_render", request):
+        rendered = render(request, "tracking/insights.html", {
         "period": period,
         "today": today,
         "logged_days": logged_days,
@@ -610,6 +639,8 @@ def insights_view(request):
         "history_limit_days": limit_days,
         "history_limited": limit_days is not None,
     })
+
+    return rendered
 
 
 @login_required

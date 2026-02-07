@@ -561,3 +561,20 @@ class AccountPausedMiddleware(MiddlewareMixin):
             'Your account is currently paused. Please resume your account to access this feature.'
         )
         return redirect('accounts:resume_account')
+
+
+perf_logger = logging.getLogger("perf")
+
+
+class PerfMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start = time.perf_counter()
+        response = self.get_response(request)
+        end = time.perf_counter()
+
+        perf_logger.warning(f"{request.path} took {(end-start)*1000:.2f}ms")
+
+        return response

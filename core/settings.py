@@ -75,6 +75,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # TEMP: Performance profiling — must be FIRST to capture total request time
+    "core.middleware.PerfMiddleware",
+    "tracking.diagnostics.RequestTimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -426,6 +429,18 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO',
         },
+        # TEMP: Performance profiling — logs per-section timing breakdown
+        'perf': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        # TEMP: SQL query logging — uncomment to see every query
+        # 'django.db.backends': {
+        #     'handlers': ['console'],
+        #     'level': 'DEBUG',
+        #     'propagate': False,
+        # },
         'audit': {
             'handlers': ['console', 'audit_file'],
             'level': 'INFO',
