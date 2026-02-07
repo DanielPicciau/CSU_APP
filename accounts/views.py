@@ -106,6 +106,12 @@ class CustomLoginView(LoginView):
         response = super().form_valid(form)
         # Rotate session key on login
         self.request.session.cycle_key()
+        # Pre-warm cache for faster first page load
+        try:
+            from core.cache import CacheManager
+            CacheManager.warm_cache(form.get_user())
+        except Exception:
+            pass  # Non-critical — dashboard will query on demand
         return response
     
     def form_invalid(self, form):
@@ -523,6 +529,12 @@ def mfa_verify_view(request):
                 next_url = request.session.pop("mfa_next", None)
                 mfa.last_used_at = timezone.now()
                 mfa.save(update_fields=["last_used_at"])
+                # Pre-warm cache for faster first page load
+                try:
+                    from core.cache import CacheManager
+                    CacheManager.warm_cache(user)
+                except Exception:
+                    pass
                 return redirect(next_url or "home")
             messages.error(request, "Invalid code. Please try again.")
     else:
@@ -659,6 +671,13 @@ def onboarding_account(request):
             
             # Log them in immediately
             login(request, user)
+            
+            # Pre-warm cache for faster first page load after onboarding
+            try:
+                from core.cache import CacheManager
+                CacheManager.warm_cache(user)
+            except Exception:
+                pass
             
             # Skip name and age steps, go directly to gender
             return redirect("accounts:onboarding_gender")

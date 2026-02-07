@@ -72,20 +72,12 @@ class Command(BaseCommand):
                     datetime.combine(user_today, pref.time_of_day)
                 )
                 
-                # Calculate how long ago the reminder time was
-                time_since_reminder = user_now - reminder_datetime
-                
-                # Check if reminder time has passed today, but within the last hour
-                # (since this task runs hourly, we catch reminders from the past hour)
-                if time_since_reminder.total_seconds() < 0:
+                # Check if reminder time has passed today
+                if user_now < reminder_datetime:
                     # Reminder time hasn't passed yet today
                     continue
                 
-                if time_since_reminder.total_seconds() > 3600:
-                    # Reminder time was more than an hour ago - missed window
-                    # (will be caught by next day or was already sent)
-                    continue
-                
+                time_since_reminder = user_now - reminder_datetime
                 self.stdout.write(
                     f"  Checking {user_email} (tz={pref.timezone}, local={user_now.strftime('%H:%M')}, "
                     f"reminder={pref.time_of_day.strftime('%H:%M')}, passed {int(time_since_reminder.total_seconds() // 60)}m ago)"
@@ -138,12 +130,19 @@ class Command(BaseCommand):
                         )
                 
                 # Log the reminder to prevent duplicates
-                ReminderLog.objects.create(
+                ReminderLog.objects.update_or_create(
                     user=user,
                     date=user_today,
-                    success=success_count > 0,
-                    subscriptions_notified=success_count
+                    defaults={
+                        "success": success_count > 0,
+                        "subscriptions_notified": success_count,
+                    },
                 )
+
+                # Update guard fields on ReminderPreferences
+                pref.last_reminder_date = user_today
+                pref.last_reminder_sent_at = timezone.now()
+                pref.save(update_fields=["last_reminder_date", "last_reminder_sent_at"])
                 
                 if success_count > 0:
                     sent_count += 1

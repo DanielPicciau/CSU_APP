@@ -102,10 +102,41 @@ class CacheManager:
     @staticmethod
     def invalidate_user_entries(user_id):
         """Invalidate all entry-related caches for a user."""
+        from datetime import timedelta
+        from django.utils import timezone
+        import pytz
+        from django.contrib.auth import get_user_model
+
+        # Static-prefix keys (empty extra)
         prefixes = ['home_stats', 'history_stats', 'dashboard_stats', 'entry_list']
-        for prefix in prefixes:
-            cache_key = get_user_cache_key(user_id, prefix, '')
-            cache.delete(cache_key)
+        keys = [get_user_cache_key(user_id, p, '') for p in prefixes]
+
+        # Date-keyed entries written by warm_cache / today_view
+        try:
+            User = get_user_model()
+            user = User.objects.get(pk=user_id)
+            user_tz = pytz.timezone(user.profile.default_timezone)
+            today = timezone.now().astimezone(user_tz).date()
+        except Exception:
+            today = timezone.now().date()
+
+        # Clear today_entry and adherence keys for today ± 1 day
+        for d_offset in (0, -1, 1):
+            day_str = str(today + timedelta(days=d_offset))
+            keys.append(get_user_cache_key(user_id, 'today_entry', day_str))
+            keys.append(get_user_cache_key(user_id, 'adherence_30d', day_str))
+
+        # week_entries is keyed by week_start, which could be today-6 or
+        # injection-aligned; clear a wider range of possible week_start dates
+        for d_offset in range(-8, 2):
+            day_str = str(today + timedelta(days=d_offset))
+            keys.append(get_user_cache_key(user_id, 'week_entries', day_str))
+
+        # total_entries uses empty extra
+        keys.append(get_user_cache_key(user_id, 'total_entries', ''))
+
+        for k in keys:
+            cache.delete(k)
     
     @staticmethod
     def warm_cache(user):
@@ -114,26 +145,27 @@ class CacheManager:
         from django.utils import timezone
         import pytz
         from tracking.models import DailyEntry
+        from tracking.utils import get_user_week_bounds
         
         # Get user's today
         user_tz = pytz.timezone(user.profile.default_timezone)
         today = timezone.now().astimezone(user_tz).date()
         
-        # Pre-fetch common queries
-        week_ago = today - timedelta(days=6)
+        # Use the same week bounds as today_view so cache keys match
+        week_start, week_end = get_user_week_bounds(user, today)
         
         # Cache today's entry
         today_entry = DailyEntry.objects.filter(user=user, date=today).first()
         cache_key = get_user_cache_key(user.id, 'today_entry', str(today))
         cache.set(cache_key, today_entry, CACHE_TIMEOUTS['dashboard_stats'])
         
-        # Cache week entries
+        # Cache week entries (key matches today_view's cache key)
         week_entries = list(DailyEntry.objects.filter(
             user=user,
-            date__gte=week_ago,
-            date__lte=today,
+            date__gte=week_start,
+            date__lte=min(week_end, today),
         ).order_by("date"))
-        cache_key = get_user_cache_key(user.id, 'week_entries', str(today))
+        cache_key = get_user_cache_key(user.id, 'week_entries', str(week_start))
         cache.set(cache_key, week_entries, CACHE_TIMEOUTS['dashboard_stats'])
 
 

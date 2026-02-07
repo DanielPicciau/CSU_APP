@@ -278,7 +278,15 @@
                 {% for day in chart_data %}
                 <div class="flex-1 flex flex-col items-center">
                     <div class="w-full flex flex-col justify-end" style="height: 56px;">
-                        {% if day.has_entry %}
+                        {% if day.is_future %}
+                        <div 
+                            class="w-full rounded"
+                            style="height: 4px; background: var(--border-default); opacity: 0.35;"
+                            title="{{ day.date|date:'M j' }}: Upcoming"
+                            role="img"
+                            aria-label="{{ day.date|date:'l' }}: Upcoming"
+                        ></div>
+                        {% elif day.has_entry %}
                         <div 
                             class="w-full rounded-t-md"
                             style="height: {{ day.score|add:1 }}0px; min-height: 6px; background-color: var(--color-score-{{ day.score }});"
@@ -296,7 +304,7 @@
                         ></div>
                         {% endif %}
                     </div>
-                    <span class="text-xs {% if day.date == today %}text-brand font-semibold{% else %}text-tertiary{% endif %} mt-2">
+                    <span class="text-xs {% if day.date == today %}text-brand font-semibold{% elif day.is_future %}text-tertiary{% else %}text-tertiary{% endif %} mt-2" {% if day.is_future %}style="opacity: 0.5;"{% endif %}>
                         {{ day.date|date:"D" }}
                     </span>
                 </div>

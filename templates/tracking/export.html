@@ -388,26 +388,58 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
             </svg>
-            NHS &amp; Healthcare Provider Ready
+            Your Data, Your Right
         </div>
         <p class="clinical-info__text">
-            Generate comprehensive data exports designed for NHS consultations. 
-            Reports include UAS7 scoring (EAACI/GA²LEN/EuroGuiDerm guidelines), 
-            treatment response analysis, flare identification, and clinical decision support.
+            You can always download all of your data as a CSV file, regardless of your subscription.
+            {% if is_premium %}
+            As a Premium user you also have access to professionally formatted PDF reports
+            with clinical analysis, charts, and NHS-ready formatting.
+            {% else %}
+            Upgrade to Cura Premium for professionally formatted PDF reports with clinical
+            analysis, charts, and NHS-ready formatting.
+            {% endif %}
         </p>
     </div>
 
-    {% if history_limit_days and has_older_entries %}
-    <div class="disclaimer-banner fade-in">
-        <p class="disclaimer-banner__text">
-            <strong>Free tier limit:</strong> Exports are limited to the last {{ history_limit_days }} days.
-            <a href="{% url 'subscriptions:premium' %}" style="font-weight: 600; text-decoration: underline;">Upgrade</a>
-            to include your full history.
-        </p>
+    <!-- ============================================================ -->
+    <!-- Download All My Data — always available, no restrictions     -->
+    <!-- ============================================================ -->
+    <div class="export-card fade-in">
+        <div class="export-card__header">
+            <div class="export-card__icon export-card__icon--csv">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="8" y1="13" x2="16" y2="13"/>
+                    <line x1="8" y1="17" x2="16" y2="17"/>
+                </svg>
+            </div>
+            <div>
+                <div class="export-card__title">Download All My Data</div>
+                <div class="export-card__description">
+                    Get a complete CSV file containing every piece of data we hold about you &mdash;
+                    profile, medications, all symptom entries, preferences, and subscription info.
+                </div>
+            </div>
+        </div>
+        <a 
+            href="{% url 'tracking:export_my_data' %}" 
+            class="btn btn--primary btn--full"
+            style="padding: var(--space-4);"
+        >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download All My Data (CSV)
+        </a>
     </div>
-    {% endif %}
-    
-    <!-- Export Options Form -->
+
+    <!-- ============================================================ -->
+    <!-- Clinical Report Export (CSV always free, PDF premium-only)  -->
+    <!-- ============================================================ -->
     <form id="export-form" method="get" class="fade-in">
         
         <!-- Date Range Section -->
@@ -417,7 +449,7 @@
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                     <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                Date Range
+                Clinical Report &mdash; Date Range
             </h2>
             
             <div class="date-range">
@@ -450,8 +482,8 @@
             <div class="quick-range">
                 <button type="button" class="quick-range__btn" data-days="7">Last 7 days</button>
                 <button type="button" class="quick-range__btn" data-days="30">Last 30 days</button>
-                <button type="button" class="quick-range__btn" data-days="90" {% if history_limit_days %}disabled{% endif %}>Last 90 days</button>
-                <button type="button" class="quick-range__btn" data-days="all" {% if history_limit_days %}disabled{% endif %}>All time</button>
+                <button type="button" class="quick-range__btn" data-days="90">Last 90 days</button>
+                <button type="button" class="quick-range__btn" data-days="all">All time</button>
             </div>
             
             <!-- Preview stats -->
@@ -636,27 +668,15 @@
                     <polyline points="7 10 12 15 17 10"/>
                     <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Download Format
+                Download Clinical Report
             </h2>
             
             <div style="display: grid; gap: var(--space-3);">
-                <button 
-                    type="submit" 
-                    formaction="{% url 'tracking:export_pdf' %}" 
-                    class="btn btn--primary btn--full"
-                    style="background: #005EB8; padding: var(--space-4);"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                    Download PDF Report
-                </button>
-                
+                <!-- CSV clinical report — always available -->
                 <button 
                     type="submit" 
                     formaction="{% url 'tracking:export_csv' %}" 
-                    class="btn btn--secondary btn--full"
+                    class="btn btn--primary btn--full"
                     style="padding: var(--space-4);"
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -665,8 +685,43 @@
                         <line x1="8" y1="13" x2="16" y2="13"/>
                         <line x1="8" y1="17" x2="16" y2="17"/>
                     </svg>
-                    Download CSV Data
+                    Download CSV Report
                 </button>
+                
+                <!-- PDF report — premium only -->
+                {% if is_premium %}
+                <button 
+                    type="submit" 
+                    formaction="{% url 'tracking:export_pdf' %}" 
+                    class="btn btn--secondary btn--full"
+                    style="background: #005EB8; color: white; padding: var(--space-4);"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Download PDF Report
+                </button>
+                {% else %}
+                <div style="padding: var(--space-4); background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-lg); text-align: center;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: var(--space-2);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <span style="font-weight: 600; color: var(--text-primary);">PDF Reports &mdash; Premium Feature</span>
+                    </div>
+                    <p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-3);">
+                        Get professionally formatted PDF reports with charts, clinical analysis,
+                        and NHS-ready formatting.
+                    </p>
+                    <a href="{% url 'subscriptions:premium' %}" class="btn btn--secondary" style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); color: white; border: none;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: inline; vertical-align: -2px;">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        Upgrade to Premium
+                    </a>
+                </div>
+                {% endif %}
             </div>
         </div>
         

@@ -17,7 +17,7 @@ from .serializers import (
     AdherenceMetricsSerializer,
     WeeklyStatsSerializer,
 )
-from .utils import apply_history_limit, get_history_limit_days, get_user_today
+from .utils import apply_history_limit, get_aligned_week_bounds, get_history_limit_days, get_user_today
 
 
 class DailyEntryListCreateView(generics.ListCreateAPIView):
@@ -173,21 +173,20 @@ class WeeklyStatsView(APIView):
         
         results = []
         for week_num in range(weeks):
-            week_end = today - timedelta(days=week_num * 7)
-            week_start = week_end - timedelta(days=6)
+            w_start, w_end = get_aligned_week_bounds(request.user, today, week_num)
             
             entries = DailyEntry.objects.filter(
                 user=request.user,
-                date__gte=week_start,
-                date__lte=week_end,
+                date__gte=w_start,
+                date__lte=w_end,
             )
             
             entries_count = entries.count()
             uas7 = sum(e.score for e in entries)
             
             results.append({
-                "week_start": week_start,
-                "week_end": week_end,
+                "week_start": w_start,
+                "week_end": w_end,
                 "uas7_score": uas7,
                 "entries_count": entries_count,
                 "complete": entries_count == 7,

@@ -11,7 +11,7 @@
  * - Background sync when connection restored
  */
 
-(function() {
+(function () {
   'use strict';
 
   const DB_NAME = 'csu-tracker';
@@ -21,6 +21,7 @@
     db: null,
     isOnline: navigator.onLine,
     syncQueue: [],
+    isResetting: false,
 
     /**
      * Initialize the offline storage system
@@ -30,12 +31,14 @@
         this.db = await this.openDatabase();
         this.setupOnlineListeners();
         this.loadSyncQueue();
-        
-        // Try to sync any pending items
+
+        // Try to sync any pending items (fire-and-forget with error handling)
         if (this.isOnline) {
-          this.syncPendingItems();
+          this.syncPendingItems().catch(err =>
+            console.warn('[OfflineStorage] Background sync failed:', err)
+          );
         }
-        
+
         console.log('[OfflineStorage] Initialized successfully');
         return true;
       } catch (error) {
@@ -93,7 +96,9 @@
         this.isOnline = true;
         console.log('[OfflineStorage] Back online - syncing...');
         this.showOnlineStatus(true);
-        this.syncPendingItems();
+        this.syncPendingItems().catch(err =>
+          console.warn('[OfflineStorage] Sync after reconnect failed:', err)
+        );
       });
 
       window.addEventListener('offline', () => {
@@ -104,11 +109,38 @@
     },
 
     /**
+     * Reset IndexedDB when it becomes corrupted or schema mismatched.
+     */
+    async resetDatabase(reason) {
+      if (this.isResetting) return;
+      this.isResetting = true;
+      console.warn('[OfflineStorage] Resetting database:', reason);
+
+      try {
+        if (this.db) {
+          try { this.db.close(); } catch (e) { }
+        }
+        await new Promise((resolve, reject) => {
+          const request = indexedDB.deleteDatabase(DB_NAME);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+          request.onblocked = () => resolve();
+        });
+        this.db = await this.openDatabase();
+        this.syncQueue = [];
+      } catch (error) {
+        console.error('[OfflineStorage] Database reset failed:', error);
+      } finally {
+        this.isResetting = false;
+      }
+    },
+
+    /**
      * Show online/offline status indicator
      */
     showOnlineStatus(online) {
       let indicator = document.getElementById('offline-indicator');
-      
+
       if (!indicator) {
         indicator = document.createElement('div');
         indicator.id = 'offline-indicator';
@@ -134,7 +166,7 @@
         indicator.style.color = 'white';
         indicator.style.opacity = '1';
         indicator.style.transform = 'translateX(-50%) translateY(0)';
-        
+
         // Hide after 3 seconds
         setTimeout(() => {
           indicator.style.opacity = '0';
@@ -221,24 +253,21 @@
 
     /**
      * Get unsynced entries
+     * Note: We use getAll + filter instead of IDBKeyRange.only(false)
+     * because IndexedDB boolean index queries are unreliable across
+     * browsers and can throw DataError when stored values have
+     * mismatched types (e.g. after schema changes or partial writes).
      */
     async getUnsyncedEntries() {
       const tx = this.db.transaction('entries', 'readonly');
       const store = tx.objectStore('entries');
-      const index = store.index('synced');
 
       return new Promise((resolve, reject) => {
-        const entries = [];
-        const request = index.openCursor(IDBKeyRange.only(false));
+        const request = store.getAll();
 
-        request.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            entries.push(cursor.value);
-            cursor.continue();
-          } else {
-            resolve(entries);
-          }
+        request.onsuccess = () => {
+          const all = request.result || [];
+          resolve(all.filter(entry => !entry.synced));
         };
         request.onerror = () => reject(request.error);
       });
@@ -310,7 +339,16 @@
       if (!this.isOnline) return;
 
       // Sync entries
-      const unsyncedEntries = await this.getUnsyncedEntries();
+      let unsyncedEntries = [];
+      try {
+        unsyncedEntries = await this.getUnsyncedEntries();
+      } catch (error) {
+        if (error && (error.name === 'DataError' || error.name === 'InvalidStateError')) {
+          await this.resetDatabase(error.name);
+          return;
+        }
+        throw error;
+      }
       for (const entry of unsyncedEntries) {
         try {
           await this.syncEntry(entry);
@@ -338,7 +376,7 @@
      */
     async syncEntry(entry) {
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                        document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+        document.cookie.match(/csrftoken=([^;]+)/)?.[1];
 
       const response = await fetch(`/api/tracking/entries/${entry.date}/`, {
         method: 'PUT',
@@ -368,7 +406,7 @@
      */
     async processSyncItem(item) {
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                        document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+        document.cookie.match(/csrftoken=([^;]+)/)?.[1];
 
       const response = await fetch(item.endpoint, {
         method: item.method,
@@ -504,29 +542,29 @@
     setupFormInterception() {
       document.addEventListener('submit', async (e) => {
         const form = e.target;
-        
+
         // Only intercept specific forms
         if (!form.hasAttribute('data-offline-enabled')) return;
-        
+
         // If online, let form submit normally
         if (this.isOnline) return;
-        
+
         e.preventDefault();
-        
+
         // Collect form data
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        
+
         // Queue for sync
         await this.queueForSync(
           form.action,
           form.method.toUpperCase() || 'POST',
           data
         );
-        
+
         // Show success message
         this.showOfflineSaveMessage();
-        
+
         // If it's an entry form, save locally too
         if (form.action.includes('/tracking/') || form.action.includes('/log')) {
           const today = new Date().toISOString().split('T')[0];
@@ -572,9 +610,9 @@
         z-index: 9999;
         animation: slideUp 0.3s ease;
       `;
-      
+
       document.body.appendChild(message);
-      
+
       setTimeout(() => {
         message.style.animation = 'slideDown 0.3s ease';
         setTimeout(() => message.remove(), 300);

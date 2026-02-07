@@ -87,12 +87,14 @@ def process_daily_reminders():
                 tag=f"reminder-{user_today.isoformat()}",
             )
             
-            # Log the reminder
-            ReminderLog.objects.create(
+            # Log the reminder (update_or_create to handle race conditions)
+            ReminderLog.objects.update_or_create(
                 user=user,
                 date=user_today,
-                success=success_count > 0,
-                subscriptions_notified=success_count,
+                defaults={
+                    "success": success_count > 0,
+                    "subscriptions_notified": success_count,
+                },
             )
 
             # Store guard fields for UI/status consistency
@@ -126,6 +128,26 @@ def process_daily_reminders():
     
     logger.info(f"Daily reminder processing complete. Sent {reminders_sent} reminders.")
     return reminders_sent
+
+
+@shared_task(name="notifications.tasks.reset_daily_reminder_flags")
+def reset_daily_reminder_flags():
+    """
+    Reset all reminder guard fields at midnight so that notifications
+    can be sent again the next day.
+
+    This runs once daily (e.g. 00:05) as a safety net. The per-user
+    day-rollover logic inside the send tasks also resets these fields,
+    but this task guarantees a clean slate even if those paths don't run.
+    """
+    count = ReminderPreferences.objects.filter(
+        last_reminder_date__isnull=False,
+    ).update(
+        last_reminder_date=None,
+        last_reminder_sent_at=None,
+    )
+    logger.info(f"Reset reminder flags for {count} users.")
+    return count
 
 
 @shared_task(name="notifications.tasks.send_test_notification")

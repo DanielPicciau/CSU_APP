@@ -299,35 +299,26 @@
     <script>
         const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
         
-        // Force clear all caches and re-register service worker
+        // Register service worker (clean approach - no aggressive cache clearing)
         if ('serviceWorker' in navigator) {
-            // First, clear ALL caches to fix Safari redirect issue
-            if ('caches' in window) {
-                caches.keys().then(function(names) {
-                    for (let name of names) {
-                        caches.delete(name);
-                        console.log('Cleared cache:', name);
-                    }
-                });
-            }
-            
-            // Unregister any existing service workers first
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) {
-                    registration.unregister().then(function() {
-                        console.log('Unregistered old SW');
+            navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                .then(function(reg) {
+                    console.log('Service Worker registered');
+                    // Check for updates periodically, not on every load
+                    reg.update();
+                    // Listen for new SW and prompt reload only when updated
+                    reg.addEventListener('updatefound', function() {
+                        var newWorker = reg.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'activated') {
+                                    console.log('New SW activated — refresh for latest version');
+                                }
+                            });
+                        }
                     });
-                }
-            }).then(function() {
-                // Register fresh service worker
-                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-                    .then(reg => {
-                        console.log('Service Worker registered');
-                        // Force update check
-                        reg.update();
-                    })
-                    .catch(err => console.error('SW registration failed:', err));
-            });
+                })
+                .catch(function(err) { console.error('SW registration failed:', err); });
         }
         
         // Instant navigation feedback for bottom nav

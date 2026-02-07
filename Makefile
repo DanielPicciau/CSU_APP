@@ -1,4 +1,4 @@
-.PHONY: help install dev run migrate shell test lint format clean docker-up docker-down celery beat
+.PHONY: help install dev run migrate shell test lint format clean docker-up docker-down celery beat tailwind
 
 # Default target
 help:
@@ -17,6 +17,7 @@ help:
 	@echo "  make shell       Open Django shell"
 	@echo "  make migrate     Run database migrations"
 	@echo "  make migrations  Create new migrations"
+	@echo "  make tailwind    Build Tailwind CSS (run after template changes)"
 	@echo ""
 	@echo "Quality:"
 	@echo "  make lint        Run linter (ruff)"
@@ -72,6 +73,10 @@ static:
 
 icons:
 	python generate_icons.py
+
+tailwind:
+	npx tailwindcss -i static/css/input.css -o static/css/tailwind-prebuilt.css --content 'templates/**/*.html' --minify
+	@echo "✅ Tailwind CSS built: static/css/tailwind-prebuilt.css"
 
 # Quality
 lint:

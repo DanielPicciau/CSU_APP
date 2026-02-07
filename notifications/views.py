@@ -206,8 +206,8 @@ def cron_send_reminders(request):
                 })
             
             if not force:
-                # Check if already reminded today
-                if pref.last_reminder_date == uk_today:
+                # Check if already reminded today (ReminderLog is the source of truth)
+                if ReminderLog.objects.filter(user=user, date=uk_today).exists():
                     skipped_reasons["already_reminded"] = skipped_reasons.get("already_reminded", 0) + 1
                     if debug:
                         debug_info[-1]["status"] = "already_reminded"

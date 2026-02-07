@@ -15,10 +15,13 @@ from .forms import DailyEntryForm, ITCH_CHOICES, HIVE_CHOICES
 from .utils import (
     apply_history_limit,
     enforce_history_range,
+    get_aligned_week_bounds,
     get_history_limit_days,
     get_history_start_date,
     get_user_today,
+    get_user_week_bounds,
 )
+from core.cache import CacheManager, get_user_cache_key, CACHE_TIMEOUTS
 from subscriptions.entitlements import has_entitlement
 
 
@@ -31,55 +34,83 @@ def home_view(request):
 @login_required
 def today_view(request):
     """Today screen - premium mobile-first experience."""
+    from django.core.cache import cache
+
     today = get_user_today(request.user)
-    today_entry = DailyEntry.objects.filter(user=request.user, date=today).first()
-    
-    # Get last 7 days of entries for the mini chart
-    week_ago = today - timedelta(days=6)
-    recent_entries = list(DailyEntry.objects.filter(
-        user=request.user,
-        date__gte=week_ago,
-        date__lte=today,
-    ).only(
-        "date",
-        "score",
-    ).order_by("date"))
-    
-    # Build chart data (fill in missing days with None)
+    user_id = request.user.id
+
+    # Try to serve today's entry from cache (warmed on login, invalidated on save)
+    today_cache_key = get_user_cache_key(user_id, 'today_entry', str(today))
+    today_entry = cache.get(today_cache_key)
+    if today_entry is None:
+        today_entry = DailyEntry.objects.filter(user=request.user, date=today).first()
+        cache.set(today_cache_key, today_entry, CACHE_TIMEOUTS['dashboard_stats'])
+
+    # Determine the 7-day tracking window.
+    # For users on a biologic injection schedule the week starts on the
+    # same weekday as their injection date so the chart doesn't show
+    # "missing" days before the treatment cycle began.
+    week_start, week_end = get_user_week_bounds(request.user, today)
+
+    # Try to serve recent entries from cache (warmed on login, invalidated on save)
+    week_cache_key = get_user_cache_key(user_id, 'week_entries', str(week_start))
+    recent_entries = cache.get(week_cache_key)
+    if recent_entries is None:
+        recent_entries = list(DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=week_start,
+            date__lte=min(week_end, today),
+        ).only("date", "score").order_by("date"))
+        cache.set(week_cache_key, recent_entries, CACHE_TIMEOUTS['dashboard_stats'])
+
+    # Build chart data with O(1) dict lookup instead of linear scan
+    entry_by_date = {e.date: e for e in recent_entries}
     chart_data = []
     for i in range(7):
-        day = week_ago + timedelta(days=i)
-        entry = next((e for e in recent_entries if e.date == day), None)
+        day = week_start + timedelta(days=i)
+        is_future = day > today
+        entry = entry_by_date.get(day)
         chart_data.append({
             "date": day,
             "score": entry.score if entry else None,
             "has_entry": entry is not None,
+            "is_future": is_future,
         })
-    
-    # Calculate UAS7 (last 7 days sum)
+
+    # Calculate UAS7 (sum of scores in this tracking week so far)
     uas7_score = sum(e.score for e in recent_entries)
-    uas7_complete = len(recent_entries) == 7
-    
-    # Calculate adherence over last 30 days (non-judgmental metric)
-    thirty_days_ago = today - timedelta(days=29)
-    logged_in_30_days = DailyEntry.objects.filter(
-        user=request.user,
-        date__gte=thirty_days_ago,
-        date__lte=today,
-    ).count()
-    
-    # Total entries count
-    total_entries = apply_history_limit(
-        DailyEntry.objects.filter(user=request.user),
-        request.user,
-        today=today,
-    ).count()
-    
+    # The week is complete when all 7 days up to today have entries
+    expected_days = min(7, (today - week_start).days + 1)
+    uas7_complete = len(recent_entries) == expected_days and expected_days == 7
+
+    # Cache the 30-day adherence count (changes at most once/day)
+    adherence_key = get_user_cache_key(user_id, 'adherence_30d', str(today))
+    logged_in_30_days = cache.get(adherence_key)
+    if logged_in_30_days is None:
+        thirty_days_ago = today - timedelta(days=29)
+        logged_in_30_days = DailyEntry.objects.filter(
+            user=request.user,
+            date__gte=thirty_days_ago,
+            date__lte=today,
+        ).count()
+        cache.set(adherence_key, logged_in_30_days, CACHE_TIMEOUTS['dashboard_stats'])
+
+    # Cache total entries count
+    total_key = get_user_cache_key(user_id, 'total_entries', '')
+    total_entries = cache.get(total_key)
+    if total_entries is None:
+        total_entries = apply_history_limit(
+            DailyEntry.objects.filter(user=request.user),
+            request.user,
+            today=today,
+        ).count()
+        cache.set(total_key, total_entries, CACHE_TIMEOUTS['dashboard_stats'])
+
     # Check if notifications are actually enabled (not just if preferences exist)
     has_notification_setup = False
     if hasattr(request.user, 'reminder_preferences'):
         has_notification_setup = request.user.reminder_preferences.enabled
-    
+
     return render(request, "tracking/today.html", {
         "today": today,
         "today_entry": today_entry,
@@ -499,14 +530,13 @@ def insights_view(request):
     
     weekly_scores = []
     for week_num in range(4):
-        week_end = today - timedelta(days=week_num * 7)
-        week_start = week_end - timedelta(days=6)
+        w_start, w_end = get_aligned_week_bounds(request.user, today, week_num)
         
         # Calculate from in-memory data instead of DB query
         week_uas7 = 0
         week_count = 0
         for day_offset in range(7):
-            day = week_start + timedelta(days=day_offset)
+            day = w_start + timedelta(days=day_offset)
             if day in entries_by_date:
                 week_uas7 += entries_by_date[day]
                 week_count += 1
@@ -521,8 +551,8 @@ def insights_view(request):
             change = uas7 - prev_uas7
         
         weekly_scores.append({
-            "week_start": week_start,
-            "week_end": week_end,
+            "week_start": w_start,
+            "week_end": w_end,
             "uas7": uas7,
             "complete": complete,
             "change": change,
@@ -670,13 +700,17 @@ def chart_data_view(request):
     ).order_by("date")
     entries = apply_history_limit(entries_query, request.user, today=today)
     
+    # Materialize queryset into a dict for O(1) lookups (avoids re-evaluating
+    # the lazy queryset on every iteration which causes repeated DB hits)
+    entry_by_date = {e.date: e.score for e in entries.only("date", "score")}
+    
     data = []
     for i in range(days):
         day = start_date + timedelta(days=i)
-        entry = next((e for e in entries if e.date == day), None)
+        score = entry_by_date.get(day)
         data.append({
             "date": day.isoformat(),
-            "score": entry.score if entry else None,
+            "score": score,
         })
     
     return JsonResponse({"data": data})
@@ -688,40 +722,30 @@ def export_page_view(request):
     """Render the export options page."""
     today = get_user_today(request.user)
     is_premium = has_entitlement(request.user, "premium_access")
-    history_start = get_history_start_date(request.user, today=today)
     
-    # Get first and last entry dates for the user
-    entries_query = DailyEntry.objects.filter(user=request.user)
-    if history_start:
-        entries_query = entries_query.filter(date__gte=history_start)
-    first_entry = entries_query.only("date").order_by("date").first()
-    last_entry = entries_query.only("date").order_by("-date").first()
-    
-    # Calculate total entries
-    total_entries = entries_query.count()
-    has_older_entries = False
-    if history_start:
-        has_older_entries = DailyEntry.objects.filter(
-            user=request.user,
-            date__lt=history_start,
-        ).exists()
+    # For CSV, all users can access all data — no history restriction
+    all_entries = DailyEntry.objects.filter(user=request.user)
+    first_entry_all = all_entries.only("date").order_by("date").first()
+    last_entry_all = all_entries.only("date").order_by("-date").first()
+    total_entries_all = all_entries.count()
     
     return render(request, "tracking/export.html", {
         "today": today,
-        "first_entry_date": first_entry.date if first_entry else today,
-        "last_entry_date": last_entry.date if last_entry else today,
-        "total_entries": total_entries,
-        "has_entries": total_entries > 0,
+        "first_entry_date": first_entry_all.date if first_entry_all else today,
+        "last_entry_date": last_entry_all.date if last_entry_all else today,
+        "total_entries": total_entries_all,
+        "has_entries": total_entries_all > 0,
         "is_premium": is_premium,
-        "history_limit_days": get_history_limit_days(request.user),
-        "history_start": history_start,
-        "has_older_entries": has_older_entries,
     })
 
 
 @login_required
 def export_csv_view(request):
-    """Generate and download CSV export."""
+    """Generate and download CSV export.
+    
+    CSV exports are available to ALL users with no date-range restriction.
+    This ensures every user can always access all of their data.
+    """
     from .exports import CSUExporter
     
     report_type = request.GET.get("report_type", "quick")
@@ -741,20 +765,11 @@ def export_csv_view(request):
         messages.error(request, "Invalid date format.")
         return redirect("tracking:export")
     
-    try:
-        start_date, end_date, _history_start = enforce_history_range(
-            request.user,
-            start_date,
-            end_date,
-            today=today,
-        )
-    except PermissionError:
-        messages.error(
-            request,
-            "Free tier exports are limited to the last 30 days. Upgrade to export older history.",
-        )
-        return redirect("subscriptions:premium")
-    except ValueError:
+    # CSV exports have NO date-range restriction — all users can export
+    # their full history. Only clamp end_date to today.
+    if end_date > today:
+        end_date = today
+    if start_date > end_date:
         messages.error(request, "Start date must be before end date.")
         return redirect("tracking:export")
     
@@ -780,15 +795,21 @@ def export_csv_view(request):
 
 @login_required
 def export_pdf_view(request):
-    """Generate and download PDF export."""
+    """Generate and download PDF export.
+    
+    PDF exports are a Premium feature. Free users are redirected to upgrade.
+    """
     from .exports import CSUExporter
     
-    report_type = request.GET.get("report_type", "quick")
-    
-    # Free users can only export quick summary
-    if not has_entitlement(request.user, "reports_advanced") and report_type != "quick":
-        messages.error(request, "Detailed reports are a Cura Premium feature. Upgrade to access full reports.")
+    # PDF reports are a premium feature
+    if not has_entitlement(request.user, "premium_access"):
+        messages.info(
+            request,
+            "PDF reports are a Cura Premium feature. You can always download your data as a CSV file.",
+        )
         return redirect("subscriptions:premium")
+    
+    report_type = request.GET.get("report_type", "quick")
     
     today = get_user_today(request.user)
     
@@ -800,20 +821,10 @@ def export_pdf_view(request):
         messages.error(request, "Invalid date format.")
         return redirect("tracking:export")
     
-    try:
-        start_date, end_date, _history_start = enforce_history_range(
-            request.user,
-            start_date,
-            end_date,
-            today=today,
-        )
-    except PermissionError:
-        messages.error(
-            request,
-            "Free tier exports are limited to the last 30 days. Upgrade to export older history.",
-        )
-        return redirect("subscriptions:premium")
-    except ValueError:
+    # Premium users have full history access
+    if end_date > today:
+        end_date = today
+    if start_date > end_date:
         messages.error(request, "Start date must be before end date.")
         return redirect("tracking:export")
     
@@ -823,7 +834,7 @@ def export_pdf_view(request):
         "include_notes": request.GET.get("notes", "1") == "1",
         "include_antihistamine": request.GET.get("antihistamine", "1") == "1",
         "include_breakdown": request.GET.get("breakdown", "1") == "1",
-        "report_type": request.GET.get("report_type", "quick"),
+        "report_type": report_type,
     }
     
     try:
@@ -833,5 +844,23 @@ def export_pdf_view(request):
         # Log the error for debugging but don't expose details to user
         import logging
         logging.error(f"PDF export failed for user {request.user.id}: {e}")
+        messages.error(request, "Export failed. Please try again or contact support if the problem persists.")
+        return redirect("tracking:export")
+
+
+@login_required
+def export_my_data_view(request):
+    """Download a comprehensive CSV containing ALL data held about the user.
+    
+    Available to every user regardless of subscription tier.
+    This fulfils data-portability / subject-access requirements.
+    """
+    from .exports import export_my_data_csv
+    
+    try:
+        return export_my_data_csv(request.user)
+    except Exception as e:
+        import logging
+        logging.error(f"My-data CSV export failed for user {request.user.id}: {e}")
         messages.error(request, "Export failed. Please try again or contact support if the problem persists.")
         return redirect("tracking:export")

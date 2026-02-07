@@ -150,11 +150,11 @@ class TestExportPremiumGate:
         # Should not redirect to premium (may fail for other reasons like no data)
         assert "premium" not in response.get("Location", "")
     
-    def test_quick_pdf_export_allowed_for_free_user(self, client_logged_in):
-        """Free user should be able to export quick summary PDF."""
+    def test_pdf_export_blocked_for_free_user(self, client_logged_in):
+        """Free user should be redirected to premium for any PDF export."""
         response = client_logged_in.get(reverse("tracking:export_pdf") + "?report_type=quick")
-        # Should not redirect to premium
-        assert "premium" not in response.get("Location", "")
+        assert response.status_code == 302
+        assert "premium" in response.url
     
     def test_detailed_csv_export_blocked_for_free_user(self, client_logged_in):
         """Free user should be redirected when trying to export detailed CSV."""
@@ -167,6 +167,12 @@ class TestExportPremiumGate:
         response = client_logged_in.get(reverse("tracking:export_pdf") + "?report_type=detailed")
         assert response.status_code == 302
         assert "premium" in response.url
+    
+    def test_my_data_csv_allowed_for_free_user(self, client_logged_in):
+        """Free user should always be able to download all their data as CSV."""
+        response = client_logged_in.get(reverse("tracking:export_my_data"))
+        assert response.status_code == 200
+        assert response["Content-Type"].startswith("text/csv")
     
     def test_detailed_csv_export_allowed_for_premium_user(self, premium_client_logged_in):
         """Premium user should be able to download detailed CSV."""

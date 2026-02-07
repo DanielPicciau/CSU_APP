@@ -17,30 +17,9 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192x192.png">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
     
-    <!-- 
-    SECURITY NOTE: For production, replace CDN scripts with:
-    1. Self-hosted versions, OR
-    2. Add SRI hashes (integrity attribute) - generate at https://www.srihash.org/
-    
-    Tailwind CDN is for development only. For production:
-    - Build Tailwind locally: npx tailwindcss -o static/css/tailwind.min.css --minify
-    - HTMX: Download and serve from /static/js/htmx.min.js
-    -->
-    
-    <!-- Local resources to avoid CDN delays -->
-    <script src="/static/js/tailwindcss.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#4F46E5',
-                        'primary-dark': '#4338CA',
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Pre-built Tailwind CSS (replaces in-browser JIT for performance) -->
+    <!-- Rebuild with: npx tailwindcss -i input.css -o static/css/tailwind-prebuilt.css --content 'templates/**/*.html' --minify -->
+    <link rel="stylesheet" href="/static/css/tailwind-prebuilt.css">
     
     <!-- HTMX -->
     <script src="/static/js/htmx.min.js"></script>
@@ -249,34 +228,26 @@
     <script>
         const VAPID_PUBLIC_KEY = '{{ VAPID_PUBLIC_KEY }}';
         
-        // Force clear all caches and re-register service worker
+        // Register service worker (clean approach - no aggressive cache clearing)
         if ('serviceWorker' in navigator) {
-            // First, clear ALL caches to fix Safari redirect issue
-            if ('caches' in window) {
-                caches.keys().then(function(names) {
-                    for (let name of names) {
-                        caches.delete(name);
-                        console.log('Cleared cache:', name);
-                    }
-                });
-            }
-            
-            // Unregister any existing service workers first
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) {
-                    registration.unregister().then(function() {
-                        console.log('Unregistered old SW');
+            navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                .then(function(reg) {
+                    console.log('Service Worker registered');
+                    // Check for updates periodically, not on every load
+                    reg.update();
+                    // Listen for new SW and prompt reload only when updated
+                    reg.addEventListener('updatefound', function() {
+                        var newWorker = reg.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'activated') {
+                                    console.log('New SW activated — refresh for latest version');
+                                }
+                            });
+                        }
                     });
-                }
-            }).then(function() {
-                // Register fresh service worker
-                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-                    .then(reg => {
-                        console.log('Service Worker registered');
-                        reg.update();
-                    })
-                    .catch(err => console.error('SW registration failed:', err));
-            });
+                })
+                .catch(function(err) { console.error('SW registration failed:', err); });
         }
         
         // Instant navigation feedback for bottom nav

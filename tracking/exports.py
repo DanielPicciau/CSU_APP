@@ -29,7 +29,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     PageBreak, Image, HRFlowable, KeepTogether, ListFlowable, ListItem
 )
-from reportlab.graphics.shapes import Drawing, Rect, Line, String, Circle
+from reportlab.graphics.shapes import Drawing, Rect, Line, String, Circle, Path, Group
 from reportlab.graphics.charts.lineplots import LinePlot
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.charts.legends import Legend
@@ -218,14 +218,30 @@ class CSUExporter:
         }
     
     def _calculate_weekly_uas7(self):
-        """Calculate UAS7 for complete weeks in the range."""
+        """Calculate UAS7 for complete weeks in the range.
+        
+        If the user has a biologic injection date, weeks are aligned to
+        start on the injection weekday.  Otherwise falls back to
+        Sunday-anchored calendar weeks.
+        """
+        from .utils import get_injection_weekday
+
         weekly_scores = []
         entry_by_date = {e.date: e for e in self.entries}
-        
-        # Find the first Sunday in or before the range
-        current = self.start_date
-        while current.weekday() != 6:  # 6 = Sunday
-            current -= timedelta(days=1)
+
+        # Determine which weekday starts the tracking week
+        injection_weekday = get_injection_weekday(self.user)
+
+        if injection_weekday is not None:
+            # Align to injection weekday
+            current = self.start_date
+            while current.weekday() != injection_weekday:
+                current -= timedelta(days=1)
+        else:
+            # Fall back to Sunday-anchored weeks
+            current = self.start_date
+            while current.weekday() != 6:  # 6 = Sunday
+                current -= timedelta(days=1)
         
         while current <= self.end_date:
             week_end = current + timedelta(days=6)
@@ -873,10 +889,10 @@ class CSUExporter:
         )
         section_style = ParagraphStyle(
             "QuickSection", parent=styles["Heading2"],
-            fontSize=12, spaceBefore=12, spaceAfter=6, textColor=NHS_BLUE, fontName="Helvetica-Bold",
+            fontSize=11, spaceBefore=10, spaceAfter=5, textColor=NHS_BLUE, fontName="Helvetica-Bold",
         )
         normal_style = ParagraphStyle(
-            "QuickNormal", parent=styles["Normal"], fontSize=10, spaceAfter=4,
+            "QuickNormal", parent=styles["Normal"], fontSize=9, spaceAfter=4,
         )
         small_style = ParagraphStyle(
             "QuickSmall", parent=styles["Normal"], fontSize=8, textColor=CLINICAL_GREY,
@@ -885,44 +901,121 @@ class CSUExporter:
         # Header
         elements.append(Paragraph("CSU SYMPTOM SUMMARY", title_style))
         elements.append(Paragraph("Quick Overview for Healthcare Provider", small_style))
-        elements.append(Spacer(1, 8))
+        elements.append(Spacer(1, 6))
         elements.append(HRFlowable(width="100%", thickness=2, color=NHS_BLUE))
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 8))
         
-        # Patient & Period Info
-        info_text = f"<b>Patient:</b> {self._get_patient_identifier()} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Period:</b> {self.start_date.strftime('%d %b %Y')} – {self.end_date.strftime('%d %b %Y')} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Generated:</b> {timezone.now().strftime('%d %b %Y')}"
-        elements.append(Paragraph(info_text, normal_style))
-        elements.append(Spacer(1, 16))
+        # Patient & Period Info (in a styled box)
+        info_box_style = ParagraphStyle(
+            "InfoBox", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#374151"),
+        )
+        info_data = [
+            [
+                Paragraph(f"<b>Patient:</b> {self._get_patient_identifier()}", info_box_style),
+                Paragraph(f"<b>Period:</b> {self.start_date.strftime('%d %b %Y')} – {self.end_date.strftime('%d %b %Y')}", info_box_style),
+                Paragraph(f"<b>Generated:</b> {timezone.now().strftime('%d %b %Y')}", info_box_style),
+            ],
+        ]
+        info_table = Table(info_data, colWidths=[170, 200, 110])
+        info_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        elements.append(info_table)
+        elements.append(Spacer(1, 10))
         
-        # Key Metrics Box
+        # Status Banner
         category, _ = self._get_current_disease_category()
         
-        metrics_data = [
-            ["Disease Activity", "Mean Daily Score", "Days Tracked", "Adherence"],
-            [category, f"{self.stats['avg_score']:.1f}/6", f"{self.stats['logged_days']}", f"{self.stats['adherence_pct']:.0f}%"],
-        ]
-        metrics_table = Table(metrics_data, colWidths=[120, 120, 100, 100])
-        metrics_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), NHS_BLUE),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 11),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("GRID", (0, 0), (-1, -1), 1, colors.HexColor("#D1D5DB")),
+        if category == "Well Controlled":
+            status_bg = colors.HexColor("#ECFDF5")
+            status_border = colors.HexColor("#22C55E")
+            status_text_color = "#166534"
+        elif category == "Mild Activity":
+            status_bg = colors.HexColor("#F0FDF4")
+            status_border = colors.HexColor("#84CC16")
+            status_text_color = "#3F6212"
+        elif category == "Moderate Activity":
+            status_bg = colors.HexColor("#FFFBEB")
+            status_border = colors.HexColor("#F59E0B")
+            status_text_color = "#92400E"
+        elif category == "Severe Activity":
+            status_bg = colors.HexColor("#FEF2F2")
+            status_border = colors.HexColor("#EF4444")
+            status_text_color = "#991B1B"
+        else:
+            status_bg = colors.HexColor("#F8FAFC")
+            status_border = colors.HexColor("#94A3B8")
+            status_text_color = "#475569"
+        
+        status_style = ParagraphStyle(
+            "QuickStatus", parent=styles["Normal"],
+            fontSize=12, fontName="Helvetica-Bold",
+            textColor=colors.HexColor(status_text_color),
+            alignment=TA_CENTER,
+        )
+        status_data = [[Paragraph(f"● Disease Activity: {category}", status_style)]]
+        status_table = Table(status_data, colWidths=[480])
+        status_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), status_bg),
+            ("BOX", (0, 0), (-1, -1), 1, status_border),
             ("TOPPADDING", (0, 0), (-1, -1), 8),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#F8FAFC")),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ]))
+        elements.append(status_table)
+        elements.append(Spacer(1, 10))
+        
+        # Key Metrics (4 cards)
+        card_h_style = ParagraphStyle("QH", parent=styles["Normal"], fontSize=7,
+                                       textColor=colors.HexColor("#64748B"), alignment=TA_CENTER)
+        card_v_style = ParagraphStyle("QV", parent=styles["Normal"], fontSize=16,
+                                       fontName="Helvetica-Bold", textColor=colors.HexColor("#1E293B"),
+                                       alignment=TA_CENTER)
+        card_s_style = ParagraphStyle("QS", parent=styles["Normal"], fontSize=7,
+                                       textColor=colors.HexColor("#94A3B8"), alignment=TA_CENTER)
+        
+        metrics_data = [
+            [
+                Paragraph("MEAN SCORE", card_h_style),
+                Paragraph("DAYS TRACKED", card_h_style),
+                Paragraph("ADHERENCE", card_h_style),
+                Paragraph("SYMPTOM-FREE", card_h_style),
+            ],
+            [
+                Paragraph(f"{self.stats['avg_score']:.1f}", card_v_style),
+                Paragraph(f"{self.stats['logged_days']}", card_v_style),
+                Paragraph(f"{self.stats['adherence_pct']:.0f}%", card_v_style),
+                Paragraph(f"{self.patterns.get('symptom_free_days', 0) if self.patterns else 0}", card_v_style),
+            ],
+            [
+                Paragraph("out of 6.0", card_s_style),
+                Paragraph(f"of {self.stats['total_days']} days", card_s_style),
+                Paragraph("logging rate", card_s_style),
+                Paragraph("days (score 0)", card_s_style),
+            ],
+        ]
+        metrics_table = Table(metrics_data, colWidths=[120, 120, 120, 120])
+        metrics_table.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+            ("TOPPADDING", (0, 0), (-1, 0), 6),
+            ("BOTTOMPADDING", (0, -1), (-1, -1), 6),
+            ("LINEAFTER", (0, 0), (2, -1), 0.3, colors.HexColor("#E2E8F0")),
         ]))
         elements.append(metrics_table)
-        elements.append(Spacer(1, 16))
+        elements.append(Spacer(1, 10))
         
         # UAS7 Summary
         if self.stats["weekly_uas7"]:
             elements.append(Paragraph("Weekly UAS7 Scores", section_style))
             uas7_data = [["Week", "UAS7", "Status"]]
-            for week in self.stats["weekly_uas7"][-4:]:  # Last 4 weeks
+            for week in self.stats["weekly_uas7"][-4:]:
                 status = "Complete" if week["complete"] else f"Partial ({week.get('days_logged', 0)}/7)"
                 activity = "Unknown"
                 if week["complete"]:
@@ -937,27 +1030,45 @@ class CSUExporter:
                 ])
             
             uas7_table = Table(uas7_data, colWidths=[160, 60, 150])
-            uas7_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+            
+            # Build style with severity coloring
+            uas7_style_cmds = [
+                ("BACKGROUND", (0, 0), (-1, 0), NHS_BLUE),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]))
+            ]
+            
+            for row_idx, week in enumerate(self.stats["weekly_uas7"][-4:], start=1):
+                if week.get("complete"):
+                    uas7 = week["uas7"]
+                    if uas7 <= 6:
+                        row_color = colors.HexColor("#ECFDF5")
+                    elif uas7 <= 15:
+                        row_color = colors.HexColor("#FFFBEB")
+                    elif uas7 <= 27:
+                        row_color = colors.HexColor("#FFF7ED")
+                    else:
+                        row_color = colors.HexColor("#FEF2F2")
+                    uas7_style_cmds.append(("BACKGROUND", (0, row_idx), (-1, row_idx), row_color))
+            
+            uas7_table.setStyle(TableStyle(uas7_style_cmds))
             elements.append(uas7_table)
-            elements.append(Spacer(1, 12))
+            elements.append(Spacer(1, 10))
         
         # Simple trend chart
         if len(self.entries) >= 2:
             elements.append(Paragraph("Symptom Trend", section_style))
             chart = self._create_simple_trend_chart()
             elements.append(chart)
-            elements.append(Spacer(1, 12))
+            elements.append(Spacer(1, 8))
         
         # Footer
-        elements.append(Spacer(1, 20))
+        elements.append(Spacer(1, 12))
         elements.append(HRFlowable(width="100%", thickness=1, color=CLINICAL_GREY))
         elements.append(Spacer(1, 6))
         footer_style = ParagraphStyle("Footer", parent=styles["Normal"], fontSize=7, textColor=CLINICAL_GREY, alignment=TA_CENTER)
@@ -974,44 +1085,149 @@ class CSUExporter:
         return response
     
     def _create_simple_trend_chart(self):
-        """Create a simple trend chart for quick summary."""
-        drawing = Drawing(480, 120)
+        """Create a simple trend chart with smooth curves for quick summary."""
+        drawing = Drawing(480, 140)
         
         if len(self.entries) < 2:
             return drawing
         
         chart_left = 40
-        chart_bottom = 25
+        chart_bottom = 30
         chart_width = 400
-        chart_height = 80
+        chart_height = 90
         
-        # Background
+        # Background with subtle gradient effect
         drawing.add(Rect(chart_left, chart_bottom, chart_width, chart_height, 
-                        fillColor=colors.HexColor("#F8FAFC"), strokeColor=colors.HexColor("#E5E7EB")))
+                        fillColor=colors.HexColor("#F8FAFC"), strokeColor=colors.HexColor("#E2E8F0"),
+                        strokeWidth=0.5))
+        
+        # Subtle horizontal grid lines
+        for i in range(1, 6):
+            y = chart_bottom + (i / 6) * chart_height
+            drawing.add(Line(chart_left, y, chart_left + chart_width, y,
+                           strokeColor=colors.HexColor("#F1F5F9"), strokeWidth=0.4))
         
         # Plot points
         max_entries = min(len(self.entries), 30)
         recent_entries = self.entries[-max_entries:]
         x_step = chart_width / max(1, len(recent_entries) - 1)
         
+        # Build coordinate arrays
+        points = []
         for i, entry in enumerate(recent_entries):
             x = chart_left + i * x_step
             y = chart_bottom + (entry.score / 6) * chart_height
+            points.append((x, y))
+        
+        # Draw smooth area fill under curve
+        if len(points) >= 2:
+            area_path = Path()
+            area_path.moveTo(points[0][0], chart_bottom)
+            area_path.lineTo(points[0][0], points[0][1])
             
-            # Line to next point
-            if i < len(recent_entries) - 1:
-                next_entry = recent_entries[i + 1]
-                next_x = chart_left + (i + 1) * x_step
-                next_y = chart_bottom + (next_entry.score / 6) * chart_height
-                drawing.add(Line(x, y, next_x, next_y, strokeColor=colors.HexColor("#005EB8"), strokeWidth=1.5))
+            if len(points) >= 3:
+                # Use smooth Catmull-Rom spline interpolation
+                for i in range(len(points) - 1):
+                    p0 = points[max(0, i - 1)]
+                    p1 = points[i]
+                    p2 = points[min(len(points) - 1, i + 1)]
+                    p3 = points[min(len(points) - 1, i + 2)]
+                    
+                    tension = 0.35
+                    cp1x = p1[0] + (p2[0] - p0[0]) * tension
+                    cp1y = p1[1] + (p2[1] - p0[1]) * tension
+                    cp2x = p2[0] - (p3[0] - p1[0]) * tension
+                    cp2y = p2[1] - (p3[1] - p1[1]) * tension
+                    
+                    # Clamp y values
+                    cp1y = max(chart_bottom, min(chart_bottom + chart_height, cp1y))
+                    cp2y = max(chart_bottom, min(chart_bottom + chart_height, cp2y))
+                    
+                    area_path.curveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1])
+            else:
+                area_path.lineTo(points[1][0], points[1][1])
             
-            # Point
-            drawing.add(Circle(x, y, 3, fillColor=colors.HexColor("#005EB8"), strokeColor=None))
+            area_path.lineTo(points[-1][0], chart_bottom)
+            area_path.closePath()
+            area_path.fillColor = colors.HexColor("#DBEAFE")
+            area_path.fillOpacity = 0.4
+            area_path.strokeColor = None
+            drawing.add(area_path)
+        
+        # Draw smooth curve line
+        if len(points) >= 3:
+            line_path = Path()
+            line_path.moveTo(points[0][0], points[0][1])
+            
+            for i in range(len(points) - 1):
+                p0 = points[max(0, i - 1)]
+                p1 = points[i]
+                p2 = points[min(len(points) - 1, i + 1)]
+                p3 = points[min(len(points) - 1, i + 2)]
+                
+                tension = 0.35
+                cp1x = p1[0] + (p2[0] - p0[0]) * tension
+                cp1y = p1[1] + (p2[1] - p0[1]) * tension
+                cp2x = p2[0] - (p3[0] - p1[0]) * tension
+                cp2y = p2[1] - (p3[1] - p1[1]) * tension
+                
+                cp1y = max(chart_bottom, min(chart_bottom + chart_height, cp1y))
+                cp2y = max(chart_bottom, min(chart_bottom + chart_height, cp2y))
+                
+                line_path.curveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1])
+            
+            line_path.strokeColor = colors.HexColor("#005EB8")
+            line_path.strokeWidth = 2
+            line_path.fillColor = None
+            drawing.add(line_path)
+        elif len(points) == 2:
+            drawing.add(Line(points[0][0], points[0][1], points[1][0], points[1][1],
+                           strokeColor=colors.HexColor("#005EB8"), strokeWidth=2))
+        
+        # Draw data points with glow effect
+        for i, (x, y) in enumerate(points):
+            score = recent_entries[i].score
+            if score <= 2:
+                point_color = colors.HexColor("#22C55E")
+            elif score <= 4:
+                point_color = colors.HexColor("#F59E0B")
+            else:
+                point_color = colors.HexColor("#EF4444")
+            
+            # Outer glow
+            drawing.add(Circle(x, y, 5, fillColor=point_color, fillOpacity=0.15, strokeColor=None))
+            # Main point
+            drawing.add(Circle(x, y, 2.5, fillColor=point_color, strokeColor=colors.white, strokeWidth=0.8))
         
         # Y-axis labels
-        for i in range(7):
+        for i in [0, 2, 4, 6]:
             y = chart_bottom + (i / 6) * chart_height
-            drawing.add(String(chart_left - 15, y - 3, str(i), fontSize=7, fillColor=colors.HexColor("#6B7280")))
+            drawing.add(String(chart_left - 12, y - 3, str(i), fontSize=7, fillColor=colors.HexColor("#64748B"),
+                              textAnchor="end"))
+        
+        # X-axis date labels
+        if len(recent_entries) > 1:
+            label_count = min(5, len(recent_entries))
+            step = max(1, (len(recent_entries) - 1) // (label_count - 1))
+            for idx in range(0, len(recent_entries), step):
+                if idx < len(recent_entries):
+                    x = chart_left + idx * x_step
+                    date_str = recent_entries[idx].date.strftime("%d %b")
+                    drawing.add(String(x, chart_bottom - 12, date_str,
+                                      fontSize=6, fillColor=colors.HexColor("#94A3B8"),
+                                      textAnchor="middle"))
+            # Always show last date
+            if (len(recent_entries) - 1) % step != 0:
+                x = chart_left + (len(recent_entries) - 1) * x_step
+                date_str = recent_entries[-1].date.strftime("%d %b")
+                drawing.add(String(x, chart_bottom - 12, date_str,
+                                  fontSize=6, fillColor=colors.HexColor("#94A3B8"),
+                                  textAnchor="middle"))
+        
+        # Y-axis title
+        drawing.add(String(8, chart_bottom + chart_height / 2, "Score",
+                          fontSize=7, fillColor=colors.HexColor("#64748B"),
+                          textAnchor="middle"))
         
         return drawing
     
@@ -1153,86 +1369,369 @@ class CSUExporter:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ]))
         elements.append(info_table)
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 10))
+
+        # ======================================================================
+        # ========== COMPREHENSIVE SUMMARY DASHBOARD (COVER PAGE) ==============
+        # ======================================================================
         
-        # ========== EXECUTIVE SUMMARY BOX ==========
         category, category_color = self._get_current_disease_category()
         
-        elements.append(Paragraph("EXECUTIVE SUMMARY", section_style))
-        
-        # Traffic light indicator
-        summary_items = []
-        
-        # Disease Activity Status with traffic light
+        # --- Status Banner ---
         if category == "Well Controlled":
-            status_color = CLINICAL_GREEN
+            status_bg = colors.HexColor("#ECFDF5")
+            status_border = colors.HexColor("#22C55E")
             status_icon = "●"
+            status_text_color = "#166534"
         elif category == "Mild Activity":
-            status_color = colors.HexColor("#84CC16")
+            status_bg = colors.HexColor("#F0FDF4")
+            status_border = colors.HexColor("#84CC16")
             status_icon = "●"
+            status_text_color = "#3F6212"
         elif category == "Moderate Activity":
-            status_color = CLINICAL_AMBER
+            status_bg = colors.HexColor("#FFFBEB")
+            status_border = colors.HexColor("#F59E0B")
             status_icon = "●"
+            status_text_color = "#92400E"
         elif category == "Severe Activity":
-            status_color = CLINICAL_RED
+            status_bg = colors.HexColor("#FEF2F2")
+            status_border = colors.HexColor("#EF4444")
             status_icon = "●"
+            status_text_color = "#991B1B"
         else:
-            status_color = CLINICAL_GREY
+            status_bg = colors.HexColor("#F8FAFC")
+            status_border = colors.HexColor("#94A3B8")
             status_icon = "○"
+            status_text_color = "#475569"
         
-        # Key metrics summary box
-        summary_data = [
+        status_banner_style = ParagraphStyle(
+            "StatusBanner", parent=styles["Normal"],
+            fontSize=14, fontName="Helvetica-Bold",
+            textColor=colors.HexColor(status_text_color),
+            alignment=TA_CENTER,
+        )
+        status_detail_style = ParagraphStyle(
+            "StatusDetail", parent=styles["Normal"],
+            fontSize=9, textColor=colors.HexColor(status_text_color),
+            alignment=TA_CENTER,
+        )
+        
+        guidance = self.CLINICAL_GUIDANCE.get(category, {})
+        guidance_desc = guidance.get("description", "Assessment pending — insufficient data")
+        
+        status_data = [
+            [Paragraph(f"<font size='18'>{status_icon}</font>&nbsp;&nbsp;Current Status: <b>{category}</b>", status_banner_style)],
+            [Paragraph(guidance_desc, status_detail_style)],
+        ]
+        status_table = Table(status_data, colWidths=[480])
+        status_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), status_bg),
+            ("BOX", (0, 0), (-1, -1), 1.5, status_border),
+            ("TOPPADDING", (0, 0), (-1, 0), 10),
+            ("BOTTOMPADDING", (0, -1), (-1, -1), 10),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        elements.append(status_table)
+        elements.append(Spacer(1, 12))
+        
+        # --- Key Metrics Cards (4-column layout) ---
+        card_header_style = ParagraphStyle(
+            "CardHeader", parent=styles["Normal"],
+            fontSize=7, textColor=colors.HexColor("#64748B"),
+            alignment=TA_CENTER, fontName="Helvetica",
+        )
+        card_value_style = ParagraphStyle(
+            "CardValue", parent=styles["Normal"],
+            fontSize=18, fontName="Helvetica-Bold",
+            textColor=colors.HexColor("#1E293B"),
+            alignment=TA_CENTER,
+        )
+        card_sub_style = ParagraphStyle(
+            "CardSub", parent=styles["Normal"],
+            fontSize=7, textColor=colors.HexColor("#94A3B8"),
+            alignment=TA_CENTER,
+        )
+        
+        # Determine trend arrow
+        trend = self.patterns.get("trend", "stable") if self.patterns else "stable"
+        trend_change = self.patterns.get("trend_change", 0) if self.patterns else 0
+        if trend == "improving":
+            trend_arrow = "↓"
+            trend_color = "#22C55E"
+            trend_label = f"Improving ({abs(trend_change):.1f})"
+        elif trend == "worsening":
+            trend_arrow = "↑"
+            trend_color = "#EF4444"
+            trend_label = f"Worsening (+{abs(trend_change):.1f})"
+        else:
+            trend_arrow = "→"
+            trend_color = "#64748B"
+            trend_label = "Stable"
+        
+        # Last UAS7
+        complete_weeks = [w for w in self.stats.get("weekly_uas7", []) if w.get("complete")]
+        last_uas7 = str(complete_weeks[-1]["uas7"]) if complete_weeks else "—"
+        last_uas7_sub = f"of 42 max" if complete_weeks else "No complete week"
+        
+        metrics_cards = [
             [
-                Paragraph(f"<font color='{status_color.hexval()}'><b>{status_icon}</b></font> <b>Disease Activity:</b> {category}", normal_style),
-                Paragraph(f"<b>Tracking Adherence:</b> {self.stats['adherence_pct']:.0f}%", normal_style),
+                [Paragraph("MEAN DAILY SCORE", card_header_style)],
+                [Paragraph(f"{self.stats['avg_score']:.1f}", card_value_style)],
+                [Paragraph("out of 6.0", card_sub_style)],
             ],
             [
-                Paragraph(f"<b>Mean Daily Score:</b> {self.stats['avg_score']:.1f}/6", normal_style),
-                Paragraph(f"<b>Days Recorded:</b> {self.stats['logged_days']}/{self.stats['total_days']}", normal_style),
+                [Paragraph("LATEST UAS7", card_header_style)],
+                [Paragraph(last_uas7, card_value_style)],
+                [Paragraph(last_uas7_sub, card_sub_style)],
+            ],
+            [
+                [Paragraph("TRACKING ADHERENCE", card_header_style)],
+                [Paragraph(f"{self.stats['adherence_pct']:.0f}%", card_value_style)],
+                [Paragraph(f"{self.stats['logged_days']} of {self.stats['total_days']} days", card_sub_style)],
+            ],
+            [
+                [Paragraph("DISEASE TREND", card_header_style)],
+                [Paragraph(f"<font color='{trend_color}'>{trend_arrow}</font>", card_value_style)],
+                [Paragraph(f"<font color='{trend_color}'>{trend_label}</font>", card_sub_style)],
             ],
         ]
         
-        if self.patterns:
-            summary_data.append([
-                Paragraph(f"<b>Symptom-Free Days:</b> {self.patterns['symptom_free_days']} ({self.patterns['symptom_free_pct']:.0f}%)", normal_style),
-                Paragraph(f"<b>Severe Days (≥5):</b> {self.patterns['severe_days']} ({self.patterns['severe_pct']:.0f}%)", normal_style),
-            ])
-            trend_text = self.patterns['trend'].replace('_', ' ').title()
-            summary_data.append([
-                Paragraph(f"<b>Disease Trend:</b> {trend_text}", normal_style),
-                Paragraph(f"<b>Longest Remission:</b> {self.patterns['longest_remission_streak']} days", normal_style),
-            ])
+        card_tables = []
+        for card_data in metrics_cards:
+            card = Table(card_data, colWidths=[112])
+            card.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+                ("TOPPADDING", (0, 0), (-1, 0), 8),
+                ("BOTTOMPADDING", (0, -1), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]))
+            card_tables.append(card)
         
-        if self.treatment_analysis:
-            summary_data.append([
-                Paragraph(f"<b>H1-Antihistamine Response:</b> {self.treatment_analysis['response_category']}", normal_style),
-                Paragraph(f"<b>Medication Adherence:</b> {self.treatment_analysis['adherence_rate']:.0f}%", normal_style),
-            ])
-        
-        summary_table = Table(summary_data, colWidths=[240, 240])
-        summary_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
-            ("BOX", (0, 0), (-1, -1), 1, NHS_LIGHT_BLUE),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        cards_row = Table([card_tables], colWidths=[120, 120, 120, 120])
+        cards_row.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ]))
-        elements.append(summary_table)
+        elements.append(cards_row)
+        elements.append(Spacer(1, 12))
+        
+        # --- Summary Statistics Row (6-column with key numbers) ---
+        stat_header = ParagraphStyle("StatH", parent=styles["Normal"], fontSize=6.5,
+                                     textColor=colors.HexColor("#94A3B8"), alignment=TA_CENTER)
+        stat_val = ParagraphStyle("StatV", parent=styles["Normal"], fontSize=11,
+                                  fontName="Helvetica-Bold", textColor=colors.HexColor("#1E293B"),
+                                  alignment=TA_CENTER)
+        
+        symptom_free = self.patterns.get("symptom_free_days", 0) if self.patterns else 0
+        symptom_free_pct = self.patterns.get("symptom_free_pct", 0) if self.patterns else 0
+        severe_days = self.patterns.get("severe_days", 0) if self.patterns else 0
+        severe_pct = self.patterns.get("severe_pct", 0) if self.patterns else 0
+        remission = self.patterns.get("longest_remission_streak", 0) if self.patterns else 0
+        flare_count = len(self.patterns.get("flare_episodes", [])) if self.patterns else 0
+        
+        mini_stats_data = [
+            [
+                Paragraph("SYMPTOM-FREE", stat_header),
+                Paragraph("SEVERE DAYS", stat_header),
+                Paragraph("BEST STREAK", stat_header),
+                Paragraph("FLARE EPISODES", stat_header),
+                Paragraph("MIN SCORE", stat_header),
+                Paragraph("MAX SCORE", stat_header),
+            ],
+            [
+                Paragraph(f"<font color='#22C55E'>{symptom_free}</font> <font size='7' color='#94A3B8'>({symptom_free_pct:.0f}%)</font>", stat_val),
+                Paragraph(f"<font color='#EF4444'>{severe_days}</font> <font size='7' color='#94A3B8'>({severe_pct:.0f}%)</font>", stat_val),
+                Paragraph(f"{remission} <font size='7' color='#94A3B8'>days</font>", stat_val),
+                Paragraph(f"{flare_count}", stat_val),
+                Paragraph(f"{self.stats['min_score']}", stat_val),
+                Paragraph(f"{self.stats['max_score']}", stat_val),
+            ],
+        ]
+        
+        mini_stats_table = Table(mini_stats_data, colWidths=[80, 80, 80, 80, 80, 80])
+        mini_stats_table.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.3, colors.HexColor("#E2E8F0")),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FAFAFA")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+        ]))
+        elements.append(mini_stats_table)
+        elements.append(Spacer(1, 12))
+        
+        # --- Charts Row: Score Distribution + Weekly UAS7 side by side ---
+        chart_title_style = ParagraphStyle(
+            "ChartTitle", parent=styles["Normal"],
+            fontSize=9, fontName="Helvetica-Bold",
+            textColor=colors.HexColor("#1E293B"), spaceBefore=2, spaceAfter=4,
+        )
+        
+        dist_chart = self._create_score_distribution_chart()
+        uas7_chart = self._create_weekly_uas7_bar_chart()
+        
+        charts_data = [
+            [
+                Paragraph("Score Distribution", chart_title_style),
+                Paragraph("Weekly UAS7 Scores", chart_title_style),
+            ],
+            [dist_chart, uas7_chart],
+        ]
+        charts_table = Table(charts_data, colWidths=[240, 240])
+        charts_table.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(charts_table)
         elements.append(Spacer(1, 8))
         
-        # ========== CLINICAL GUIDANCE BOX ==========
+        # --- Treatment Response Quick Summary (if available) ---
+        if self.treatment_analysis and self.treatment_analysis.get("response_category") != "Insufficient Data":
+            tx_response = self.treatment_analysis
+            response_cat = tx_response["response_category"]
+            
+            if response_cat == "Good Response":
+                tx_color = "#22C55E"
+                tx_bg = "#ECFDF5"
+            elif response_cat == "Partial Response":
+                tx_color = "#F59E0B"
+                tx_bg = "#FFFBEB"
+            else:
+                tx_color = "#EF4444"
+                tx_bg = "#FEF2F2"
+            
+            tx_summary_style = ParagraphStyle(
+                "TxSummary", parent=styles["Normal"],
+                fontSize=9, textColor=colors.HexColor("#374151"),
+            )
+            
+            adherence_pct = tx_response.get("adherence_rate", 0)
+            reduction_pct = tx_response.get("reduction_pct", 0)
+            
+            tx_quick = [
+                [
+                    Paragraph(f"<b>H1-Antihistamine Response:</b> <font color='{tx_color}'><b>{response_cat}</b></font>", tx_summary_style),
+                    Paragraph(f"<b>Score Reduction:</b> {reduction_pct:.0f}%", tx_summary_style),
+                    Paragraph(f"<b>Medication Adherence:</b> {adherence_pct:.0f}%", tx_summary_style),
+                ],
+            ]
+            tx_table = Table(tx_quick, colWidths=[180, 150, 150])
+            tx_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(tx_bg)),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor(tx_color)),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ]))
+            elements.append(tx_table)
+            elements.append(Spacer(1, 8))
+        
+        # --- QoL Quick Summary (if available) ---
+        if self.qol_assessment:
+            qol = self.qol_assessment
+            qol_cat = qol.get("category", "minimal")
+            
+            if qol_cat == "minimal":
+                qol_color = "#22C55E"
+                qol_bg = "#ECFDF5"
+            elif qol_cat == "mild":
+                qol_color = "#84CC16"
+                qol_bg = "#F0FDF4"
+            elif qol_cat == "moderate":
+                qol_color = "#F59E0B"
+                qol_bg = "#FFFBEB"
+            else:
+                qol_color = "#EF4444"
+                qol_bg = "#FEF2F2"
+            
+            qol_quick_style = ParagraphStyle(
+                "QoLQuick", parent=styles["Normal"],
+                fontSize=9, textColor=colors.HexColor("#374151"),
+            )
+            
+            dlqi_text = f"{qol.get('estimated_dlqi', 0):.0f}/30"
+            
+            qol_quick = [
+                [
+                    Paragraph(f"<b>Quality of Life:</b> <font color='{qol_color}'><b>{qol['impact']}</b></font>", qol_quick_style),
+                    Paragraph(f"<b>Est. DLQI:</b> {dlqi_text}", qol_quick_style),
+                    Paragraph(f"<b>{qol.get('dlqi_interpretation', '')}</b>", qol_quick_style),
+                ],
+            ]
+            qol_table = Table(qol_quick, colWidths=[180, 120, 180])
+            qol_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(qol_bg)),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor(qol_color)),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ]))
+            elements.append(qol_table)
+            elements.append(Spacer(1, 8))
+        
+        # --- Clinical Guidance Box ---
         if self.include_clinical_guidance and category in self.CLINICAL_GUIDANCE:
             guidance = self.CLINICAL_GUIDANCE[category]
-            elements.append(Paragraph("CLINICAL GUIDANCE (per EAACI/GA²LEN/EuroGuiDerm 2021)", subsection_style))
             
-            guidance_text = f"""
-            <b>Assessment:</b> {guidance['description']}<br/>
-            <b>Suggested Action:</b> {guidance['recommendation']}<br/>
-            <b>Recommended Review Interval:</b> {guidance['review_interval']}
-            """
-            elements.append(Paragraph(guidance_text.strip(), clinical_note_style))
-            elements.append(Spacer(1, 6))
+            guidance_box_style = ParagraphStyle(
+                "GuidanceBox", parent=styles["Normal"],
+                fontSize=9, textColor=colors.HexColor("#1E40AF"),
+                leading=13,
+            )
+            
+            review_interval = guidance.get("review_interval", "As needed")
+            recommendation = guidance.get("recommendation", "")
+            
+            guidance_content = [
+                [
+                    Paragraph(
+                        f"<b>Clinical Guidance</b> (EAACI/GA²LEN/EuroGuiDerm 2021)<br/><br/>"
+                        f"<b>Recommended Action:</b> {recommendation}<br/>"
+                        f"<b>Suggested Review Interval:</b> {review_interval}",
+                        guidance_box_style
+                    ),
+                ],
+            ]
+            guidance_table = Table(guidance_content, colWidths=[480])
+            guidance_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EFF6FF")),
+                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#3B82F6")),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ]))
+            elements.append(guidance_table)
+        
+        # --- Summary page footer ---
+        elements.append(Spacer(1, 10))
+        summary_footer_style = ParagraphStyle(
+            "SummaryFooter", parent=styles["Normal"],
+            fontSize=7, textColor=CLINICAL_GREY, alignment=TA_CENTER,
+        )
+        elements.append(Paragraph(
+            "This summary is based on patient-recorded data and has not been verified by a healthcare professional. "
+            "Detailed analysis including daily logs follows on subsequent pages.",
+            summary_footer_style
+        ))
+        
+        # ========== PAGE BREAK — DETAILED SECTIONS BEGIN ==========
+        elements.append(PageBreak())
+        
+        # ========== DETAILED ANALYSIS HEADER ==========
+        elements.append(Paragraph("DETAILED CLINICAL ANALYSIS", title_style))
+        elements.append(HRFlowable(width="100%", thickness=1.5, color=NHS_BLUE))
+        elements.append(Spacer(1, 10))
         
         # ========== QUALITY OF LIFE ASSESSMENT ==========
         if self.qol_assessment:
@@ -1420,7 +1919,19 @@ class CSUExporter:
             elements.append(Paragraph("SYMPTOM TREND ANALYSIS", section_style))
             chart = self._create_enhanced_trend_chart()
             elements.append(chart)
-            elements.append(Spacer(1, 10))
+            elements.append(Spacer(1, 8))
+            
+            # Itch vs Hive component breakdown
+            if self.include_breakdown:
+                has_itch = any(e.itch_score is not None for e in self.entries)
+                has_hives = any(e.hive_count_score is not None for e in self.entries)
+                if has_itch and has_hives:
+                    elements.append(Paragraph("Component Breakdown: Itch vs Hive Scores", subsection_style))
+                    itch_hive_chart = self._create_itch_hive_comparison_chart()
+                    elements.append(itch_hive_chart)
+                    elements.append(Spacer(1, 10))
+            else:
+                elements.append(Spacer(1, 10))
         
         # ========== TREATMENT RESPONSE ANALYSIS ==========
         if self.treatment_analysis and self.include_antihistamine:
@@ -1706,39 +2217,47 @@ class CSUExporter:
         return response
     
     def _create_enhanced_trend_chart(self):
-        """Create an enhanced clinical trend chart showing score trend with severity zones."""
-        drawing = Drawing(480, 180)
+        """Create an enhanced clinical trend chart with smooth curves and severity zones."""
+        drawing = Drawing(480, 210)
         
-        # Background with severity zones
+        # Chart area
         chart_left = 45
-        chart_bottom = 35
-        chart_width = 400
-        chart_height = 120
+        chart_bottom = 40
+        chart_width = 380
+        chart_height = 130
         
-        # Severity zone backgrounds (bottom to top)
+        # Severity zone backgrounds (bottom to top) with softer colors
         zone_height = chart_height / 3
         
-        # Well controlled zone (0-2)
+        # Well controlled zone (0-2) - soft green
         drawing.add(Rect(chart_left, chart_bottom, chart_width, zone_height, 
-                        fillColor=colors.HexColor("#DCFCE7"), strokeColor=None))
-        # Moderate zone (2-4)
+                        fillColor=colors.HexColor("#ECFDF5"), strokeColor=None))
+        # Moderate zone (2-4) - soft amber
         drawing.add(Rect(chart_left, chart_bottom + zone_height, chart_width, zone_height,
-                        fillColor=colors.HexColor("#FEF9C3"), strokeColor=None))
-        # Severe zone (4-6)
+                        fillColor=colors.HexColor("#FFFBEB"), strokeColor=None))
+        # Severe zone (4-6) - soft red
         drawing.add(Rect(chart_left, chart_bottom + zone_height * 2, chart_width, zone_height,
-                        fillColor=colors.HexColor("#FEE2E2"), strokeColor=None))
+                        fillColor=colors.HexColor("#FEF2F2"), strokeColor=None))
         
         # Chart border
         drawing.add(Rect(chart_left, chart_bottom, chart_width, chart_height,
-                        fillColor=None, strokeColor=colors.HexColor("#9CA3AF"), strokeWidth=0.5))
+                        fillColor=None, strokeColor=colors.HexColor("#CBD5E1"), strokeWidth=0.5))
         
-        # Zone labels
-        drawing.add(String(chart_left + chart_width + 5, chart_bottom + zone_height/2 - 4, "Well Controlled",
-                          fontSize=6, fillColor=colors.HexColor("#166534")))
-        drawing.add(String(chart_left + chart_width + 5, chart_bottom + zone_height * 1.5 - 4, "Moderate",
-                          fontSize=6, fillColor=colors.HexColor("#A16207")))
-        drawing.add(String(chart_left + chart_width + 5, chart_bottom + zone_height * 2.5 - 4, "Severe",
-                          fontSize=6, fillColor=colors.HexColor("#DC2626")))
+        # Zone labels with rounded backgrounds
+        zone_labels = [
+            (chart_bottom + zone_height * 0.5 - 4, "Well Controlled", "#166534", "#DCFCE7"),
+            (chart_bottom + zone_height * 1.5 - 4, "Moderate", "#92400E", "#FEF3C7"),
+            (chart_bottom + zone_height * 2.5 - 4, "Severe", "#991B1B", "#FEE2E2"),
+        ]
+        for y_pos, label_text, text_color, bg_color in zone_labels:
+            # Label background pill
+            label_x = chart_left + chart_width + 4
+            drawing.add(Rect(label_x, y_pos - 2, 60, 12,
+                           fillColor=colors.HexColor(bg_color), strokeColor=None,
+                           rx=3, ry=3))
+            drawing.add(String(label_x + 30, y_pos, label_text,
+                              fontSize=5.5, fillColor=colors.HexColor(text_color),
+                              textAnchor="middle", fontName="Helvetica-Bold"))
         
         # Prepare data points
         data_points = [(i, e.score) for i, e in enumerate(self.entries)]
@@ -1748,59 +2267,114 @@ class CSUExporter:
         
         # Scale factors
         max_x = len(data_points) - 1 if len(data_points) > 1 else 1
-        max_y = 6  # Max score is 6
+        max_y = 6
         
         x_scale = chart_width / max_x
         y_scale = chart_height / max_y
         
-        # Draw Y-axis labels and grid lines
-        for y in range(0, 7):
-            y_pos = chart_bottom + y * y_scale
+        # Build pixel coordinates
+        points = []
+        for idx, score in data_points:
+            x = chart_left + idx * x_scale
+            y = chart_bottom + score * y_scale
+            points.append((x, y))
+        
+        # Draw subtle Y-axis grid lines
+        for y_val in range(0, 7):
+            y_pos = chart_bottom + y_val * y_scale
             drawing.add(Line(
                 chart_left, y_pos, chart_left + chart_width, y_pos,
-                strokeColor=colors.HexColor("#D1D5DB"),
+                strokeColor=colors.HexColor("#E2E8F0"),
                 strokeWidth=0.3
             ))
             drawing.add(String(
-                chart_left - 8, y_pos - 3, str(y),
-                fontSize=7, fillColor=colors.HexColor("#6B7280"),
+                chart_left - 8, y_pos - 3, str(y_val),
+                fontSize=7, fillColor=colors.HexColor("#64748B"),
                 textAnchor="end"
             ))
         
-        # Draw average line
+        # Draw smooth area fill under curve
+        if len(points) >= 2:
+            area_path = Path()
+            area_path.moveTo(points[0][0], chart_bottom)
+            area_path.lineTo(points[0][0], points[0][1])
+            
+            if len(points) >= 3:
+                for i in range(len(points) - 1):
+                    p0 = points[max(0, i - 1)]
+                    p1 = points[i]
+                    p2 = points[min(len(points) - 1, i + 1)]
+                    p3 = points[min(len(points) - 1, i + 2)]
+                    
+                    tension = 0.3
+                    cp1x = p1[0] + (p2[0] - p0[0]) * tension
+                    cp1y = p1[1] + (p2[1] - p0[1]) * tension
+                    cp2x = p2[0] - (p3[0] - p1[0]) * tension
+                    cp2y = p2[1] - (p3[1] - p1[1]) * tension
+                    
+                    cp1y = max(chart_bottom, min(chart_bottom + chart_height, cp1y))
+                    cp2y = max(chart_bottom, min(chart_bottom + chart_height, cp2y))
+                    
+                    area_path.curveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1])
+            else:
+                area_path.lineTo(points[1][0], points[1][1])
+            
+            area_path.lineTo(points[-1][0], chart_bottom)
+            area_path.closePath()
+            area_path.fillColor = colors.HexColor("#1E40AF")
+            area_path.fillOpacity = 0.08
+            area_path.strokeColor = None
+            drawing.add(area_path)
+        
+        # Draw average line (dashed)
         avg_y = chart_bottom + self.stats["avg_score"] * y_scale
         drawing.add(Line(
             chart_left, avg_y, chart_left + chart_width, avg_y,
-            strokeColor=colors.HexColor("#6366F1"),
-            strokeWidth=1,
-            strokeDashArray=[4, 2]
+            strokeColor=colors.HexColor("#8B5CF6"),
+            strokeWidth=0.8,
+            strokeDashArray=[5, 3]
         ))
+        # Average label with background
+        avg_label_x = chart_left - 8
         drawing.add(String(
-            chart_left - 8, avg_y - 3, f"Avg",
-            fontSize=6, fillColor=colors.HexColor("#6366F1"),
-            textAnchor="end"
+            avg_label_x, avg_y - 3, f"Avg: {self.stats['avg_score']:.1f}",
+            fontSize=5.5, fillColor=colors.HexColor("#7C3AED"),
+            textAnchor="end", fontName="Helvetica-Bold"
         ))
         
-        # Draw line connecting points
-        if len(data_points) >= 2:
-            for i in range(len(data_points) - 1):
-                x1 = chart_left + data_points[i][0] * x_scale
-                y1 = chart_bottom + data_points[i][1] * y_scale
-                x2 = chart_left + data_points[i + 1][0] * x_scale
-                y2 = chart_bottom + data_points[i + 1][1] * y_scale
-                
-                drawing.add(Line(
-                    x1, y1, x2, y2,
-                    strokeColor=colors.HexColor("#1E40AF"),
-                    strokeWidth=1.5
-                ))
-        
-        # Draw points with color coding
-        for i, (idx, score) in enumerate(data_points):
-            x = chart_left + idx * x_scale
-            y = chart_bottom + score * y_scale
+        # Draw smooth trend curve
+        if len(points) >= 3:
+            line_path = Path()
+            line_path.moveTo(points[0][0], points[0][1])
             
-            # Color based on score
+            for i in range(len(points) - 1):
+                p0 = points[max(0, i - 1)]
+                p1 = points[i]
+                p2 = points[min(len(points) - 1, i + 1)]
+                p3 = points[min(len(points) - 1, i + 2)]
+                
+                tension = 0.3
+                cp1x = p1[0] + (p2[0] - p0[0]) * tension
+                cp1y = p1[1] + (p2[1] - p0[1]) * tension
+                cp2x = p2[0] - (p3[0] - p1[0]) * tension
+                cp2y = p2[1] - (p3[1] - p1[1]) * tension
+                
+                cp1y = max(chart_bottom, min(chart_bottom + chart_height, cp1y))
+                cp2y = max(chart_bottom, min(chart_bottom + chart_height, cp2y))
+                
+                line_path.curveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1])
+            
+            line_path.strokeColor = colors.HexColor("#1E40AF")
+            line_path.strokeWidth = 2.2
+            line_path.fillColor = None
+            drawing.add(line_path)
+        elif len(points) == 2:
+            drawing.add(Line(points[0][0], points[0][1], points[1][0], points[1][1],
+                           strokeColor=colors.HexColor("#1E40AF"), strokeWidth=2.2))
+        
+        # Draw data points with color coding and glow
+        for i, (x, y) in enumerate(points):
+            score = data_points[i][1]
             if score <= 2:
                 point_color = colors.HexColor("#22C55E")
             elif score <= 4:
@@ -1808,45 +2382,69 @@ class CSUExporter:
             else:
                 point_color = colors.HexColor("#EF4444")
             
-            drawing.add(Circle(x, y, 3, fillColor=point_color, strokeColor=colors.white, strokeWidth=0.5))
+            # Outer glow ring
+            drawing.add(Circle(x, y, 5.5, fillColor=point_color, fillOpacity=0.12, strokeColor=None))
+            # Main point
+            drawing.add(Circle(x, y, 2.8, fillColor=point_color, strokeColor=colors.white, strokeWidth=0.8))
         
         # X-axis labels
         if len(self.entries) > 0:
-            # Determine appropriate label spacing
             if len(self.entries) <= 7:
                 label_indices = list(range(len(self.entries)))
             elif len(self.entries) <= 14:
-                label_indices = [0, len(self.entries)//2, len(self.entries)-1]
+                step = max(1, len(self.entries) // 5)
+                label_indices = list(range(0, len(self.entries), step))
+                if len(self.entries) - 1 not in label_indices:
+                    label_indices.append(len(self.entries) - 1)
             else:
-                # Show first, last, and a few in between
-                step = len(self.entries) // 4
-                label_indices = [0, step, step*2, step*3, len(self.entries)-1]
+                step = len(self.entries) // 5
+                label_indices = list(range(0, len(self.entries), step))
+                if len(self.entries) - 1 not in label_indices:
+                    label_indices.append(len(self.entries) - 1)
             
             for idx in label_indices:
                 if idx < len(self.entries):
                     x = chart_left + idx * x_scale
                     date_str = self.entries[idx].date.strftime("%d %b")
                     drawing.add(String(
-                        x, chart_bottom - 12, date_str,
-                        fontSize=6, fillColor=colors.HexColor("#6B7280"),
+                        x, chart_bottom - 14, date_str,
+                        fontSize=6, fillColor=colors.HexColor("#64748B"),
                         textAnchor="middle"
                     ))
+                    # Tick mark
+                    drawing.add(Line(x, chart_bottom, x, chart_bottom - 3,
+                                    strokeColor=colors.HexColor("#CBD5E1"), strokeWidth=0.3))
         
         # Y-axis title
         drawing.add(String(
-            10, chart_bottom + chart_height / 2, "Daily Score",
-            fontSize=7, fillColor=colors.HexColor("#374151"),
+            8, chart_bottom + chart_height / 2, "Daily Score",
+            fontSize=7, fillColor=colors.HexColor("#475569"),
             textAnchor="middle"
         ))
         
         # Chart title
         drawing.add(String(
-            chart_left + chart_width / 2, chart_bottom + chart_height + 12, 
+            chart_left + chart_width / 2, chart_bottom + chart_height + 16, 
             "Daily Symptom Score Trend",
-            fontSize=9, fillColor=colors.HexColor("#1F2937"),
+            fontSize=10, fillColor=colors.HexColor("#1E293B"),
             textAnchor="middle",
             fontName="Helvetica-Bold"
         ))
+        
+        # Legend at bottom
+        legend_y = chart_bottom - 28
+        legend_items = [
+            (colors.HexColor("#22C55E"), "Well Controlled (0-2)"),
+            (colors.HexColor("#F59E0B"), "Moderate (3-4)"),
+            (colors.HexColor("#EF4444"), "Severe (5-6)"),
+            (colors.HexColor("#8B5CF6"), "Average"),
+        ]
+        legend_x = chart_left + 20
+        for color, text in legend_items:
+            drawing.add(Circle(legend_x, legend_y + 3, 3, fillColor=color, strokeColor=None))
+            drawing.add(String(legend_x + 6, legend_y, text,
+                              fontSize=5.5, fillColor=colors.HexColor("#64748B")))
+            legend_x += 95
         
         return drawing
     
@@ -1861,3 +2459,371 @@ class CSUExporter:
             name = self.user.username or self.user.email or f"user_{self.user.id}"
             safe_name = name.replace(" ", "_").replace("@", "_")[:20]
             return f"csu_data_export_{safe_name}_{date_range}.{extension}"
+
+    def _create_score_distribution_chart(self):
+        """Create a horizontal bar chart showing score distribution."""
+        drawing = Drawing(220, 95)
+        
+        if not self.entries:
+            return drawing
+        
+        scores = [e.score for e in self.entries]
+        total = len(scores)
+        distribution = {i: scores.count(i) for i in range(7)}
+        
+        chart_left = 30
+        chart_bottom = 8
+        bar_height = 10
+        max_bar_width = 150
+        max_count = max(distribution.values()) if distribution.values() else 1
+        
+        bar_colors = [
+            colors.HexColor("#22C55E"),  # 0
+            colors.HexColor("#4ADE80"),  # 1
+            colors.HexColor("#86EFAC"),  # 2
+            colors.HexColor("#FDE047"),  # 3
+            colors.HexColor("#FBBF24"),  # 4
+            colors.HexColor("#F87171"),  # 5
+            colors.HexColor("#EF4444"),  # 6
+        ]
+        
+        for score_val in range(7):
+            count = distribution.get(score_val, 0)
+            pct = (count / total * 100) if total > 0 else 0
+            bar_width = (count / max_count) * max_bar_width if max_count > 0 else 0
+            y = chart_bottom + (6 - score_val) * (bar_height + 2)
+            
+            # Score label
+            drawing.add(String(chart_left - 4, y + 2, str(score_val),
+                              fontSize=7, fillColor=colors.HexColor("#475569"),
+                              textAnchor="end", fontName="Helvetica-Bold"))
+            
+            # Bar background
+            drawing.add(Rect(chart_left, y, max_bar_width, bar_height,
+                           fillColor=colors.HexColor("#F1F5F9"), strokeColor=None,
+                           rx=3, ry=3))
+            
+            # Bar fill
+            if bar_width > 0:
+                drawing.add(Rect(chart_left, y, max(4, bar_width), bar_height,
+                               fillColor=bar_colors[score_val], strokeColor=None,
+                               rx=3, ry=3))
+            
+            # Count & percentage label
+            if count > 0:
+                drawing.add(String(chart_left + max_bar_width + 5, y + 2,
+                                  f"{count} ({pct:.0f}%)",
+                                  fontSize=6, fillColor=colors.HexColor("#64748B")))
+        
+        return drawing
+
+    def _create_weekly_uas7_bar_chart(self):
+        """Create a bar chart of weekly UAS7 scores."""
+        weeks = self.stats.get("weekly_uas7", [])
+        if not weeks:
+            return Drawing(220, 100)
+        
+        # Show up to last 8 weeks
+        recent_weeks = weeks[-8:]
+        
+        drawing = Drawing(220, 105)
+        chart_left = 30
+        chart_bottom = 22
+        chart_width = 175
+        chart_height = 70
+        
+        bar_width = chart_width / (len(recent_weeks) * 1.5 + 0.5)
+        gap = bar_width * 0.5
+        
+        # Background
+        drawing.add(Rect(chart_left, chart_bottom, chart_width, chart_height,
+                        fillColor=colors.HexColor("#FAFAFA"), strokeColor=colors.HexColor("#E2E8F0"),
+                        strokeWidth=0.3))
+        
+        # Grid lines
+        for val in [0, 6, 15, 27, 42]:
+            y = chart_bottom + (val / 42) * chart_height
+            drawing.add(Line(chart_left, y, chart_left + chart_width, y,
+                           strokeColor=colors.HexColor("#E2E8F0"), strokeWidth=0.3))
+            if val in [6, 15, 27, 42]:
+                drawing.add(String(chart_left - 4, y - 3, str(val),
+                                  fontSize=5.5, fillColor=colors.HexColor("#94A3B8"),
+                                  textAnchor="end"))
+        
+        # Bars
+        for i, week in enumerate(recent_weeks):
+            x = chart_left + gap + i * (bar_width + gap)
+            bar_h = (week["uas7"] / 42) * chart_height
+            
+            if week.get("complete"):
+                uas7 = week["uas7"]
+                if uas7 <= 6:
+                    bar_color = colors.HexColor("#22C55E")
+                elif uas7 <= 15:
+                    bar_color = colors.HexColor("#84CC16")
+                elif uas7 <= 27:
+                    bar_color = colors.HexColor("#F59E0B")
+                else:
+                    bar_color = colors.HexColor("#EF4444")
+            else:
+                bar_color = colors.HexColor("#CBD5E1")
+            
+            drawing.add(Rect(x, chart_bottom, bar_width, max(2, bar_h),
+                           fillColor=bar_color, strokeColor=None, rx=2, ry=2))
+            
+            # Value on top
+            drawing.add(String(x + bar_width / 2, chart_bottom + max(2, bar_h) + 2,
+                              str(week["uas7"]),
+                              fontSize=5.5, fillColor=colors.HexColor("#475569"),
+                              textAnchor="middle", fontName="Helvetica-Bold"))
+            
+            # Week label
+            drawing.add(String(x + bar_width / 2, chart_bottom - 10,
+                              week["week_start"].strftime("%d/%m"),
+                              fontSize=5, fillColor=colors.HexColor("#94A3B8"),
+                              textAnchor="middle"))
+        
+        return drawing
+
+    def _create_itch_hive_comparison_chart(self):
+        """Create a comparison chart showing itch vs hive scores over time."""
+        drawing = Drawing(480, 100)
+        
+        if len(self.entries) < 2:
+            return drawing
+        
+        chart_left = 45
+        chart_bottom = 20
+        chart_width = 400
+        chart_height = 65
+        
+        # Background
+        drawing.add(Rect(chart_left, chart_bottom, chart_width, chart_height,
+                        fillColor=colors.HexColor("#FAFAFA"), strokeColor=colors.HexColor("#E2E8F0"),
+                        strokeWidth=0.3))
+        
+        max_entries = min(len(self.entries), 60)
+        recent = self.entries[-max_entries:]
+        x_step = chart_width / max(1, len(recent) - 1)
+        y_scale = chart_height / 3
+        
+        # Build itch and hive point arrays
+        itch_points = []
+        hive_points = []
+        for i, entry in enumerate(recent):
+            x = chart_left + i * x_step
+            if entry.itch_score is not None:
+                itch_points.append((x, chart_bottom + entry.itch_score * y_scale))
+            if entry.hive_count_score is not None:
+                hive_points.append((x, chart_bottom + entry.hive_count_score * y_scale))
+        
+        # Draw smooth curves for each
+        for points, color_hex, label in [
+            (itch_points, "#EC4899", "Itch"),
+            (hive_points, "#3B82F6", "Hives"),
+        ]:
+            if len(points) >= 3:
+                line_path = Path()
+                line_path.moveTo(points[0][0], points[0][1])
+                for i in range(len(points) - 1):
+                    p0 = points[max(0, i - 1)]
+                    p1 = points[i]
+                    p2 = points[min(len(points) - 1, i + 1)]
+                    p3 = points[min(len(points) - 1, i + 2)]
+                    tension = 0.3
+                    cp1x = p1[0] + (p2[0] - p0[0]) * tension
+                    cp1y = max(chart_bottom, min(chart_bottom + chart_height, p1[1] + (p2[1] - p0[1]) * tension))
+                    cp2x = p2[0] - (p3[0] - p1[0]) * tension
+                    cp2y = max(chart_bottom, min(chart_bottom + chart_height, p2[1] - (p3[1] - p1[1]) * tension))
+                    line_path.curveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1])
+                line_path.strokeColor = colors.HexColor(color_hex)
+                line_path.strokeWidth = 1.5
+                line_path.fillColor = None
+                drawing.add(line_path)
+            elif len(points) == 2:
+                drawing.add(Line(points[0][0], points[0][1], points[1][0], points[1][1],
+                               strokeColor=colors.HexColor(color_hex), strokeWidth=1.5))
+        
+        # Y-axis labels
+        for i in range(4):
+            y = chart_bottom + i * y_scale
+            drawing.add(String(chart_left - 8, y - 3, str(i), fontSize=6,
+                              fillColor=colors.HexColor("#64748B"), textAnchor="end"))
+        
+        # Legend
+        legend_x = chart_left + 10
+        legend_y = chart_bottom + chart_height + 6
+        drawing.add(Line(legend_x, legend_y + 3, legend_x + 15, legend_y + 3,
+                        strokeColor=colors.HexColor("#EC4899"), strokeWidth=2))
+        drawing.add(String(legend_x + 18, legend_y, "Itch Score", fontSize=6,
+                          fillColor=colors.HexColor("#64748B")))
+        drawing.add(Line(legend_x + 75, legend_y + 3, legend_x + 90, legend_y + 3,
+                        strokeColor=colors.HexColor("#3B82F6"), strokeWidth=2))
+        drawing.add(String(legend_x + 93, legend_y, "Hive Score", fontSize=6,
+                          fillColor=colors.HexColor("#64748B")))
+        
+        return drawing
+
+
+def export_my_data_csv(user):
+    """
+    Export ALL data we hold on a user as a comprehensive CSV file.
+
+    This is a data-portability / subject-access export available to every
+    user regardless of subscription tier.  It includes:
+    - Account & profile information
+    - Medications
+    - All daily symptom entries (no date restriction)
+    - Notification preferences
+    - Subscription details
+
+    Returns an HttpResponse with the CSV attachment.
+    """
+    from accounts.models import Profile, UserMedication
+    from notifications.models import ReminderPreferences
+
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    safe_email = (user.email or f"user_{user.id}").replace("@", "_").replace(".", "_")[:30]
+    filename = f"my_data_{safe_email}_{timezone.now().strftime('%Y%m%d')}.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    # ------------------------------------------------------------------
+    # Section 1 – Account Information
+    # ------------------------------------------------------------------
+    writer.writerow(["MY DATA EXPORT"])
+    writer.writerow([f"Generated on {timezone.now().strftime('%d %B %Y at %H:%M')} UTC"])
+    writer.writerow([f"This file contains all the data we hold about your account."])
+    writer.writerow([])
+
+    writer.writerow(["ACCOUNT INFORMATION"])
+    writer.writerow(["Field", "Value"])
+    writer.writerow(["Email", user.email])
+    writer.writerow(["First Name", user.first_name or ""])
+    writer.writerow(["Last Name", user.last_name or ""])
+    writer.writerow(["Date Joined", user.date_joined.strftime("%Y-%m-%d %H:%M") if user.date_joined else ""])
+    writer.writerow(["Last Login", user.last_login.strftime("%Y-%m-%d %H:%M") if user.last_login else ""])
+    writer.writerow([])
+
+    # ------------------------------------------------------------------
+    # Section 2 – Profile
+    # ------------------------------------------------------------------
+    writer.writerow(["PROFILE"])
+    writer.writerow(["Field", "Value"])
+    try:
+        profile = user.profile
+        writer.writerow(["Display Name", profile.display_name or ""])
+        writer.writerow(["Date of Birth", profile.date_of_birth.strftime("%Y-%m-%d") if profile.date_of_birth else ""])
+        writer.writerow(["Age", profile.age if profile.age else ""])
+        writer.writerow(["Gender", profile.gender or ""])
+        writer.writerow(["CSU Diagnosis", profile.csu_diagnosis or ""])
+        writer.writerow(["Has Prescribed Medication", profile.has_prescribed_medication or ""])
+        writer.writerow(["Preferred Score Scale", profile.preferred_score_scale or ""])
+        writer.writerow(["Date Format", profile.date_format or ""])
+        writer.writerow(["Timezone", profile.default_timezone or ""])
+        writer.writerow(["Allow Data Collection", "Yes" if profile.allow_data_collection else "No"])
+        writer.writerow(["Privacy Consent Given", "Yes" if profile.privacy_consent_given else "No"])
+        writer.writerow(["Privacy Consent Date", profile.privacy_consent_date.strftime("%Y-%m-%d %H:%M") if profile.privacy_consent_date else ""])
+        writer.writerow(["Account Paused", "Yes" if profile.account_paused else "No"])
+        writer.writerow(["Onboarding Completed", "Yes" if profile.onboarding_completed else "No"])
+    except Profile.DoesNotExist:
+        writer.writerow(["(no profile found)"])
+    writer.writerow([])
+
+    # ------------------------------------------------------------------
+    # Section 3 – Medications
+    # ------------------------------------------------------------------
+    medications = UserMedication.objects.filter(user=user).order_by("-is_current", "-updated_at")
+    writer.writerow(["MEDICATIONS"])
+    if medications.exists():
+        writer.writerow([
+            "Medication Name", "Type", "Dose", "Unit",
+            "Frequency/Day", "Last Injection Date", "Injection Frequency",
+            "Currently Taking", "Added On",
+        ])
+        for med in medications:
+            writer.writerow([
+                med.display_name,
+                med.get_medication_type_display(),
+                med.dose_amount or "",
+                med.dose_unit or "",
+                med.frequency_per_day or "",
+                med.last_injection_date.strftime("%Y-%m-%d") if med.last_injection_date else "",
+                med.get_injection_frequency_display() if med.injection_frequency else "",
+                "Yes" if med.is_current else "No",
+                med.created_at.strftime("%Y-%m-%d") if med.created_at else "",
+            ])
+    else:
+        writer.writerow(["(no medications recorded)"])
+    writer.writerow([])
+
+    # ------------------------------------------------------------------
+    # Section 4 – Daily Symptom Entries (ALL – no date restriction)
+    # ------------------------------------------------------------------
+    entries = DailyEntry.objects.filter(user=user).order_by("date")
+    writer.writerow(["DAILY SYMPTOM ENTRIES"])
+    writer.writerow([f"Total entries: {entries.count()}"])
+    if entries.exists():
+        writer.writerow([
+            "Date", "Day of Week", "Total Score (0-6)",
+            "Itch Score (0-3)", "Hive Score (0-3)",
+            "Antihistamine Taken",
+            "QoL Sleep (0-4)", "QoL Activities (0-4)",
+            "QoL Appearance (0-4)", "QoL Mood (0-4)",
+            "Notes",
+        ])
+        for entry in entries.iterator():
+            writer.writerow([
+                entry.date.strftime("%Y-%m-%d"),
+                entry.date.strftime("%A"),
+                entry.score,
+                entry.itch_score if entry.itch_score is not None else "",
+                entry.hive_count_score if entry.hive_count_score is not None else "",
+                "Yes" if entry.took_antihistamine else "No",
+                entry.qol_sleep if entry.qol_sleep is not None else "",
+                entry.qol_daily_activities if entry.qol_daily_activities is not None else "",
+                entry.qol_appearance if entry.qol_appearance is not None else "",
+                entry.qol_mood if entry.qol_mood is not None else "",
+                entry.notes or "",
+            ])
+    else:
+        writer.writerow(["(no symptom entries recorded)"])
+    writer.writerow([])
+
+    # ------------------------------------------------------------------
+    # Section 5 – Notification Preferences
+    # ------------------------------------------------------------------
+    writer.writerow(["NOTIFICATION PREFERENCES"])
+    try:
+        prefs = ReminderPreferences.objects.get(user=user)
+        writer.writerow(["Field", "Value"])
+        writer.writerow(["Reminders Enabled", "Yes" if prefs.enabled else "No"])
+        writer.writerow(["Reminder Time", prefs.time_of_day.strftime("%H:%M") if prefs.time_of_day else ""])
+        writer.writerow(["Timezone", prefs.timezone or ""])
+    except ReminderPreferences.DoesNotExist:
+        writer.writerow(["(no notification preferences set)"])
+    writer.writerow([])
+
+    # ------------------------------------------------------------------
+    # Section 6 – Subscription
+    # ------------------------------------------------------------------
+    writer.writerow(["SUBSCRIPTION"])
+    try:
+        sub = user.subscription
+        writer.writerow(["Field", "Value"])
+        writer.writerow(["Plan", sub.plan.name if sub.plan else "Free"])
+        writer.writerow(["Status", sub.status or ""])
+        writer.writerow(["Current Period Start", sub.current_period_start.strftime("%Y-%m-%d") if sub.current_period_start else ""])
+        writer.writerow(["Current Period End", sub.current_period_end.strftime("%Y-%m-%d") if sub.current_period_end else ""])
+    except Exception:
+        writer.writerow(["Plan", "Free"])
+    writer.writerow([])
+
+    # ------------------------------------------------------------------
+    # Footer
+    # ------------------------------------------------------------------
+    writer.writerow(["END OF DATA EXPORT"])
+    writer.writerow(["If you believe any data is missing or incorrect, please contact support."])
+
+    return response

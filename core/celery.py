@@ -25,6 +25,11 @@ app.conf.beat_schedule = {
         "task": "backups.tasks.enqueue_nightly_backups",
         "schedule": crontab(minute=0, hour=2),
     },
+    # Reset reminder flags at 00:05 so notifications send again each day
+    "reset-daily-reminder-flags": {
+        "task": "notifications.tasks.reset_daily_reminder_flags",
+        "schedule": crontab(minute=5, hour=0),
+    },
     # Scheduled report exports
     "enqueue-scheduled-reports": {
         "task": "reporting.tasks.enqueue_scheduled_reports",

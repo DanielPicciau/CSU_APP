@@ -8,19 +8,19 @@
  * - Background preloading of likely next pages
  */
 
-(function() {
+(function () {
   'use strict';
 
   const InstantNav = {
     // Prefetch cache to avoid duplicate requests
     prefetchCache: new Set(),
-    
+
     // Pages to preload in background after initial load
     preloadPriority: ['/tracking/today/', '/tracking/log/', '/tracking/history/'],
-    
+
     // Minimum delay before showing skeleton (prevents flicker on fast loads)
     SKELETON_DELAY_MS: 50,
-    
+
     // How long to wait on hover before prefetching
     PREFETCH_DELAY_MS: 65,
 
@@ -38,24 +38,24 @@
      */
     setupLinkPrefetching() {
       let hoverTimeout = null;
-      
+
       document.addEventListener('mouseover', (e) => {
         const link = e.target.closest('a[href]');
         if (!link || !this.shouldPrefetch(link)) return;
-        
+
         // Delay prefetch slightly to avoid prefetching on quick mouse movements
         hoverTimeout = setTimeout(() => {
           this.prefetchPage(link.href);
         }, this.PREFETCH_DELAY_MS);
       });
-      
+
       document.addEventListener('mouseout', (e) => {
         if (hoverTimeout) {
           clearTimeout(hoverTimeout);
           hoverTimeout = null;
         }
       });
-      
+
       // Prefetch immediately on touch start (mobile)
       document.addEventListener('touchstart', (e) => {
         const link = e.target.closest('a[href]');
@@ -63,7 +63,7 @@
           this.prefetchPage(link.href);
         }
       }, { passive: true });
-      
+
       // Also prefetch on focus (keyboard navigation)
       document.addEventListener('focusin', (e) => {
         const link = e.target.closest('a[href]');
@@ -79,31 +79,31 @@
     shouldPrefetch(link) {
       // Skip if already prefetched
       if (this.prefetchCache.has(link.href)) return false;
-      
+
       // Skip external links
       if (link.origin !== location.origin) return false;
-      
+
       // Skip hash links
       if (link.href.includes('#') && link.pathname === location.pathname) return false;
-      
+
       // Skip non-GET links (forms, etc)
       if (link.hasAttribute('data-no-prefetch')) return false;
-      
+
       // Skip static assets
       if (link.pathname.startsWith('/static/')) return false;
-      
+
       // Skip API endpoints
       if (link.pathname.startsWith('/api/')) return false;
-      
+
       // Skip admin
       if (link.pathname.startsWith('/admin/')) return false;
-      
+
       // Skip auth pages (login, register, password reset) - these have rate limits
       if (link.pathname.startsWith('/accounts/login')) return false;
       if (link.pathname.startsWith('/accounts/register')) return false;
       if (link.pathname.startsWith('/accounts/password-reset')) return false;
       if (link.pathname.startsWith('/accounts/logout')) return false;
-      
+
       return true;
     },
 
@@ -111,23 +111,28 @@
      * Prefetch a page into browser cache
      */
     prefetchPage(url) {
-      if (this.prefetchCache.has(url)) return;
-      this.prefetchCache.add(url);
-      
+      const targetUrl = new URL(url, location.origin);
+      if (targetUrl.origin !== location.origin) return;
+      const href = targetUrl.href;
+
+      if (this.prefetchCache.has(href)) return;
+      this.prefetchCache.add(href);
+
       // Use link prefetch for best browser support
       const link = document.createElement('link');
       link.rel = 'prefetch';
-      link.href = url;
+      link.href = href;
       link.as = 'document';
       document.head.appendChild(link);
-      
+
       // Also do a low-priority fetch for more aggressive caching
       if ('fetch' in window) {
-        fetch(url, {
+        fetch(href, {
           priority: 'low',
+          mode: 'same-origin',
           credentials: 'same-origin',
           headers: { 'X-Prefetch': '1' }
-        }).catch(() => {}); // Ignore errors
+        }).catch(() => { }); // Ignore errors
       }
     },
 
@@ -148,12 +153,12 @@
     setupFallbackTransitions() {
       // Disabled skeleton transitions - they were causing issues
       // Just use the prefetching for performance instead
-      
+
       // Clear any stuck skeleton on page load
       window.addEventListener('pageshow', () => {
         this.hideSkeleton();
       });
-      
+
       // Also clear on DOMContentLoaded for safety
       document.addEventListener('DOMContentLoaded', () => {
         this.hideSkeleton();
@@ -171,10 +176,10 @@
       if (link.pathname.startsWith('/api/')) return false;
       if (link.pathname.startsWith('/admin/')) return false;
       if (link.target === '_blank') return false;
-      
+
       // Skip form submissions
       if (link.closest('form')) return false;
-      
+
       return true;
     },
 
@@ -212,7 +217,7 @@
         padding: calc(env(safe-area-inset-top, 0px) + 60px) 16px 16px;
       `;
       document.body.appendChild(skeleton);
-      
+
       // Add skeleton styles
       const style = document.createElement('style');
       style.textContent = `
@@ -291,8 +296,12 @@
 
     /**
      * Preload priority pages in background
+     * Only runs when user is authenticated (has nav bar)
      */
     preloadPriorityPages() {
+      // Skip preloading if user isn't authenticated (no bottom nav = not logged in)
+      if (!document.querySelector('.mobile-nav, .desktop-sidebar-nav')) return;
+
       // Wait for page to be fully loaded and idle
       if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
@@ -318,7 +327,7 @@
      */
     updateActiveNav(url) {
       const pathname = new URL(url, location.origin).pathname;
-      
+
       document.querySelectorAll('.nav-item, .desktop-nav-item').forEach(item => {
         const href = item.getAttribute('href');
         if (href === pathname || (pathname === '/' && href.includes('today'))) {
@@ -334,7 +343,7 @@
      */
     setupNavigationTiming() {
       if (!('performance' in window)) return;
-      
+
       // Log navigation performance
       window.addEventListener('load', () => {
         setTimeout(() => {
