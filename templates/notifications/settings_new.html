@@ -2,170 +2,497 @@
 
 {% block title %}Settings - CSU Tracker{% endblock %}
 
+{% block extra_head %}
+<style>
+/* ── Settings page refinements ── */
+.settings-section {
+    background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    margin-bottom: var(--space-5);
+}
+.settings-section__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+.settings-section__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.settings-section__icon--profile { background: linear-gradient(135deg, #818CF8, #6366F1); }
+.settings-section__icon--theme { background: linear-gradient(135deg, #FBBF24, #F59E0B); }
+.settings-section__icon--bell { background: linear-gradient(135deg, #34D399, #10B981); }
+.settings-section__icon--data { background: linear-gradient(135deg, #60A5FA, #3B82F6); }
+.settings-section__icon--account { background: linear-gradient(135deg, #F87171, #EF4444); }
+.settings-section__title {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+    margin: 0;
+}
+.settings-section__subtitle {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin: 0;
+}
+.settings-section__body {
+    padding: var(--space-5);
+}
+
+/* Profile banner */
+.settings-profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-5);
+}
+.settings-profile__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-md);
+}
+.settings-profile__avatar span {
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    color: white;
+}
+.settings-profile__info { flex: 1; min-width: 0; }
+.settings-profile__name {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.settings-profile__email {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: var(--space-0-5) 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.settings-profile__edit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1-5);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-brand);
+    background: var(--bg-brand-subtle);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    transition: var(--transition-all);
+    flex-shrink: 0;
+}
+.settings-profile__edit:hover { opacity: 0.85; }
+
+/* Theme picker */
+.theme-picker {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+}
+.theme-option {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-2);
+    border: 2px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+    background: var(--bg-secondary);
+}
+.theme-option:active { transform: scale(0.97); }
+.theme-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.theme-option:has(input:checked) {
+    border-color: var(--border-brand);
+    background: var(--bg-brand-subtle);
+}
+.theme-option:has(input:focus-visible) { box-shadow: var(--shadow-focus); }
+.theme-option__icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+.theme-option:has(input:checked) .theme-option__icon {
+    background: var(--bg-brand-subtle);
+    color: var(--text-brand);
+}
+.theme-option__label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-secondary);
+}
+.theme-option:has(input:checked) .theme-option__label {
+    color: var(--text-brand);
+    font-weight: var(--font-semibold);
+}
+
+/* Push status cards */
+.push-status {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-5);
+}
+.push-status__icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+}
+.push-status__icon--warning { background: var(--color-warning-50); color: var(--color-warning-500); }
+.push-status__icon--brand { background: var(--bg-brand-subtle); color: var(--text-brand); }
+.push-status__icon--success { background: var(--color-success-50); color: var(--color-success-500); }
+.push-status__icon--error { background: var(--color-error-50); color: var(--color-error-500); }
+[data-theme="dark"] .push-status__icon--warning { background: rgba(245, 158, 11, 0.15); }
+[data-theme="dark"] .push-status__icon--brand { background: rgba(99, 102, 241, 0.15); }
+[data-theme="dark"] .push-status__icon--success { background: rgba(16, 185, 129, 0.15); }
+[data-theme="dark"] .push-status__icon--error { background: rgba(239, 68, 68, 0.15); }
+.push-status__title {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+    margin: 0 0 var(--space-1);
+}
+.push-status__text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: var(--leading-relaxed);
+}
+.push-status__action {
+    margin-top: var(--space-3);
+}
+
+/* Reminder form */
+.reminder-form__body { padding: var(--space-5); }
+.reminder-form__footer {
+    padding: var(--space-4) var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+.reminder-save-btn {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: white;
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+    border: none;
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+.reminder-save-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.reminder-save-btn:active { transform: scale(0.98); }
+
+/* Test notification */
+.test-notification { padding: var(--space-5); }
+.test-notification__btn {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-brand);
+    background: var(--bg-brand-subtle);
+    border: 1px solid transparent;
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+.test-notification__btn:hover { border-color: var(--border-brand); }
+.test-notification__btn:active { transform: scale(0.98); }
+
+/* Nav links */
+.settings-nav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.settings-nav__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--duration-fast) var(--ease-out);
+}
+.settings-nav__item:not(:last-child) {
+    border-bottom: 1px solid var(--border-subtle);
+}
+.settings-nav__item:hover { background: var(--bg-secondary); }
+.settings-nav__item:active { background: var(--bg-tertiary); }
+.settings-nav__icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+}
+.settings-nav__icon--export { background: var(--color-primary-50); color: var(--color-primary-600); }
+.settings-nav__icon--privacy { background: var(--color-secondary-50); color: var(--color-secondary-600); }
+.settings-nav__icon--password { background: var(--color-warning-50); color: var(--color-warning-600); }
+.settings-nav__icon--delete { background: var(--color-error-50); color: var(--color-error-500); }
+.settings-nav__icon--logout { background: var(--bg-tertiary); color: var(--text-secondary); }
+[data-theme="dark"] .settings-nav__icon--export { background: rgba(99, 102, 241, 0.15); }
+[data-theme="dark"] .settings-nav__icon--privacy { background: rgba(20, 184, 166, 0.15); }
+[data-theme="dark"] .settings-nav__icon--password { background: rgba(245, 158, 11, 0.15); }
+[data-theme="dark"] .settings-nav__icon--delete { background: rgba(239, 68, 68, 0.15); }
+[data-theme="dark"] .settings-nav__icon--logout { background: rgba(255, 255, 255, 0.06); }
+.settings-nav__label {
+    flex: 1;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-primary);
+}
+.settings-nav__item--danger .settings-nav__label { color: var(--color-error-600); }
+.settings-nav__item--muted .settings-nav__label { color: var(--text-secondary); }
+.settings-nav__chevron { color: var(--text-tertiary); flex-shrink: 0; }
+
+/* Footer */
+.settings-footer {
+    text-align: center;
+    padding: var(--space-8) 0 var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    line-height: var(--leading-relaxed);
+}
+</style>
+{% endblock %}
+
 {% block header_title %}Settings{% endblock %}
 
 {% block content %}
 <div class="app-content">
     
-    <!-- Profile Section -->
-    <div class="card mb-5">
-        <div class="card__body">
-            <div class="flex items-center gap-4">
-                <div 
-                    class="flex items-center justify-center rounded-full"
-                    style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));"
-                >
-                    <span class="text-xl font-bold text-inverse">
-                        {{ user.profile.initials }}
-                    </span>
-                </div>
-                <div class="flex-1">
-                    <h2 class="font-semibold text-primary">
-                        {{ user.profile.display_name_or_email }}
-                    </h2>
-                    <p class="text-sm text-secondary">{{ user.email }}</p>
-                </div>
-                <a href="{% url 'accounts:profile' %}" class="btn btn--secondary btn--sm">Edit</a>
+    <!-- Profile Banner -->
+    <div class="settings-section">
+        <div class="settings-profile">
+            <div class="settings-profile__avatar">
+                <span>{{ user.profile.initials }}</span>
             </div>
+            <div class="settings-profile__info">
+                <h2 class="settings-profile__name">{{ user.profile.display_name_or_email }}</h2>
+                <p class="settings-profile__email">{{ user.email }}</p>
+            </div>
+            <a href="{% url 'accounts:profile' %}" class="settings-profile__edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit
+            </a>
         </div>
     </div>
     
     <!-- Appearance Section -->
-    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
-        Appearance
-    </h3>
-    <div class="card mb-5">
-        <div class="card__body card__body--compact">
-            <div class="form-group mb-0">
-                <label class="form-label" id="theme-label">Theme</label>
-                <div class="grid grid-cols-3 gap-2 mt-2" role="radiogroup" aria-labelledby="theme-label">
-                    <label class="radio-card" style="padding: var(--space-3); text-align: center;">
-                        <input type="radio" name="theme" value="light" class="radio-card__input" 
-                               onchange="CSU.ThemeManager.setTheme('light')">
-                        <div class="radio-card__content">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 4px;">
-                                <circle cx="12" cy="12" r="5"/>
-                                <line x1="12" y1="1" x2="12" y2="3"/>
-                                <line x1="12" y1="21" x2="12" y2="23"/>
-                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                                <line x1="1" y1="12" x2="3" y2="12"/>
-                                <line x1="21" y1="12" x2="23" y2="12"/>
-                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                            </svg>
-                            <div class="radio-card__title text-sm">Light</div>
-                        </div>
-                    </label>
-                    <label class="radio-card" style="padding: var(--space-3); text-align: center;">
-                        <input type="radio" name="theme" value="dark" class="radio-card__input"
-                               onchange="CSU.ThemeManager.setTheme('dark')">
-                        <div class="radio-card__content">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 4px;">
-                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                            </svg>
-                            <div class="radio-card__title text-sm">Dark</div>
-                        </div>
-                    </label>
-                    <label class="radio-card" style="padding: var(--space-3); text-align: center;">
-                        <input type="radio" name="theme" value="system" class="radio-card__input" checked
-                               onchange="CSU.ThemeManager.setTheme('system')">
-                        <div class="radio-card__content">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 4px;">
-                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                                <line x1="8" y1="21" x2="16" y2="21"/>
-                                <line x1="12" y1="17" x2="12" y2="21"/>
-                            </svg>
-                            <div class="radio-card__title text-sm">System</div>
-                        </div>
-                    </label>
-                </div>
+    <div class="settings-section">
+        <div class="settings-section__header">
+            <div class="settings-section__icon settings-section__icon--theme">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="settings-section__title">Appearance</h3>
+                <p class="settings-section__subtitle">Choose your preferred theme</p>
+            </div>
+        </div>
+        <div class="settings-section__body">
+            <div class="theme-picker" role="radiogroup" aria-label="Theme">
+                <label class="theme-option">
+                    <input type="radio" name="theme" value="light" onchange="CSU.ThemeManager.setTheme('light')">
+                    <div class="theme-option__icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                    </div>
+                    <span class="theme-option__label">Light</span>
+                </label>
+                <label class="theme-option">
+                    <input type="radio" name="theme" value="dark" onchange="CSU.ThemeManager.setTheme('dark')">
+                    <div class="theme-option__icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </div>
+                    <span class="theme-option__label">Dark</span>
+                </label>
+                <label class="theme-option">
+                    <input type="radio" name="theme" value="system" checked onchange="CSU.ThemeManager.setTheme('system')">
+                    <div class="theme-option__icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <span class="theme-option__label">System</span>
+                </label>
             </div>
         </div>
     </div>
     
     <!-- Notifications Section -->
-    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
-        Notifications
-    </h3>
-    
-    <!-- Push Permission Status - Only one state shown at a time -->
-    <div id="push-status-card" class="card mb-4">
-        <div class="card__body">
-            <!-- Not Supported State -->
-            <div id="push-not-supported" style="display: none;">
-                <div class="flex items-start gap-3">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning-500)" stroke-width="2">
+    <div class="settings-section" id="push-status-card">
+        <div class="settings-section__header">
+            <div class="settings-section__icon settings-section__icon--bell">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="settings-section__title">Notifications</h3>
+                <p class="settings-section__subtitle">Push notification permission</p>
+            </div>
+        </div>
+        
+        <!-- Not Supported State -->
+        <div id="push-not-supported" style="display: none;">
+            <div class="push-status">
+                <div class="push-status__icon push-status__icon--warning">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="8" x2="12" y2="12"/>
                         <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    <div>
-                        <h4 class="font-semibold text-primary">Browser Not Supported</h4>
-                        <p class="text-sm text-secondary mt-1">Push notifications aren't available in this browser. For the best experience, add this app to your Home Screen on iOS or use Chrome/Edge on desktop.</p>
-                    </div>
+                </div>
+                <div>
+                    <h4 class="push-status__title">Browser Not Supported</h4>
+                    <p class="push-status__text">Push notifications aren't available in this browser. For the best experience, add this app to your Home Screen on iOS or use Chrome/Edge on desktop.</p>
                 </div>
             </div>
-            
-            <!-- Prompt State - Can enable -->
-            <div id="push-prompt" style="display: none;">
-                <div class="flex items-start gap-3">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-brand)" stroke-width="2">
+        </div>
+        
+        <!-- Prompt State -->
+        <div id="push-prompt" style="display: none;">
+            <div class="push-status">
+                <div class="push-status__icon push-status__icon--brand">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-primary">Enable Push Notifications</h4>
-                        <p class="text-sm text-secondary mt-1 mb-3">Get reminded to log your symptoms daily.</p>
-                        <button id="enable-push-btn" class="btn btn--primary btn--sm">
-                            Enable Notifications
-                        </button>
+                </div>
+                <div style="flex: 1;">
+                    <h4 class="push-status__title">Enable Push Notifications</h4>
+                    <p class="push-status__text">Get reminded to log your symptoms daily.</p>
+                    <div class="push-status__action">
+                        <button id="enable-push-btn" class="btn btn--primary btn--sm">Enable Notifications</button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Enabled State -->
-            <div id="push-enabled" style="display: none;">
-                <div class="flex items-center gap-3">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-500)" stroke-width="2">
+        </div>
+        
+        <!-- Enabled State -->
+        <div id="push-enabled" style="display: none;">
+            <div class="push-status">
+                <div class="push-status__icon push-status__icon--success">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    <div>
-                        <h4 class="font-semibold text-primary">Notifications Active</h4>
-                        <p class="text-sm text-secondary">You'll receive daily reminders on this device.</p>
-                    </div>
+                </div>
+                <div>
+                    <h4 class="push-status__title">Notifications Active</h4>
+                    <p class="push-status__text">You'll receive daily reminders on this device.</p>
                 </div>
             </div>
-            
-            <!-- Denied/Blocked State -->
-            <div id="push-denied" style="display: none;">
-                <div class="flex items-start gap-3">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-500)" stroke-width="2">
+        </div>
+        
+        <!-- Denied State -->
+        <div id="push-denied" style="display: none;">
+            <div class="push-status">
+                <div class="push-status__icon push-status__icon--error">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                     </svg>
-                    <div>
-                        <h4 class="font-semibold text-primary">Notifications Blocked</h4>
-                        <p class="text-sm text-secondary mt-1">You've blocked notifications. To enable them, go to your browser or device settings and allow notifications for this site.</p>
-                    </div>
+                </div>
+                <div>
+                    <h4 class="push-status__title">Notifications Blocked</h4>
+                    <p class="push-status__text">You've blocked notifications. To enable them, go to your browser or device settings and allow notifications for this site.</p>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Reminder Settings -->
-    <div class="card mb-5">
+    <!-- Daily Reminders -->
+    <div class="settings-section">
         <form method="post" action="{% url 'notifications:settings' %}">
             {% csrf_token %}
-            <div class="card__body">
+            <div class="settings-section__header">
+                <div class="settings-section__icon settings-section__icon--bell">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="settings-section__title">Daily Reminders</h3>
+                    <p class="settings-section__subtitle">Schedule when to be reminded</p>
+                </div>
+            </div>
+            <div class="reminder-form__body">
                 <div class="form-group">
                     <label class="toggle">
                         <input type="checkbox" name="enabled" id="id_enabled" class="toggle__input" {% if preferences.enabled %}checked{% endif %}>
                         <span class="toggle__track">
                             <span class="toggle__thumb"></span>
                         </span>
-                        <span class="toggle__label">Daily Reminders</span>
+                        <span class="toggle__label">Enable Reminders</span>
                     </label>
                 </div>
                 
@@ -174,7 +501,7 @@
                     <div style="display: flex; align-items: center; gap: var(--space-3);">
                         <input type="time" name="time_of_day" id="id_time_of_day" 
                                class="form-input" style="flex: 1;" value="{{ preferences.time_of_day|time:'H:i' }}">
-                        <span class="text-sm text-secondary" id="current-time-display">
+                        <span style="font-size: var(--text-sm); color: var(--text-secondary);" id="current-time-display">
                             Currently: <strong>{{ preferences.time_of_day|time:'g:i A' }}</strong>
                         </span>
                     </div>
@@ -190,98 +517,123 @@
                     </select>
                 </div>
             </div>
-            <div class="card__footer">
-                <button type="submit" class="btn btn--primary btn--full">Save Settings</button>
+            <div class="reminder-form__footer">
+                <button type="submit" class="reminder-save-btn">Save Settings</button>
             </div>
         </form>
     </div>
     
     <!-- Test Notification -->
-    <div class="card mb-5" id="test-notification-card">
-        <div class="card__body">
-            <h4 class="font-semibold text-primary mb-2">Test Notification</h4>
-            <p class="text-sm text-secondary mb-3">Verify your notification setup is working.</p>
-            <button id="test-notification-btn" class="btn btn--secondary btn--full">
+    <div class="settings-section" id="test-notification-card">
+        <div class="test-notification">
+            <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-brand)" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                <div>
+                    <h4 style="font-size: var(--text-base); font-weight: var(--font-semibold); color: var(--text-primary); margin: 0;">Test Notification</h4>
+                    <p style="font-size: var(--text-xs); color: var(--text-secondary); margin: 0;">Verify your notification setup is working</p>
+                </div>
+            </div>
+            <button id="test-notification-btn" class="test-notification__btn">
                 Send Test Notification
             </button>
         </div>
     </div>
     
     <!-- Data & Privacy Section -->
-    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
-        Data & Privacy
-    </h3>
-    <div class="card mb-5">
-        <a href="{% url 'tracking:export' %}" class="card__body card__body--compact flex items-center justify-between" style="text-decoration: none;">
-            <div class="flex items-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                <span class="font-medium text-primary">Export Data</span>
-            </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
-                <path d="M9 18l6-6-6-6"/>
-            </svg>
-        </a>
-        <div style="height: 1px; background: var(--border-subtle);"></div>
-        <a href="{% url 'accounts:privacy' %}" class="card__body card__body--compact flex items-center justify-between" style="text-decoration: none;">
-            <div class="flex items-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="settings-section">
+        <div class="settings-section__header">
+            <div class="settings-section__icon settings-section__icon--data">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
-                <span class="font-medium text-primary">Privacy Policy</span>
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
-                <path d="M9 18l6-6-6-6"/>
-            </svg>
-        </a>
+            <div>
+                <h3 class="settings-section__title">Data & Privacy</h3>
+                <p class="settings-section__subtitle">Export and manage your data</p>
+            </div>
+        </div>
+        <nav class="settings-nav">
+            <a href="{% url 'tracking:export' %}" class="settings-nav__item">
+                <div class="settings-nav__icon settings-nav__icon--export">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </div>
+                <span class="settings-nav__label">Export Data</span>
+                <svg class="settings-nav__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a href="{% url 'accounts:privacy' %}" class="settings-nav__item">
+                <div class="settings-nav__icon settings-nav__icon--privacy">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <span class="settings-nav__label">Privacy Policy</span>
+                <svg class="settings-nav__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+        </nav>
     </div>
     
     <!-- Account Section -->
-    <h3 class="text-sm font-semibold text-secondary uppercase tracking-wide mb-3 px-1">
-        Account
-    </h3>
-    <div class="card mb-5">
-        <a href="{% url 'accounts:change_password' %}" class="card__body card__body--compact flex items-center justify-between" style="text-decoration: none;">
-            <div class="flex items-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    <div class="settings-section">
+        <div class="settings-section__header">
+            <div class="settings-section__icon settings-section__icon--account">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
                 </svg>
-                <span class="font-medium text-primary">Change Password</span>
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2">
-                <path d="M9 18l6-6-6-6"/>
-            </svg>
-        </a>
-        <div style="height: 1px; background: var(--border-subtle);"></div>
-        <a href="{% url 'accounts:delete_account' %}" class="card__body card__body--compact flex items-center gap-3" style="text-decoration: none;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-error-500)" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-            <span class="font-medium" style="color: var(--color-error-600);">Delete Account</span>
-        </a>
-        <div style="height: 1px; background: var(--border-subtle);"></div>
-        <form method="post" action="{% url 'accounts:logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="card__body card__body--compact flex items-center gap-3 w-full text-left" style="border: none; background: none; cursor: pointer;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-                <span class="font-medium text-secondary">Sign Out</span>
-            </button>
-        </form>
+            <div>
+                <h3 class="settings-section__title">Account</h3>
+                <p class="settings-section__subtitle">Security and account management</p>
+            </div>
+        </div>
+        <nav class="settings-nav">
+            <a href="{% url 'accounts:change_password' %}" class="settings-nav__item">
+                <div class="settings-nav__icon settings-nav__icon--password">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+                <span class="settings-nav__label">Change Password</span>
+                <svg class="settings-nav__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a href="{% url 'accounts:delete_account' %}" class="settings-nav__item settings-nav__item--danger">
+                <div class="settings-nav__icon settings-nav__icon--delete">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </div>
+                <span class="settings-nav__label">Delete Account</span>
+                <svg class="settings-nav__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="settings-nav__item settings-nav__item--muted" style="width: 100%; border: none; background: none; cursor: pointer; text-align: left;">
+                    <div class="settings-nav__icon settings-nav__icon--logout">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                    </div>
+                    <span class="settings-nav__label">Sign Out</span>
+                    <svg class="settings-nav__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </form>
+        </nav>
     </div>
     
-    <!-- App Info / Footer -->
-    <div class="text-center text-sm text-tertiary mt-8 mb-4">
+    <!-- Footer -->
+    <div class="settings-footer">
         <p>CSU Tracker v1.0.0</p>
-        <p class="mt-1">Made by and powered by WebFlare</p>
+        <p style="margin-top: var(--space-1);">Made by and powered by WebFlare</p>
     </div>
 </div>
 

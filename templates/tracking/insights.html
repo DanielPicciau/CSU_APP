@@ -6,47 +6,55 @@
 
 {% block extra_head %}
 <style>
-/* Insights-specific styles */
+/* ── Insights page refinements ── */
 .insight-card {
-    background: var(--bg-primary);
+    background: var(--surface-primary);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-    padding: var(--space-5);
-    margin-bottom: var(--space-4);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    margin-bottom: var(--space-5);
 }
 .insight-card__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-4);
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
 }
+.insight-card__header--plain {
+    background: transparent;
+    border-bottom: none;
+    justify-content: space-between;
+}
+.insight-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.insight-card__icon--adherence { background: linear-gradient(135deg, #34D399, #10B981); }
+.insight-card__icon--stats { background: linear-gradient(135deg, #818CF8, #6366F1); }
+.insight-card__icon--trend { background: linear-gradient(135deg, #60A5FA, #3B82F6); }
+.insight-card__icon--averages { background: linear-gradient(135deg, #FBBF24, #F59E0B); }
+.insight-card__icon--weekly { background: linear-gradient(135deg, #F472B6, #EC4899); }
+.insight-card__icon--meds { background: linear-gradient(135deg, #A78BFA, #8B5CF6); }
 .insight-card__title {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-primary);
+    margin: 0;
 }
 .insight-card__subtitle {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--text-secondary);
+    margin: 0;
 }
-
-.stat-hero {
-    text-align: center;
-    padding: var(--space-6) var(--space-4);
-}
-.stat-hero__value {
-    font-size: 3.5rem;
-    font-weight: 800;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--color-primary-500), var(--color-secondary-500));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.stat-hero__label {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    margin-top: var(--space-2);
+.insight-card__body {
+    padding: var(--space-5);
 }
 
 .stat-grid {
@@ -56,13 +64,14 @@
 }
 .stat-item {
     background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     text-align: center;
 }
 .stat-item__value {
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: var(--font-bold);
     color: var(--text-primary);
 }
 .stat-item__label {
@@ -70,15 +79,9 @@
     color: var(--text-secondary);
     margin-top: var(--space-1);
 }
-.stat-item--highlight .stat-item__value {
-    color: var(--color-primary-600);
-}
-.stat-item--success .stat-item__value {
-    color: var(--color-success-600);
-}
-.stat-item--warning .stat-item__value {
-    color: var(--color-warning-600);
-}
+.stat-item--highlight .stat-item__value { color: var(--color-primary-600); }
+.stat-item--success .stat-item__value { color: var(--color-success-600); }
+.stat-item--warning .stat-item__value { color: var(--color-warning-600); }
 
 .progress-ring {
     position: relative;
@@ -86,9 +89,7 @@
     height: 120px;
     margin: 0 auto;
 }
-.progress-ring__svg {
-    transform: rotate(-90deg);
-}
+.progress-ring__svg { transform: rotate(-90deg); }
 .progress-ring__circle {
     fill: none;
     stroke: var(--bg-tertiary);
@@ -110,7 +111,7 @@
 }
 .progress-ring__value {
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: var(--font-bold);
     color: var(--text-primary);
 }
 .progress-ring__label {
@@ -123,10 +124,7 @@
     position: relative;
     padding: var(--space-4) 0;
 }
-.trend-chart__svg {
-    width: 100%;
-    height: 100%;
-}
+.trend-chart__svg { width: 100%; height: 100%; }
 .trend-chart__line {
     fill: none;
     stroke: var(--color-primary-500);
@@ -134,13 +132,10 @@
     stroke-linecap: round;
     stroke-linejoin: round;
 }
-.trend-chart__area {
-    fill: url(#gradient);
-    opacity: 0.15;
-}
+.trend-chart__area { fill: url(#gradient); opacity: 0.15; }
 .trend-chart__point {
     fill: var(--color-primary-500);
-    stroke: white;
+    stroke: var(--surface-primary);
     stroke-width: 2;
 }
 .trend-chart__grid-line {
@@ -184,7 +179,7 @@
     width: 40px;
     text-align: right;
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-primary);
     flex-shrink: 0;
 }
@@ -198,18 +193,16 @@
     text-align: center;
     padding: var(--space-3);
     background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
 }
 .week-block--current {
-    background: var(--color-primary-50);
-    border: 2px solid var(--color-primary-500);
-}
-[data-theme="dark"] .week-block--current {
-    background: var(--color-primary-900);
+    background: var(--bg-brand-subtle);
+    border: 2px solid var(--border-brand);
 }
 .week-block__score {
     font-size: var(--text-xl);
-    font-weight: 700;
+    font-weight: var(--font-bold);
 }
 .week-block__label {
     font-size: var(--text-xs);
@@ -226,29 +219,31 @@
 
 .period-toggle {
     display: inline-flex;
-    background: var(--bg-secondary);
+    background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-full);
-    padding: var(--space-1);
-    gap: var(--space-1);
+    padding: 3px;
+    gap: 2px;
 }
 .period-toggle__btn {
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-full);
     font-size: var(--text-sm);
-    font-weight: 500;
+    font-weight: var(--font-medium);
     color: var(--text-secondary);
     border: none;
     background: transparent;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all var(--duration-fast) var(--ease-out);
+    text-decoration: none;
 }
 .period-toggle__btn--active {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    box-shadow: var(--shadow-sm);
+    background: var(--bg-brand-subtle);
+    color: var(--text-brand);
+    font-weight: var(--font-semibold);
 }
 .period-toggle__btn--disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
 }
@@ -270,11 +265,33 @@
     background: rgba(245, 158, 11, 0.1);
     border-color: rgba(245, 158, 11, 0.3);
 }
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .history-limit-banner {
-        background: rgba(245, 158, 11, 0.1);
-        border-color: rgba(245, 158, 11, 0.3);
-    }
+
+/* Export CTA */
+.export-cta {
+    background: linear-gradient(135deg, #005EB8 0%, #003D7A 100%);
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+.export-cta::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -10%;
+    width: 160px;
+    height: 160px;
+    background: rgba(255,255,255,0.06);
+    border-radius: var(--radius-full);
+}
+.export-cta .insight-card__header {
+    background: transparent;
+    border-bottom: none;
+    position: relative;
+    z-index: 1;
+}
+.export-cta .insight-card__body {
+    position: relative;
+    z-index: 1;
 }
 
 .disclaimer-text {
@@ -329,68 +346,88 @@
     <!-- Adherence Card -->
     <div class="insight-card">
         <div class="insight-card__header">
+            <div class="insight-card__icon insight-card__icon--adherence">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
             <div>
                 <h2 class="insight-card__title">Tracking Adherence</h2>
                 <p class="insight-card__subtitle">Last {{ period }} days</p>
             </div>
         </div>
         
-        <div class="flex items-center justify-around">
-            <!-- Progress Ring -->
-            <div class="progress-ring">
-                <svg class="progress-ring__svg" width="120" height="120" viewBox="0 0 120 120">
-                    <circle class="progress-ring__circle" cx="60" cy="60" r="52"/>
-                    <circle 
-                        class="progress-ring__progress" 
-                        cx="60" cy="60" r="52"
-                        stroke-dasharray="327"
-                        stroke-dashoffset="{{ adherence_offset }}"
-                    />
-                </svg>
-                <div class="progress-ring__text">
-                    <div class="progress-ring__value">{{ adherence_pct|floatformat:0 }}%</div>
-                    <div class="progress-ring__label">logged</div>
+        <div class="insight-card__body">
+            <div style="display: flex; align-items: center; justify-content: space-around;">
+                <div class="progress-ring">
+                    <svg class="progress-ring__svg" width="120" height="120" viewBox="0 0 120 120">
+                        <circle class="progress-ring__circle" cx="60" cy="60" r="52"/>
+                        <circle 
+                            class="progress-ring__progress" 
+                            cx="60" cy="60" r="52"
+                            stroke-dasharray="327"
+                            stroke-dashoffset="{{ adherence_offset }}"
+                        />
+                    </svg>
+                    <div class="progress-ring__text">
+                        <div class="progress-ring__value">{{ adherence_pct|floatformat:0 }}%</div>
+                        <div class="progress-ring__label">logged</div>
+                    </div>
+                </div>
+                
+                <div class="stat-grid" style="flex: 1; max-width: 180px;">
+                    <div class="stat-item stat-item--highlight">
+                        <div class="stat-item__value">{{ logged_days }}</div>
+                        <div class="stat-item__label">Logged</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item__value">{{ missing_days }}</div>
+                        <div class="stat-item__label">Missing</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="stat-grid" style="flex: 1; max-width: 180px;">
-                <div class="stat-item stat-item--highlight">
-                    <div class="stat-item__value">{{ logged_days }}</div>
-                    <div class="stat-item__label">Logged</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-item__value">{{ missing_days }}</div>
-                    <div class="stat-item__label">Missing</div>
-                </div>
+            {% if missing_days > 0 %}
+            <div style="margin-top: var(--space-4); text-align: center;">
+                <a href="{% url 'tracking:history' %}?show=missing&days={{ period }}" class="btn btn--secondary btn--sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Fill {{ missing_days }} missing {% if missing_days == 1 %}day{% else %}days{% endif %}
+                </a>
             </div>
+            {% endif %}
         </div>
-        
-        {% if missing_days > 0 %}
-        <div class="mt-4 text-center">
-            <a href="{% url 'tracking:history' %}?show=missing&days={{ period }}" class="btn btn--secondary btn--sm">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Fill {{ missing_days }} missing {% if missing_days == 1 %}day{% else %}days{% endif %}
-            </a>
-        </div>
-        {% endif %}
     </div>
     
     <!-- Logging Stats Card -->
     <div class="insight-card">
         <div class="insight-card__header">
-            <h2 class="insight-card__title">Your Logging</h2>
+            <div class="insight-card__icon insight-card__icon--stats">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="insight-card__title">Your Logging</h2>
+                <p class="insight-card__subtitle">Tracking consistency</p>
+            </div>
         </div>
         
-        <div class="stat-grid">
-            <div class="stat-item stat-item--highlight">
-                <div class="stat-item__value">{{ logged_days }}</div>
-                <div class="stat-item__label">Days in Period</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-item__value">{{ total_entries }}</div>
-                <div class="stat-item__label">All-Time Entries</div>
+        <div class="insight-card__body">
+            <div class="stat-grid">
+                <div class="stat-item stat-item--highlight">
+                    <div class="stat-item__value">{{ logged_days }}</div>
+                    <div class="stat-item__label">Days in Period</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-item__value">{{ total_entries }}</div>
+                    <div class="stat-item__label">All-Time Entries</div>
+                </div>
             </div>
         </div>
     </div>
@@ -398,13 +435,19 @@
     <!-- Score Trend Chart -->
     <div class="insight-card">
         <div class="insight-card__header">
+            <div class="insight-card__icon insight-card__icon--trend">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+            </div>
             <div>
                 <h2 class="insight-card__title">Score Trend</h2>
                 <p class="insight-card__subtitle">Daily scores over time</p>
             </div>
         </div>
         
-        <div class="trend-chart" id="trend-chart">
+        <div class="insight-card__body">
+            <div class="trend-chart" id="trend-chart">
             <svg class="trend-chart__svg" viewBox="0 0 {{ chart_width }} 150" preserveAspectRatio="none">
                 <defs>
                     <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -447,19 +490,27 @@
                 </text>
                 {% endif %}
             </svg>
+            </div>
         </div>
     </div>
     
     <!-- Averages Card -->
     <div class="insight-card">
         <div class="insight-card__header">
+            <div class="insight-card__icon insight-card__icon--averages">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+            </div>
             <div>
                 <h2 class="insight-card__title">Score Averages</h2>
                 <p class="insight-card__subtitle">Based on {{ logged_days }} logged {% if logged_days == 1 %}day{% else %}days{% endif %}</p>
             </div>
         </div>
         
-        <div class="average-bars">
+        <div class="insight-card__body"> class="average-bars">
             <div class="average-bar">
                 <span class="average-bar__label">Total Score</span>
                 <div class="average-bar__track">
@@ -483,7 +534,7 @@
             </div>
         </div>
         
-        <div class="stat-grid mt-5">
+        <div class="stat-grid" style="margin-top: var(--space-5);">
             <div class="stat-item">
                 <div class="stat-item__value">{{ best_score }}</div>
                 <div class="stat-item__label">Best Day</div>
@@ -493,18 +544,27 @@
                 <div class="stat-item__label">Worst Day</div>
             </div>
         </div>
+        </div>
     </div>
     
     <!-- Weekly UAS7 Comparison -->
     <div class="insight-card">
         <div class="insight-card__header">
+            <div class="insight-card__icon insight-card__icon--weekly">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            </div>
             <div>
                 <h2 class="insight-card__title">Weekly UAS7</h2>
                 <p class="insight-card__subtitle">Last 4 weeks comparison</p>
             </div>
         </div>
         
-        <div class="week-comparison">
+        <div class="insight-card__body"> class="week-comparison">
             {% for week in weekly_scores %}
             <div class="week-block {% if forloop.first %}week-block--current{% endif %}">
                 <div class="week-block__score" style="color: {% if week.uas7 <= 6 %}var(--color-score-0){% elif week.uas7 <= 15 %}var(--color-score-2){% elif week.uas7 <= 27 %}var(--color-score-4){% else %}var(--color-score-6){% endif %};">
@@ -522,46 +582,54 @@
             {% endfor %}
         </div>
         
-        <p class="text-xs text-tertiary text-center mt-3">* Incomplete week</p>
+        <p style="font-size: var(--text-xs); color: var(--text-tertiary); text-align: center; margin-top: var(--space-3);">* Incomplete week</p>
+        </div>
     </div>
     
     <!-- Antihistamine Stats -->
     {% if antihistamine_days > 0 %}
     <div class="insight-card">
         <div class="insight-card__header">
+            <div class="insight-card__icon insight-card__icon--meds">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                </svg>
+            </div>
             <div>
                 <h2 class="insight-card__title">Antihistamine Usage</h2>
                 <p class="insight-card__subtitle">Last {{ period }} days</p>
             </div>
         </div>
         
-        <div class="stat-grid">
-            <div class="stat-item">
-                <div class="stat-item__value">{{ antihistamine_days }}</div>
-                <div class="stat-item__label">Days Taken</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-item__value">{{ antihistamine_pct|floatformat:0 }}%</div>
-                <div class="stat-item__label">Of Logged Days</div>
+        <div class="insight-card__body">
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-item__value">{{ antihistamine_days }}</div>
+                    <div class="stat-item__label">Days Taken</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-item__value">{{ antihistamine_pct|floatformat:0 }}%</div>
+                    <div class="stat-item__label">Of Logged Days</div>
+                </div>
             </div>
         </div>
     </div>
     {% endif %}
     
     <!-- Export Data Card - Enhanced for NHS -->
-    <div class="insight-card">
-        <div class="insight-card__header" style="border: none;">
+    <div class="insight-card export-cta">
+        <div class="insight-card__header" style="border-bottom: none; background: transparent; justify-content: space-between;">
             <div>
-                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-bottom: 8px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); color: white; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-bottom: 8px;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                     </svg>
                     NHS Ready
                 </span>
                 <h2 class="insight-card__title" style="color: white;">Data Export for Healthcare Provider</h2>
-                <p class="insight-card__subtitle" style="color: rgba(255,255,255,0.8);">Comprehensive PDF or CSV export</p>
+                <p class="insight-card__subtitle" style="color: rgba(255,255,255,0.75);">Comprehensive PDF or CSV export</p>
             </div>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="flex-shrink: 0;">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14,2 14,8 20,8"/>
                 <line x1="16" y1="13" x2="8" y2="13"/>
@@ -569,29 +637,31 @@
             </svg>
         </div>
         
-        <div style="display: grid; gap: 8px; margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.9);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                UAS7 scoring per international guidelines
+        <div class="insight-card__body" style="padding-top: 0;">
+            <div style="display: grid; gap: 8px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.9);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    UAS7 scoring per international guidelines
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.9);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Treatment response &amp; flare analysis
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.9);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Clinical decision support guidance
+                </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.9);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                Treatment response &amp; flare analysis
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.9);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                Clinical decision support guidance
-            </div>
+            
+            <a href="{% url 'tracking:export' %}" class="btn" style="width: 100%; background: white; color: #005EB8; border: none; font-weight: 600; border-radius: var(--radius-xl);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7,10 12,15 17,10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Create Data Export
+            </a>
         </div>
-        
-        <a href="{% url 'tracking:export' %}" class="btn" style="width: 100%; background: white; color: #005EB8; border: none; font-weight: 600;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7,10 12,15 17,10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Create Data Export
-        </a>
     </div>
     
     <!-- Disclaimer -->
