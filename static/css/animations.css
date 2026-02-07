@@ -1,23 +1,18 @@
 /**
- * CSU Tracker - Performance Animations
- * =====================================
- * Hardware-accelerated, smooth animations for a premium feel
- * Uses GPU-optimized transforms and opacity for 60fps performance
+ * CSU Tracker - Minimal Interactions
+ * ====================================
+ * Hover effects, loading states, and transition utilities only.
+ * All entrance / scroll / page-transition animations have been removed
+ * for faster perceived load and reduced main-thread work.
  */
 
 /* ==========================================================================
    PERFORMANCE OPTIMIZATIONS
    ========================================================================== */
 
-/* Enable hardware acceleration for animated elements */
-.will-animate {
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
 /* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -29,106 +24,7 @@
 }
 
 /* ==========================================================================
-   PAGE TRANSITIONS
-   ========================================================================== */
-
-/* Fade in from bottom (default page entrance) */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 20px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Fade in scale (for modals, dialogs) */
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale3d(0.95, 0.95, 1);
-  }
-  to {
-    opacity: 1;
-    transform: scale3d(1, 1, 1);
-  }
-}
-
-.animate-fade-in-scale {
-  animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Slide in from right (for navigation) */
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translate3d(30px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-.animate-slide-in-right {
-  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Slide in from left */
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translate3d(-30px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-.animate-slide-in-left {
-  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* ==========================================================================
-   STAGGERED ANIMATIONS (for lists)
-   ========================================================================== */
-
-.stagger-animation > * {
-  opacity: 0;
-  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.stagger-animation > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-animation > *:nth-child(2) { animation-delay: 50ms; }
-.stagger-animation > *:nth-child(3) { animation-delay: 100ms; }
-.stagger-animation > *:nth-child(4) { animation-delay: 150ms; }
-.stagger-animation > *:nth-child(5) { animation-delay: 200ms; }
-.stagger-animation > *:nth-child(6) { animation-delay: 250ms; }
-.stagger-animation > *:nth-child(7) { animation-delay: 300ms; }
-.stagger-animation > *:nth-child(8) { animation-delay: 350ms; }
-.stagger-animation > *:nth-child(9) { animation-delay: 400ms; }
-.stagger-animation > *:nth-child(10) { animation-delay: 450ms; }
-
-/* Fast stagger for quick lists */
-.stagger-fast > * { animation-duration: 0.25s; }
-.stagger-fast > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-fast > *:nth-child(2) { animation-delay: 30ms; }
-.stagger-fast > *:nth-child(3) { animation-delay: 60ms; }
-.stagger-fast > *:nth-child(4) { animation-delay: 90ms; }
-.stagger-fast > *:nth-child(5) { animation-delay: 120ms; }
-.stagger-fast > *:nth-child(6) { animation-delay: 150ms; }
-.stagger-fast > *:nth-child(7) { animation-delay: 180ms; }
-.stagger-fast > *:nth-child(8) { animation-delay: 210ms; }
-
-/* ==========================================================================
-   MICRO-INTERACTIONS
+   MICRO-INTERACTIONS (hover / active only)
    ========================================================================== */
 
 /* Button press effect */
@@ -143,7 +39,7 @@
 /* Card hover lift */
 .card-lift {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card-lift:hover {
@@ -186,18 +82,14 @@
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 25%,
-    #e0e0e0 50%,
-    #f0f0f0 75%
-  );
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
@@ -212,11 +104,14 @@
   border-radius: 50%;
 }
 
-/* Pulse animation */
+/* Pulse animation (for loading placeholders) */
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -255,233 +150,62 @@
 }
 
 /* ==========================================================================
-   SCORE ANIMATIONS
+   FORM INTERACTIONS (focus / input)
    ========================================================================== */
 
-/* Score reveal animation */
-@keyframes scoreReveal {
-  0% {
-    transform: scale3d(0, 0, 1);
-    opacity: 0;
-  }
-  50% {
-    transform: scale3d(1.1, 1.1, 1);
-  }
-  100% {
-    transform: scale3d(1, 1, 1);
-    opacity: 1;
-  }
-}
-
-.animate-score-reveal {
-  animation: scoreReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-/* Chart bar grow animation */
-@keyframes barGrow {
-  from {
-    transform: scaleY(0);
-    transform-origin: bottom;
-  }
-  to {
-    transform: scaleY(1);
-    transform-origin: bottom;
-  }
-}
-
-.animate-bar-grow {
-  animation: barGrow 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Counter animation */
-@keyframes countUp {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-.animate-count {
-  animation: countUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* ==========================================================================
-   NAVIGATION ANIMATIONS
-   ========================================================================== */
-
-/* Bottom nav icon bounce */
-@keyframes iconBounce {
-  0%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -3px, 0);
-  }
-}
-
-.nav-icon-active {
-  animation: iconBounce 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Tab indicator slide */
-.tab-indicator {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ==========================================================================
-   FORM ANIMATIONS
-   ========================================================================== */
-
-/* Input focus animation */
+/* Input focus transition */
 .input-animated {
-  transition: border-color 0.2s ease,
-              box-shadow 0.2s ease,
-              transform 0.15s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input-animated:focus {
-  transform: scale3d(1.01, 1.01, 1);
-}
-
-/* Radio/Checkbox selection animation */
+/* Checkbox checkmark draw */
 @keyframes checkmark {
   0% {
     stroke-dashoffset: 24;
   }
+
   100% {
     stroke-dashoffset: 0;
   }
 }
 
-.checkbox-animated:checked + label .checkmark {
+.checkbox-animated:checked+label .checkmark {
   stroke-dasharray: 24;
   animation: checkmark 0.3s ease forwards;
 }
 
-/* Radio card selection pulse */
-@keyframes selectionPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 8px rgba(79, 70, 229, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
-  }
-}
-
-.radio-card-animated:has(input:checked) {
-  animation: selectionPulse 0.4s ease;
-}
-
-/* ==========================================================================
-   TOAST/NOTIFICATION ANIMATIONS
-   ========================================================================== */
-
-@keyframes toastIn {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 100%, 0) scale3d(0.9, 0.9, 1);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
-  }
-}
-
-@keyframes toastOut {
-  from {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
-  }
-  to {
-    opacity: 0;
-    transform: translate3d(0, -20px, 0) scale3d(0.9, 0.9, 1);
-  }
-}
-
-.toast-enter {
-  animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.toast-exit {
-  animation: toastOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* ==========================================================================
-   SPECIAL EFFECTS
-   ========================================================================== */
-
-/* Glow effect for primary actions */
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(79, 70, 229, 0.3),
-                0 0 20px rgba(79, 70, 229, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(79, 70, 229, 0.5),
-                0 0 30px rgba(79, 70, 229, 0.3);
-  }
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-/* Success checkmark animation */
-@keyframes successPop {
-  0% {
-    transform: scale3d(0, 0, 1);
-  }
-  50% {
-    transform: scale3d(1.2, 1.2, 1);
-  }
-  100% {
-    transform: scale3d(1, 1, 1);
-  }
-}
-
-.animate-success-pop {
-  animation: successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+/* Tab indicator slide */
+.tab-indicator {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Shake animation for errors */
 @keyframes shake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate3d(0, 0, 0);
   }
-  10%, 30%, 50%, 70%, 90% {
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
     transform: translate3d(-4px, 0, 0);
   }
-  20%, 40%, 60%, 80% {
+
+  20%,
+  40%,
+  60%,
+  80% {
     transform: translate3d(4px, 0, 0);
   }
 }
 
 .animate-shake {
   animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-}
-
-/* ==========================================================================
-   SCROLL ANIMATIONS (Intersection Observer based)
-   ========================================================================== */
-
-.scroll-animate {
-  opacity: 0;
-  transform: translate3d(0, 30px, 0);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.scroll-animate.is-visible {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
 }
 
 /* ==========================================================================
@@ -509,10 +233,9 @@
 }
 
 /* ==========================================================================
-   IMPROVED TOUCH FEEDBACK
+   TOUCH FEEDBACK
    ========================================================================== */
 
-/* Optimized tap highlight */
 .tap-highlight {
   -webkit-tap-highlight-color: rgba(79, 70, 229, 0.1);
   transition: background-color 0.15s ease;
@@ -522,7 +245,6 @@
   background-color: rgba(79, 70, 229, 0.08);
 }
 
-/* No tap delay on mobile */
 .touch-action-manipulation {
   touch-action: manipulation;
 }

@@ -154,7 +154,6 @@
           font-size: 14px;
           font-weight: 500;
           z-index: 9998;
-          transition: opacity 0.3s, transform 0.3s;
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         `;
         document.body.appendChild(indicator);
@@ -164,20 +163,16 @@
         indicator.textContent = '✓ Back online';
         indicator.style.background = '#22c55e';
         indicator.style.color = 'white';
-        indicator.style.opacity = '1';
-        indicator.style.transform = 'translateX(-50%) translateY(0)';
 
         // Hide after 3 seconds
         setTimeout(() => {
-          indicator.style.opacity = '0';
-          indicator.style.transform = 'translateX(-50%) translateY(10px)';
+          indicator.style.display = 'none';
         }, 3000);
       } else {
         indicator.textContent = '📴 Offline - data will sync when online';
         indicator.style.background = '#f59e0b';
         indicator.style.color = 'white';
-        indicator.style.opacity = '1';
-        indicator.style.transform = 'translateX(-50%) translateY(0)';
+        indicator.style.display = '';
       }
     },
 
@@ -608,31 +603,15 @@
         font-weight: 500;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         z-index: 9999;
-        animation: slideUp 0.3s ease;
       `;
 
       document.body.appendChild(message);
 
       setTimeout(() => {
-        message.style.animation = 'slideDown 0.3s ease';
-        setTimeout(() => message.remove(), 300);
+        message.remove();
       }, 3000);
     }
   };
-
-  // Add animations
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideUp {
-      from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-      to { transform: translateX(-50%) translateY(0); opacity: 1; }
-    }
-    @keyframes slideDown {
-      from { transform: translateX(-50%) translateY(0); opacity: 1; }
-      to { transform: translateX(-50%) translateY(20px); opacity: 0; }
-    }
-  `;
-  document.head.appendChild(style);
 
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {

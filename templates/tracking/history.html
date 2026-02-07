@@ -3,7 +3,7 @@
 {% block title %}History - CSU Tracker{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6 max-w-md mx-auto animate-fade-in-up">
+<div class="px-4 py-6 max-w-md mx-auto">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -19,7 +19,7 @@
     
     <!-- Stats Summary -->
     <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 card-lift">
-        <div class="grid grid-cols-3 gap-4 text-center stagger-animation stagger-fast">
+        <div class="grid grid-cols-3 gap-4 text-center">
             <div>
                 <div class="text-2xl font-bold text-indigo-600" data-count="{{ entries|length }}" data-duration="600">{{ entries|length }}</div>
                 <div class="text-xs text-gray-500">Entries</div>
@@ -40,7 +40,7 @@
     </div>
     
     <!-- Calendar View -->
-    <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 card-lift scroll-animate">
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-6 card-lift">
         <h3 class="font-semibold text-gray-900 mb-4">Daily Scores</h3>
         
         <div class="grid grid-cols-7 gap-1">
@@ -55,7 +55,7 @@
             <a href="{% url 'tracking:log_entry_date' day.date|date:'Y-m-d' %}" 
                class="aspect-square rounded-lg flex items-center justify-center text-xs font-medium text-white score-{{ day.entry.score }} btn-press transition-all duration-200 hover:scale-110 hover:shadow-lg"
                title="{{ day.date|date:'M j' }}: Score {{ day.entry.score }}"
-               style="animation: fadeInScale 0.3s ease forwards; animation-delay: {{ forloop.counter|divisibleby:7 }}0ms;">
+>
                 {{ day.entry.score }}
             </a>
             {% elif day.date <= today %}
@@ -86,11 +86,11 @@
     </div>
     
     <!-- Entry List -->
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden scroll-animate" style="animation-delay: 0.2s;">
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
         <h3 class="font-semibold text-gray-900 p-4 border-b">Recent Entries</h3>
         
         {% if entries %}
-        <div class="divide-y stagger-animation">
+        <div class="divide-y">
             {% for entry in entries %}
             <a href="{% url 'tracking:log_entry_date' entry.date|date:'Y-m-d' %}" class="flex items-center justify-between p-4 tap-highlight transition-all duration-200 hover:bg-gray-50 group">
                 <div class="flex items-center">

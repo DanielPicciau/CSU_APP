@@ -5,6 +5,498 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/score-selector.css' %}">
+<style>
+    /* ── Home screen refinements ── */
+    .home-greeting {
+        padding: var(--space-2) 0 var(--space-5);
+    }
+    .home-greeting__date {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        font-weight: var(--font-medium);
+    }
+    .home-greeting__date svg { color: var(--text-brand); flex-shrink: 0; }
+    .home-greeting__title {
+        font-size: var(--text-2xl);
+        font-weight: var(--font-bold);
+        color: var(--text-primary);
+        margin: var(--space-2) 0 0;
+        line-height: var(--leading-tight);
+    }
+
+    /* ── Hero today card ── */
+    .hero-card {
+        background: var(--surface-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-2xl);
+        overflow: hidden;
+        margin-bottom: var(--space-6);
+    }
+    .hero-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-3) var(--space-5);
+    }
+    .hero-card__tag {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1-5);
+        font-size: var(--text-xs);
+        font-weight: var(--font-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: var(--space-1) var(--space-3);
+        border-radius: var(--radius-full);
+    }
+    .hero-card__tag--logged {
+        background: var(--color-success-50);
+        color: var(--color-success-600);
+    }
+    .hero-card__tag--pending {
+        background: var(--color-warning-50);
+        color: var(--color-warning-600);
+    }
+    .hero-card__date-label {
+        font-size: var(--text-sm);
+        font-weight: var(--font-medium);
+        color: var(--text-tertiary);
+    }
+
+    /* Score display */
+    .hero-score {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-6) var(--space-5) var(--space-5);
+    }
+    .hero-score__ring {
+        position: relative;
+        width: 140px;
+        height: 140px;
+        margin-bottom: var(--space-5);
+    }
+    .hero-score__ring svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+    .hero-score__ring-track {
+        fill: none;
+        stroke: var(--bg-tertiary);
+        stroke-width: 10;
+    }
+    .hero-score__ring-progress {
+        fill: none;
+        stroke-width: 10;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.6s ease, stroke 0.3s ease;
+    }
+    .hero-score__value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .hero-score__number {
+        font-family: var(--font-display);
+        font-size: 3rem;
+        font-weight: var(--font-bold);
+        line-height: 1;
+    }
+    .hero-score__of {
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+        margin-top: var(--space-1);
+    }
+    .hero-score__title {
+        font-size: var(--text-base);
+        font-weight: var(--font-semibold);
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .hero-score__breakdown {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        margin-top: var(--space-3);
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+    }
+    .hero-score__breakdown-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1-5);
+    }
+    .hero-score__breakdown-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: var(--radius-full);
+        flex-shrink: 0;
+    }
+    .hero-score__meta {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1-5);
+        font-size: var(--text-xs);
+        color: var(--text-secondary);
+        margin-top: var(--space-3);
+        padding: var(--space-1-5) var(--space-3);
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-full);
+    }
+    .hero-score__meta svg { flex-shrink: 0; }
+    .hero-score__note {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        text-align: left;
+        width: 100%;
+        padding: var(--space-3) var(--space-4);
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-lg);
+        margin-top: var(--space-3);
+        line-height: var(--leading-relaxed);
+    }
+    .hero-score__updated {
+        font-size: var(--text-xs);
+        color: var(--text-tertiary);
+        margin-top: var(--space-3);
+    }
+
+    /* Empty state */
+    .hero-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-8) var(--space-5) var(--space-6);
+    }
+    .hero-empty__illustration {
+        width: 96px;
+        height: 96px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-brand-subtle);
+        border-radius: var(--radius-full);
+        margin-bottom: var(--space-5);
+    }
+    .hero-empty__illustration svg {
+        width: 48px;
+        height: 48px;
+        color: var(--text-brand);
+    }
+    .hero-empty__title {
+        font-size: var(--text-lg);
+        font-weight: var(--font-semibold);
+        color: var(--text-primary);
+        margin: 0 0 var(--space-1);
+    }
+    .hero-empty__text {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* Footer actions */
+    .hero-card__footer {
+        padding: var(--space-4) var(--space-5);
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    /* ── Quick log section ── */
+    .quick-log-section {
+        background: var(--surface-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-2xl);
+        overflow: hidden;
+        margin-bottom: var(--space-6);
+    }
+    .quick-log-section__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-4) var(--space-5);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+    .quick-log-section__title {
+        font-size: var(--text-base);
+        font-weight: var(--font-semibold);
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    .quick-log-section__title svg { color: var(--text-brand); }
+    .quick-log-section__badge {
+        font-size: var(--text-xs);
+        font-weight: var(--font-medium);
+        color: var(--text-brand);
+        background: var(--bg-brand-subtle);
+        padding: var(--space-0-5) var(--space-2);
+        border-radius: var(--radius-full);
+    }
+    .quick-log-section__body {
+        padding: var(--space-5);
+    }
+
+    /* ── Week chart ── */
+    .week-section {
+        background: var(--surface-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-2xl);
+        overflow: hidden;
+        margin-bottom: var(--space-5);
+    }
+    .week-section__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-4) var(--space-5);
+    }
+    .week-section__title {
+        font-size: var(--text-base);
+        font-weight: var(--font-semibold);
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .week-section__uas7 {
+        text-align: right;
+    }
+    .week-section__uas7-value {
+        font-size: var(--text-2xl);
+        font-weight: var(--font-bold);
+        line-height: 1;
+    }
+    .week-section__uas7-label {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        font-weight: var(--font-medium);
+    }
+    .week-chart {
+        padding: var(--space-3) var(--space-5) var(--space-5);
+    }
+    .week-chart__bars {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: var(--space-2);
+        height: 120px;
+    }
+    .week-chart__col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+    }
+    .week-chart__bar-wrap {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    .week-chart__bar {
+        width: 100%;
+        max-width: 32px;
+        border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm);
+        transition: height 0.4s ease;
+    }
+    .week-chart__bar--empty {
+        height: 6px;
+        background: var(--border-default);
+        border-radius: var(--radius-sm);
+        width: 60%;
+        max-width: 20px;
+    }
+    .week-chart__bar--future {
+        height: 4px;
+        background: var(--border-default);
+        border-radius: var(--radius-sm);
+        width: 60%;
+        max-width: 20px;
+        opacity: 0.3;
+    }
+    .week-chart__label {
+        font-size: 11px;
+        font-weight: var(--font-medium);
+        color: var(--text-tertiary);
+        margin-top: var(--space-2);
+        text-align: center;
+    }
+    .week-chart__label--today {
+        color: var(--text-brand);
+        font-weight: var(--font-bold);
+    }
+    .week-chart__label--future {
+        opacity: 0.4;
+    }
+    .week-chart__score-tip {
+        font-size: 10px;
+        font-weight: var(--font-bold);
+        color: var(--text-secondary);
+        margin-bottom: var(--space-1);
+        line-height: 1;
+    }
+    .week-chart__severity {
+        font-size: var(--text-xs);
+        text-align: center;
+        padding: var(--space-3) var(--space-4);
+        margin: var(--space-3) var(--space-5) var(--space-4);
+        border-radius: var(--radius-lg);
+        font-weight: var(--font-medium);
+    }
+    .week-chart__severity--good {
+        background: var(--color-success-50);
+        color: var(--color-success-600);
+    }
+    .week-chart__severity--mild {
+        background: var(--color-warning-50);
+        color: var(--color-warning-600);
+    }
+    .week-chart__severity--moderate {
+        background: color-mix(in srgb, var(--color-score-4) 12%, transparent);
+        color: var(--color-score-4);
+    }
+    .week-chart__severity--severe {
+        background: var(--color-error-50);
+        color: var(--color-error-600);
+    }
+    .week-chart__severity--incomplete {
+        background: var(--bg-tertiary);
+        color: var(--text-tertiary);
+    }
+
+    /* ── Stats row ── */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-3);
+        margin-bottom: var(--space-5);
+    }
+    .stat-card {
+        background: var(--surface-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-xl);
+        padding: var(--space-4) var(--space-4) var(--space-3);
+        text-decoration: none;
+        transition: var(--transition-all);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .stat-card:hover {
+        border-color: var(--border-strong);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    .stat-card:active {
+        transform: translateY(0);
+    }
+    .stat-card__icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-3);
+    }
+    .stat-card__icon--brand {
+        background: var(--bg-brand-subtle);
+        color: var(--text-brand);
+    }
+    .stat-card__icon--teal {
+        background: var(--color-secondary-50);
+        color: var(--color-secondary-600);
+    }
+    .stat-card__number {
+        font-size: var(--text-3xl);
+        font-weight: var(--font-bold);
+        line-height: 1;
+    }
+    .stat-card__label {
+        font-size: var(--text-xs);
+        color: var(--text-secondary);
+        margin-top: var(--space-1-5);
+        line-height: var(--leading-snug);
+    }
+
+    /* ── Reminder CTA ── */
+    .reminder-cta {
+        background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
+        border-radius: var(--radius-2xl);
+        padding: var(--space-5);
+        margin-bottom: var(--space-5);
+        overflow: hidden;
+        position: relative;
+    }
+    .reminder-cta::before {
+        content: '';
+        position: absolute;
+        top: -30%;
+        right: -10%;
+        width: 140px;
+        height: 140px;
+        background: rgba(255,255,255,0.08);
+        border-radius: var(--radius-full);
+    }
+    .reminder-cta__inner {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        position: relative;
+        z-index: 1;
+    }
+    .reminder-cta__icon {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.15);
+        border-radius: var(--radius-lg);
+        flex-shrink: 0;
+    }
+    .reminder-cta__icon svg { color: white; }
+    .reminder-cta__title {
+        font-weight: var(--font-semibold);
+        color: white;
+        margin: 0 0 var(--space-1);
+        font-size: var(--text-base);
+    }
+    .reminder-cta__text {
+        font-size: var(--text-sm);
+        color: rgba(255,255,255,0.8);
+        margin: 0 0 var(--space-3);
+        line-height: var(--leading-relaxed);
+    }
+    .reminder-cta__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1-5);
+        font-size: var(--text-sm);
+        font-weight: var(--font-semibold);
+        color: var(--color-primary-700);
+        background: white;
+        padding: var(--space-2) var(--space-4);
+        border-radius: var(--radius-lg);
+        text-decoration: none;
+        transition: var(--transition-all);
+    }
+    .reminder-cta__btn:hover {
+        background: var(--color-neutral-100);
+        transform: translateY(-1px);
+    }
+</style>
 {% endblock %}
 
 {% block header_title %}
@@ -24,90 +516,94 @@
 <div class="app-content">
     
     <!-- Date & Greeting -->
-    <div class="mb-5 fade-in">
-        <p class="text-sm text-secondary">{{ today|date:"l, F j, Y" }}</p>
-        <h1 class="text-2xl font-bold text-primary mt-1">
+    <div class="home-greeting">
+        <p class="home-greeting__date">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {{ today|date:"l, F j, Y" }}
+        </p>
+        <h1 class="home-greeting__title">
             {% now "H" as current_hour %}
-            {% if current_hour|add:0 < 12 %}
-            Good morning{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %}!
-            {% elif current_hour|add:0 < 17 %}
-            Good afternoon{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %}!
-            {% else %}
-            Good evening{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %}!
+            {% if current_hour|add:0 < 12 %}Good morning{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %} ☀️
+            {% elif current_hour|add:0 < 17 %}Good afternoon{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %} 👋
+            {% else %}Good evening{% if user.profile.display_name %}, {{ user.profile.display_name }}{% endif %} 🌙
             {% endif %}
         </h1>
     </div>
     
     <!-- Today's Entry Card -->
-    <div class="today-card fade-in mb-5" id="today-card" data-has-entry="{{ today_entry|yesno:'true,false' }}">
-        <div class="today-card__header">
-            <span class="today-card__date">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: -2px; margin-right: 4px;">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                    <line x1="16" y1="2" x2="16" y2="6"/>
-                    <line x1="8" y1="2" x2="8" y2="6"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                Today
-            </span>
+    <div class="hero-card" id="today-card" data-has-entry="{{ today_entry|yesno:'true,false' }}">
+        <div class="hero-card__header">
+            <span class="hero-card__date-label">Today's Score</span>
             {% if today_entry %}
-            <span class="today-card__status today-card__status--logged">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
+            <span class="hero-card__tag hero-card__tag--logged">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
                 Logged
             </span>
             {% else %}
-            <span class="today-card__status today-card__status--pending">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
+            <span class="hero-card__tag hero-card__tag--pending">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>
                 Pending
             </span>
             {% endif %}
         </div>
         
-        <div class="today-card__body">
-            {% if today_entry %}
-            <!-- Entry Exists - Show Score -->
-            <div class="today-card__score-display" id="score-display">
-                <div class="today-card__score-ring" id="score-ring" style="--score-color: var(--color-score-{{ today_entry.score }});">
-                    <span class="today-card__score-number" id="score-number">{{ today_entry.score }}</span>
+        {% if today_entry %}
+        <!-- Entry Exists - Show Score Ring -->
+        <div class="hero-score" id="score-display">
+            <div class="hero-score__ring" id="score-ring">
+                <svg viewBox="0 0 140 140">
+                    <circle class="hero-score__ring-track" cx="70" cy="70" r="60"/>
+                    <circle class="hero-score__ring-progress"
+                        cx="70" cy="70" r="60"
+                        stroke="var(--color-score-{{ today_entry.score }})"
+                        style="stroke-dasharray: {% widthratio today_entry.score 6 377 %} 377;"
+                    />
+                </svg>
+                <div class="hero-score__value">
+                    <span class="hero-score__number" id="score-number" style="color: var(--color-score-{{ today_entry.score }});">{{ today_entry.score }}</span>
+                    <span class="hero-score__of">of 6</span>
                 </div>
-                <h2 class="today-card__score-label">Today's UAS Score</h2>
-                <p class="today-card__score-detail">
-                    Itch: {{ today_entry.itch_score }}/3 &nbsp;•&nbsp; Hives: {{ today_entry.hive_count_score }}/3
-                </p>
-                
-                {% if today_entry.took_antihistamine %}
-                <p class="mt-3">
-                    <span class="inline-flex items-center gap-1 text-sm text-secondary px-3 py-1 rounded-full" style="background: var(--bg-tertiary);">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                        Took antihistamine
-                    </span>
-                </p>
-                {% endif %}
-                
-                {% if today_entry.notes %}
-                <p class="mt-3 text-sm text-secondary text-left px-4 py-3 rounded-lg" style="background: var(--bg-tertiary);">
-                    {{ today_entry.notes|truncatewords:30 }}
-                </p>
-                {% endif %}
-                
-                <p class="today-card__updated">
-                    Last updated {{ today_entry.updated_at|timesince }} ago
-                </p>
             </div>
-            {% else %}
-            <!-- No Entry - Show CTA -->
-            <div class="today-card__empty" id="empty-state">
-                <svg class="today-card__empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <h2 class="hero-score__title">Today's UAS Score</h2>
+            <div class="hero-score__breakdown">
+                <span class="hero-score__breakdown-item">
+                    <span class="hero-score__breakdown-dot" style="background: var(--color-score-{% widthratio today_entry.hive_count_score 3 6 %});"></span>
+                    Hives {{ today_entry.hive_count_score }}/3
+                </span>
+                <span class="hero-score__breakdown-item">
+                    <span class="hero-score__breakdown-dot" style="background: var(--color-score-{% widthratio today_entry.itch_score 3 6 %});"></span>
+                    Itch {{ today_entry.itch_score }}/3
+                </span>
+            </div>
+            
+            {% if today_entry.took_antihistamine %}
+            <span class="hero-score__meta">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Took antihistamine
+            </span>
+            {% endif %}
+            
+            {% if today_entry.notes %}
+            <p class="hero-score__note">{{ today_entry.notes|truncatewords:30 }}</p>
+            {% endif %}
+            
+            <p class="hero-score__updated">
+                Updated {{ today_entry.updated_at|timesince }} ago
+            </p>
+        </div>
+        {% else %}
+        <!-- No Entry - Inviting Empty State -->
+        <div class="hero-empty" id="empty-state">
+            <div class="hero-empty__illustration">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                     <line x1="16" y1="2" x2="16" y2="6"/>
                     <line x1="8" y1="2" x2="8" y2="6"/>
@@ -115,13 +611,13 @@
                     <line x1="12" y1="14" x2="12" y2="18"/>
                     <line x1="10" y1="16" x2="14" y2="16"/>
                 </svg>
-                <h2 class="today-card__empty-title">No entry yet</h2>
-                <p class="today-card__empty-text">How are your symptoms today?</p>
             </div>
-            {% endif %}
+            <h2 class="hero-empty__title">No entry yet</h2>
+            <p class="hero-empty__text">How are your symptoms today?</p>
         </div>
+        {% endif %}
         
-        <div class="today-card__footer">
+        <div class="hero-card__footer">
             {% if today_entry %}
             <a href="{% url 'tracking:log_entry' %}" class="btn btn--secondary btn--full">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -144,12 +640,17 @@
     
     <!-- Quick Log (if no entry) -->
     {% if not today_entry %}
-    <div class="card mb-5 slide-up" style="animation-delay: 0.1s;" id="quick-log-card">
-        <div class="card__header">
-            <h3 class="card__title">Quick Log</h3>
-            <span class="text-sm text-secondary">~5 seconds</span>
+    <div class="quick-log-section" id="quick-log-card">
+        <div class="quick-log-section__header">
+            <h3 class="quick-log-section__title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                Quick Log
+            </h3>
+            <span class="quick-log-section__badge">~5 seconds</span>
         </div>
-        <div class="card__body">
+        <div class="quick-log-section__body">
             <form id="quick-log-form" method="post" action="{% url 'tracking:log_entry' %}">
                 {% csrf_token %}
                 <input type="hidden" name="structured_quick_mode" value="1">
@@ -262,107 +763,101 @@
     {% endif %}
     
     <!-- Week Overview -->
-    <div class="card mb-5 slide-up" style="animation-delay: 0.2s;">
-        <div class="card__header">
-            <h3 class="card__title">This Week</h3>
-            <div class="text-right">
-                <span class="text-2xl font-bold {% if uas7_complete %}text-brand{% else %}text-tertiary{% endif %}">
-                    {{ uas7_score }}
-                </span>
-                <span class="text-xs text-secondary block">UAS7{% if not uas7_complete %}*{% endif %}</span>
+    <div class="week-section">
+        <div class="week-section__header">
+            <h3 class="week-section__title">This Week</h3>
+            <div class="week-section__uas7">
+                <div class="week-section__uas7-value {% if uas7_complete %}text-brand{% else %}text-tertiary{% endif %}">{{ uas7_score }}</div>
+                <div class="week-section__uas7-label">UAS7{% if not uas7_complete %} (partial){% endif %}</div>
             </div>
         </div>
-        <div class="card__body">
-            <!-- Weekly Chart -->
-            <div class="flex justify-between items-end gap-1" style="height: 80px;" role="img" aria-label="Weekly score chart">
+        <div class="week-chart">
+            <div class="week-chart__bars" role="img" aria-label="Weekly score chart">
                 {% for day in chart_data %}
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full flex flex-col justify-end" style="height: 56px;">
+                <div class="week-chart__col">
+                    <div class="week-chart__bar-wrap">
                         {% if day.is_future %}
-                        <div 
-                            class="w-full rounded"
-                            style="height: 4px; background: var(--border-default); opacity: 0.35;"
+                        <div class="week-chart__bar--future"
                             title="{{ day.date|date:'M j' }}: Upcoming"
-                            role="img"
-                            aria-label="{{ day.date|date:'l' }}: Upcoming"
-                        ></div>
+                            aria-label="{{ day.date|date:'l' }}: Upcoming"></div>
                         {% elif day.has_entry %}
-                        <div 
-                            class="w-full rounded-t-md"
-                            style="height: {{ day.score|add:1 }}0px; min-height: 6px; background-color: var(--color-score-{{ day.score }});"
+                        <span class="week-chart__score-tip">{{ day.score }}</span>
+                        <div class="week-chart__bar"
+                            style="height: {% widthratio day.score 6 90 %}px; min-height: 8px; background-color: var(--color-score-{{ day.score }});"
                             title="{{ day.date|date:'M j' }}: Score {{ day.score }}"
-                            role="img"
-                            aria-label="{{ day.date|date:'l' }}: Score {{ day.score }}"
-                        ></div>
+                            aria-label="{{ day.date|date:'l' }}: Score {{ day.score }}"></div>
                         {% else %}
-                        <div 
-                            class="w-full rounded"
-                            style="height: 4px; background: var(--border-default);"
+                        <div class="week-chart__bar--empty"
                             title="{{ day.date|date:'M j' }}: No entry"
-                            role="img"
-                            aria-label="{{ day.date|date:'l' }}: No entry"
-                        ></div>
+                            aria-label="{{ day.date|date:'l' }}: No entry"></div>
                         {% endif %}
                     </div>
-                    <span class="text-xs {% if day.date == today %}text-brand font-semibold{% elif day.is_future %}text-tertiary{% else %}text-tertiary{% endif %} mt-2" {% if day.is_future %}style="opacity: 0.5;"{% endif %}>
+                    <span class="week-chart__label {% if day.date == today %}week-chart__label--today{% elif day.is_future %}week-chart__label--future{% endif %}">
                         {{ day.date|date:"D" }}
                     </span>
                 </div>
                 {% endfor %}
             </div>
-            
-            {% if not uas7_complete %}
-            <p class="text-xs text-tertiary mt-4 text-center">
-                *Log all 7 days for complete UAS7 score
-            </p>
-            {% else %}
-            <p class="text-xs text-center mt-4" style="color: {% if uas7_score <= 6 %}var(--color-score-0){% elif uas7_score <= 15 %}var(--color-score-2){% elif uas7_score <= 27 %}var(--color-score-4){% else %}var(--color-score-6){% endif %};">
-                {% if uas7_score <= 6 %}✓ Well controlled
-                {% elif uas7_score <= 15 %}Mild activity
-                {% elif uas7_score <= 27 %}Moderate activity
-                {% else %}Severe activity - consider consulting your doctor
-                {% endif %}
-            </p>
+        </div>
+        {% if uas7_complete %}
+        <div class="week-chart__severity {% if uas7_score <= 6 %}week-chart__severity--good{% elif uas7_score <= 15 %}week-chart__severity--mild{% elif uas7_score <= 27 %}week-chart__severity--moderate{% else %}week-chart__severity--severe{% endif %}">
+            {% if uas7_score <= 6 %}✓ Well controlled
+            {% elif uas7_score <= 15 %}Mild activity
+            {% elif uas7_score <= 27 %}Moderate activity
+            {% else %}Severe activity — consider consulting your doctor
             {% endif %}
         </div>
+        {% else %}
+        <div class="week-chart__severity week-chart__severity--incomplete">
+            Log all 7 days for your complete UAS7 score
+        </div>
+        {% endif %}
     </div>
     
     <!-- Stats Row -->
-    <div class="grid grid-cols-2 gap-4 mb-5 slide-up" style="animation-delay: 0.3s;">
-        <a href="{% url 'tracking:insights' %}" class="card card--interactive">
-            <div class="card__body card__body--compact text-center">
-                <div class="text-3xl font-bold text-brand">{{ logged_in_30_days }}</div>
-                <div class="text-sm text-secondary mt-1">
-                    of last 30 days logged
-                </div>
+    <div class="stats-grid">
+        <a href="{% url 'tracking:insights' %}" class="stat-card">
+            <div class="stat-card__icon stat-card__icon--brand">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
             </div>
+            <div class="stat-card__number text-brand">{{ logged_in_30_days }}</div>
+            <div class="stat-card__label">of last 30 days logged</div>
         </a>
-        <a href="{% url 'tracking:history' %}" class="card card--interactive">
-            <div class="card__body card__body--compact text-center">
-                <div class="text-3xl font-bold text-primary">{{ total_entries|default:0 }}</div>
-                <div class="text-sm text-secondary mt-1">Total Entries</div>
+        <a href="{% url 'tracking:history' %}" class="stat-card">
+            <div class="stat-card__icon stat-card__icon--teal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 8v4l3 3"/>
+                    <circle cx="12" cy="12" r="9"/>
+                </svg>
             </div>
+            <div class="stat-card__number text-primary">{{ total_entries|default:0 }}</div>
+            <div class="stat-card__label">Total Entries</div>
         </a>
     </div>
     
     <!-- Reminder CTA - Only show if: 1) notifications not set up AND 2) no entry for today -->
     {% if not has_notification_setup and not today_entry %}
-    <div class="card slide-up" id="reminder-cta-card" style="animation-delay: 0.4s; background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));">
-        <div class="card__body">
-            <div class="flex items-start gap-3">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" style="flex-shrink: 0;">
+    <div class="reminder-cta" id="reminder-cta-card">
+        <div class="reminder-cta__inner">
+            <div class="reminder-cta__icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
-                <div>
-                    <h3 class="font-semibold text-inverse mb-1">Never forget to log</h3>
-                    <p class="text-sm mb-3" style="color: rgba(255,255,255,0.8);">
-                        Set up daily reminders to build your tracking habit.
-                    </p>
-                    <a href="{% url 'notifications:settings' %}" class="btn btn--secondary btn--sm">
-                        Enable Reminders
-                    </a>
-                </div>
+            </div>
+            <div>
+                <h3 class="reminder-cta__title">Never forget to log</h3>
+                <p class="reminder-cta__text">
+                    Set up daily reminders to build your tracking habit.
+                </p>
+                <a href="{% url 'notifications:settings' %}" class="reminder-cta__btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    </svg>
+                    Enable Reminders
+                </a>
             </div>
         </div>
     </div>

@@ -3,7 +3,7 @@
 {% block title %}Home - CSU Tracker{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6 max-w-md mx-auto animate-fade-in-up">
+<div class="px-4 py-6 max-w-md mx-auto">
     <!-- Greeting -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">
@@ -20,7 +20,7 @@
     <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 card-lift">
         {% if today_entry %}
         <div class="text-center">
-            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 score-{{ today_entry.score }} animate-score-reveal" style="animation-delay: 0.2s;">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 score-{{ today_entry.score }}">
                 <span class="text-3xl font-bold text-white" data-count="{{ today_entry.score }}" data-duration="600">{{ today_entry.score }}</span>
             </div>
             <h2 class="text-lg font-semibold text-gray-900">Today's Score</h2>
@@ -48,7 +48,7 @@
     </div>
     
     <!-- Week Overview -->
-    <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 card-lift scroll-animate">
+    <div class="bg-white rounded-2xl shadow-sm p-6 mb-6 card-lift">
         <div class="flex justify-between items-center mb-4">
             <h3 class="font-semibold text-gray-900">Last 7 Days</h3>
             <span class="text-sm text-gray-500">UAS7: <span class="font-bold {% if uas7_complete %}text-indigo-600{% else %}text-gray-400{% endif %}" data-count="{{ uas7_score }}" data-duration="800">{{ uas7_score }}</span>{% if not uas7_complete %}*{% endif %}</span>
@@ -60,7 +60,7 @@
             <div class="flex-1 flex flex-col items-center">
                 <div class="w-full flex flex-col justify-end h-16">
                     {% if day.has_entry %}
-                    <div class="w-full rounded-t score-{{ day.score }} chart-bar transition-all duration-500" style="height: {{ day.score|add:1 }}0px; min-height: 8px; transform-origin: bottom; animation-delay: {{ forloop.counter0 }}00ms;"></div>
+                    <div class="w-full rounded-t score-{{ day.score }} chart-bar transition-all duration-500" style="height: {{ day.score|add:1 }}0px; min-height: 8px; transform-origin: bottom;"></div>
                     {% else %}
                     <div class="w-full h-2 bg-gray-200 rounded transition-all duration-300"></div>
                     {% endif %}
@@ -76,9 +76,9 @@
     </div>
     
     <!-- Stats Cards -->
-    <div class="grid grid-cols-2 gap-4 mb-6 stagger-animation stagger-fast">
+    <div class="grid grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-xl shadow-sm p-4 text-center card-lift">
-            <div class="text-3xl font-bold text-indigo-600 animate-count" data-count="{{ streak }}" data-duration="500">{{ streak }}</div>
+            <div class=\"text-3xl font-bold text-indigo-600\" data-count=\"{{ streak }}\" data-duration=\"500\">{{ streak }}</div>
             <div class="text-sm text-gray-500 mt-1">Day Streak</div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-4 text-center card-lift">
@@ -90,7 +90,7 @@
     </div>
     
     <!-- Quick Actions -->
-    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white card-lift scroll-animate" style="animation-delay: 0.3s;">
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white card-lift">
         <h3 class="font-semibold mb-2">🔔 Stay on Track</h3>
         <p class="text-indigo-100 text-sm mb-4">Set up daily reminders to never miss logging your symptoms.</p>
         <a href="{% url 'notifications:settings' %}" class="inline-block bg-white text-indigo-600 py-2 px-4 rounded-lg font-semibold text-sm btn-press transition-all duration-200 hover:bg-indigo-50 hover:shadow-lg">

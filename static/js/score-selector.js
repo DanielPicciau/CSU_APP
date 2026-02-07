@@ -4,7 +4,7 @@
  * Interactive behaviors for premium score selection
  */
 
-(function() {
+(function () {
   'use strict';
 
   // Score color mapping (0-6 for daily, can extend to 42 for UAS7)
@@ -55,7 +55,7 @@
         min: 0,
         max: options.max || 6,
         value: options.value || 0,
-        onChange: options.onChange || (() => {}),
+        onChange: options.onChange || (() => { }),
         ...options
       };
 
@@ -110,8 +110,6 @@
       // Update value display
       if (this.valueDisplay) {
         this.valueDisplay.textContent = value;
-        this.valueDisplay.classList.add('score-animate');
-        setTimeout(() => this.valueDisplay.classList.remove('score-animate'), 200);
       }
 
       // Update description
@@ -168,7 +166,7 @@
       this.element = element;
       this.options = {
         value: options.value || 0,
-        onChange: options.onChange || (() => {}),
+        onChange: options.onChange || (() => { }),
         ...options
       };
 
@@ -205,8 +203,6 @@
 
       if (this.valueDisplay) {
         this.valueDisplay.textContent = value;
-        this.valueDisplay.classList.add('score-animate');
-        setTimeout(() => this.valueDisplay.classList.remove('score-animate'), 200);
       }
 
       if (this.labelDisplay) {
@@ -253,7 +249,7 @@
         min: 0,
         max: options.max || 6,
         value: options.value || 0,
-        onChange: options.onChange || (() => {}),
+        onChange: options.onChange || (() => { }),
         ...options
       };
 
@@ -332,10 +328,10 @@
       // Map angle to value (270 degrees = full scale)
       const maxAngle = 270;
       const startAngle = 135; // Start from bottom-left
-      
+
       let normalizedAngle = angle - startAngle;
       if (normalizedAngle < 0) normalizedAngle += 360;
-      
+
       const ratio = Math.min(Math.max(normalizedAngle / maxAngle, 0), 1);
       const newValue = Math.round(ratio * this.options.max);
 
@@ -400,8 +396,6 @@
       // Update value
       if (this.valueDisplay) {
         this.valueDisplay.textContent = this.value;
-        this.valueDisplay.classList.add('score-animate');
-        setTimeout(() => this.valueDisplay.classList.remove('score-animate'), 200);
       }
 
       // Update description
@@ -470,7 +464,7 @@
       this.options = {
         name: options.name || 'severity',
         value: options.value,
-        onChange: options.onChange || (() => {}),
+        onChange: options.onChange || (() => { }),
         ...options
       };
 

@@ -232,17 +232,13 @@
         .skeleton-header {
           height: 32px;
           width: 60%;
-          background: linear-gradient(90deg, var(--bg-tertiary, #e5e5e5) 25%, var(--bg-secondary, #f5f5f5) 50%, var(--bg-tertiary, #e5e5e5) 75%);
-          background-size: 200% 100%;
-          animation: skeleton-shimmer 1.5s infinite;
+          background: var(--bg-tertiary, #e5e5e5);
           border-radius: 8px;
           margin-bottom: 24px;
         }
         .skeleton-card {
           height: 180px;
-          background: linear-gradient(90deg, var(--bg-tertiary, #e5e5e5) 25%, var(--bg-secondary, #f5f5f5) 50%, var(--bg-tertiary, #e5e5e5) 75%);
-          background-size: 200% 100%;
-          animation: skeleton-shimmer 1.5s infinite;
+          background: var(--bg-tertiary, #e5e5e5);
           border-radius: 16px;
           margin-bottom: 16px;
         }
@@ -257,19 +253,12 @@
         }
         .skeleton-stat {
           height: 80px;
-          background: linear-gradient(90deg, var(--bg-tertiary, #e5e5e5) 25%, var(--bg-secondary, #f5f5f5) 50%, var(--bg-tertiary, #e5e5e5) 75%);
-          background-size: 200% 100%;
-          animation: skeleton-shimmer 1.5s infinite;
+          background: var(--bg-tertiary, #e5e5e5);
           border-radius: 12px;
-        }
-        @keyframes skeleton-shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
         }
         @media (prefers-color-scheme: dark) {
           .skeleton-header, .skeleton-card, .skeleton-stat {
-            background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
-            background-size: 200% 100%;
+            background: #1a1a1a;
           }
         }
       `;

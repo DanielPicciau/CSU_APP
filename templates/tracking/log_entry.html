@@ -3,7 +3,7 @@
 {% block title %}Log Entry - CSU Tracker{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6 max-w-md mx-auto animate-fade-in-up">
+<div class="px-4 py-6 max-w-md mx-auto">
     <!-- Header -->
     <div class="mb-6">
         <a href="{% url 'home' %}" class="inline-flex items-center text-gray-600 mb-2 btn-press transition-colors hover:text-indigo-600">
@@ -20,11 +20,11 @@
         </p>
     </div>
     
-    <form method="post" class="space-y-6 stagger-animation" id="log-form">
+    <form method="post" class="space-y-6" id="log-form">
         {% csrf_token %}
         
         <!-- Itch Score -->
-        <div class="scroll-animate">
+        <div class="">
             <label class="block text-lg font-semibold text-gray-900 mb-3">{{ form.itch_score.label }}</label>
             <div class="space-y-2">
                 {% for choice in form.itch_score %}
@@ -44,7 +44,7 @@
         </div>
         
         <!-- Hive Count Score -->
-        <div class="scroll-animate" style="animation-delay: 0.1s;">
+        <div class="">
             <label class="block text-lg font-semibold text-gray-900 mb-3">{{ form.hive_count_score.label }}</label>
             <div class="space-y-2">
                 {% for choice in form.hive_count_score %}
@@ -64,7 +64,7 @@
         </div>
         
         <!-- Antihistamine -->
-        <div class="bg-gray-50 rounded-xl p-4 scroll-animate transition-all duration-200 hover:bg-gray-100" style="animation-delay: 0.2s;">
+        <div class="bg-gray-50 rounded-xl p-4 transition-all duration-200 hover:bg-gray-100">
             <label class="flex items-center cursor-pointer">
                 {{ form.took_antihistamine }}
                 <span class="ml-3 font-medium text-gray-900">{{ form.took_antihistamine.label }}</span>
@@ -72,7 +72,7 @@
         </div>
         
         <!-- Notes -->
-        <div class="scroll-animate" style="animation-delay: 0.3s;">
+        <div class="">
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.notes.label }}</label>
             {{ form.notes }}
         </div>
@@ -84,7 +84,7 @@
     </form>
     
     {% if existing_entry %}
-    <div class="mt-4 text-center animate-fade-in-up" style="animation-delay: 0.4s;">
+    <div class="mt-4 text-center">
         <a href="{% url 'tracking:delete_entry' entry_date|date:'Y-m-d' %}" class="text-red-600 text-sm btn-press transition-colors hover:text-red-800">Delete this entry</a>
     </div>
     {% endif %}

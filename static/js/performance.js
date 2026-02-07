@@ -4,7 +4,7 @@
  * Handles lazy loading, smooth scrolling, animations, and optimized DOM updates
  */
 
-(function() {
+(function () {
   'use strict';
 
   // ==========================================================================
@@ -17,7 +17,7 @@
      */
     debounce(func, wait = 100) {
       let timeout;
-      return function(...args) {
+      return function (...args) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
       };
@@ -28,7 +28,7 @@
      */
     throttle(func, limit = 16) {
       let inThrottle;
-      return function(...args) {
+      return function (...args) {
         if (!inThrottle) {
           func.apply(this, args);
           inThrottle = true;
@@ -58,82 +58,17 @@
   };
 
   // ==========================================================================
-  // INTERSECTION OBSERVER FOR SCROLL ANIMATIONS
+  // INTERSECTION OBSERVER FOR SCROLL ANIMATIONS — REMOVED
+  // (All scroll-animate / fade-in / stagger animations stripped for perf)
   // ==========================================================================
 
-  const ScrollAnimations = {
-    observer: null,
-
-    init() {
-      if (!('IntersectionObserver' in window)) return;
-
-      this.observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              // Unobserve after animating (performance optimization)
-              this.observer.unobserve(entry.target);
-            }
-          });
-        },
-        {
-          threshold: 0.1,
-          rootMargin: '0px 0px -50px 0px'
-        }
-      );
-
-      // Observe all scroll-animate elements
-      document.querySelectorAll('.scroll-animate').forEach(el => {
-        this.observer.observe(el);
-      });
-    },
-
-    // Add new element to observe
-    observe(element) {
-      if (this.observer && element) {
-        this.observer.observe(element);
-      }
-    }
-  };
+  const ScrollAnimations = { init() { }, observe() { } };
 
   // ==========================================================================
-  // SMOOTH PAGE TRANSITIONS
+  // SMOOTH PAGE TRANSITIONS — REMOVED
   // ==========================================================================
 
-  const PageTransitions = {
-    init() {
-      // Apply entrance animation to main content
-      const mainContent = document.querySelector('main > .fade-in, main > div:first-child');
-      if (mainContent) {
-        mainContent.classList.add('animate-fade-in-up');
-      }
-
-      // Handle link clicks for smooth transitions
-      document.addEventListener('click', (e) => {
-        const link = e.target.closest('a[href^="/"]');
-        if (link && !link.hasAttribute('data-no-transition')) {
-          this.handleLinkClick(e, link);
-        }
-      });
-    },
-
-    handleLinkClick(e, link) {
-      // Skip for special keys or external links
-      if (e.ctrlKey || e.metaKey || e.shiftKey) return;
-      
-      const href = link.getAttribute('href');
-      if (!href || href.startsWith('#') || href.includes('://')) return;
-
-      // Add exit animation class
-      const content = document.querySelector('main');
-      if (content) {
-        content.style.opacity = '0.7';
-        content.style.transform = 'translateY(-10px)';
-        content.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
-      }
-    }
-  };
+  const PageTransitions = { init() { } };
 
   // ==========================================================================
   // OPTIMIZED TOUCH INTERACTIONS
@@ -143,10 +78,10 @@
     init() {
       // Passive event listeners for scroll performance
       this.setupPassiveScrolling();
-      
+
       // Optimized touch feedback
       this.setupTouchFeedback();
-      
+
       // Prevent 300ms tap delay
       this.setupFastClick();
     },
@@ -156,9 +91,9 @@
       const passiveSupported = this.checkPassiveSupport();
       const options = passiveSupported ? { passive: true } : false;
 
-      document.addEventListener('touchstart', () => {}, options);
-      document.addEventListener('touchmove', () => {}, options);
-      document.addEventListener('wheel', () => {}, options);
+      document.addEventListener('touchstart', () => { }, options);
+      document.addEventListener('touchmove', () => { }, options);
+      document.addEventListener('wheel', () => { }, options);
     },
 
     checkPassiveSupport() {
@@ -179,13 +114,13 @@
     },
 
     setupTouchFeedback() {
-      // Add touch feedback to interactive elements
+      // Add touch feedback to interactive elements (CSS touch-action only, no animation classes)
       const interactiveElements = document.querySelectorAll(
         'button, a, .radio-card, .btn, [role="button"]'
       );
 
       interactiveElements.forEach(el => {
-        el.classList.add('touch-action-manipulation', 'btn-press');
+        el.classList.add('touch-action-manipulation');
       });
     },
 
@@ -248,105 +183,22 @@
   };
 
   // ==========================================================================
-  // ANIMATED COUNTERS
+  // ANIMATED COUNTERS — REMOVED
   // ==========================================================================
 
-  const AnimatedCounters = {
-    init() {
-      document.querySelectorAll('[data-count]').forEach(el => {
-        this.animateCounter(el);
-      });
-    },
-
-    animateCounter(element) {
-      const target = parseInt(element.dataset.count, 10);
-      const duration = parseInt(element.dataset.duration, 10) || 1000;
-      const start = 0;
-      const startTime = performance.now();
-
-      const updateCounter = (currentTime) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Ease out cubic for smooth deceleration
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const current = Math.floor(start + (target - start) * eased);
-        
-        element.textContent = current;
-        
-        if (progress < 1) {
-          requestAnimationFrame(updateCounter);
-        } else {
-          element.textContent = target;
-        }
-      };
-
-      requestAnimationFrame(updateCounter);
-    }
-  };
+  const AnimatedCounters = { init() { } };
 
   // ==========================================================================
-  // CHART BAR ANIMATIONS
+  // CHART BAR ANIMATIONS — REMOVED
   // ==========================================================================
 
-  const ChartAnimations = {
-    init() {
-      const chartBars = document.querySelectorAll('.chart-bar, [data-chart-bar]');
-      if (chartBars.length === 0) return;
-
-      // Use Intersection Observer to trigger animation when visible
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-              // Stagger the animations
-              setTimeout(() => {
-                entry.target.classList.add('animate-bar-grow');
-                entry.target.style.transform = 'scaleY(1)';
-              }, index * 50);
-              observer.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.2 }
-      );
-
-      chartBars.forEach(bar => {
-        bar.style.transform = 'scaleY(0)';
-        bar.style.transformOrigin = 'bottom';
-        bar.style.transition = 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
-        observer.observe(bar);
-      });
-    }
-  };
+  const ChartAnimations = { init() { } };
 
   // ==========================================================================
-  // STAGGERED LIST ANIMATIONS
+  // STAGGERED LIST ANIMATIONS — REMOVED
   // ==========================================================================
 
-  const StaggeredLists = {
-    init() {
-      document.querySelectorAll('.stagger-animation').forEach(list => {
-        this.animateList(list);
-      });
-    },
-
-    animateList(list) {
-      const items = list.children;
-      Array.from(items).forEach((item, index) => {
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(20px)';
-        
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            item.style.transition = 'opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
-            item.style.opacity = '1';
-            item.style.transform = 'translateY(0)';
-          }, index * 50);
-        });
-      });
-    }
-  };
+  const StaggeredLists = { init() { } };
 
   // ==========================================================================
   // FORM ENHANCEMENTS
@@ -356,18 +208,16 @@
     init() {
       // Radio card animations
       this.setupRadioCards();
-      
+
       // Input focus animations
       this.setupInputAnimations();
-      
+
       // Form submission feedback
       this.setupFormSubmission();
     },
 
     setupRadioCards() {
       document.querySelectorAll('.radio-card').forEach(card => {
-        card.classList.add('radio-card-animated');
-        
         const input = card.querySelector('input[type="radio"]');
         if (input) {
           input.addEventListener('change', () => {
@@ -376,26 +226,16 @@
             parent.querySelectorAll('.radio-card').forEach(c => {
               c.classList.remove('selected');
             });
-            
+
             // Add to selected
             card.classList.add('selected');
-            
-            // Add pulse animation
-            card.style.animation = 'selectionPulse 0.4s ease';
-            setTimeout(() => {
-              card.style.animation = '';
-            }, 400);
           });
         }
       });
     },
 
     setupInputAnimations() {
-      document.querySelectorAll('input, textarea, select').forEach(input => {
-        if (!input.classList.contains('input-animated')) {
-          input.classList.add('input-animated');
-        }
-      });
+      // No-op: animation classes removed
     },
 
     setupFormSubmission() {
@@ -408,7 +248,7 @@
             submitBtn.innerHTML = '<span class="spinner spinner-sm"></span> Saving...';
             submitBtn.disabled = true;
             submitBtn.classList.add('opacity-75');
-            
+
             // Re-enable after a timeout (in case of error)
             setTimeout(() => {
               if (submitBtn.disabled) {
@@ -424,24 +264,10 @@
   };
 
   // ==========================================================================
-  // SCORE DISPLAY ANIMATIONS
+  // SCORE DISPLAY ANIMATIONS — REMOVED
   // ==========================================================================
 
-  const ScoreAnimations = {
-    init() {
-      // Animate score circles on page load
-      document.querySelectorAll('.score-circle, [data-score]').forEach((el, index) => {
-        el.style.opacity = '0';
-        el.style.transform = 'scale(0)';
-        
-        setTimeout(() => {
-          el.style.transition = 'opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-          el.style.opacity = '1';
-          el.style.transform = 'scale(1)';
-        }, 200 + (index * 100));
-      });
-    }
-  };
+  const ScoreAnimations = { init() { } };
 
   // ==========================================================================
   // PREFETCHING FOR FASTER NAVIGATION
@@ -509,50 +335,16 @@
   };
 
   // ==========================================================================
-  // MEMORY OPTIMIZATION
+  // MEMORY OPTIMIZATION — REMOVED (no animations to clean up)
   // ==========================================================================
 
-  const MemoryOptimization = {
-    init() {
-      // Clean up animations when they complete
-      document.addEventListener('animationend', (e) => {
-        if (e.target.classList.contains('animate-fade-in-up') ||
-            e.target.classList.contains('animate-fade-in-scale')) {
-          e.target.style.willChange = 'auto';
-        }
-      });
-
-      // Reduce animations when page is hidden
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-          document.body.classList.add('reduce-motion');
-        } else {
-          document.body.classList.remove('reduce-motion');
-        }
-      });
-    }
-  };
+  const MemoryOptimization = { init() { } };
 
   // ==========================================================================
-  // BOTTOM NAV ANIMATIONS
+  // BOTTOM NAV ANIMATIONS — REMOVED
   // ==========================================================================
 
-  const BottomNavAnimations = {
-    init() {
-      const navItems = document.querySelectorAll('nav a');
-      
-      navItems.forEach(item => {
-        item.addEventListener('click', function() {
-          // Add bounce animation to the icon
-          const icon = this.querySelector('svg');
-          if (icon) {
-            icon.classList.add('nav-icon-active');
-            setTimeout(() => icon.classList.remove('nav-icon-active'), 400);
-          }
-        });
-      });
-    }
-  };
+  const BottomNavAnimations = { init() { } };
 
   // ==========================================================================
   // INITIALIZE ALL MODULES
@@ -563,7 +355,7 @@
     TouchOptimizations.init();
     PageTransitions.init();
     BottomNavAnimations.init();
-    
+
     // Initialize after DOM is interactive
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initDOMDependentModules);
@@ -580,7 +372,7 @@
     StaggeredLists.init();
     SmoothScroll.init();
     MemoryOptimization.init();
-    
+
     // Initialize less critical features during idle time
     Performance.requestIdleCallback(() => {
       LazyLoading.init();

@@ -189,7 +189,7 @@
         {% if messages %}
         <div class="app-content">
             {% for message in messages %}
-            <div class="feedback-banner feedback-banner--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} fade-in" role="alert">
+            <div class="feedback-banner feedback-banner--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %}" role="alert">
                 {% if message.tags == 'error' %}
                 <svg class="feedback-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
@@ -334,12 +334,7 @@
                         navigator.vibrate(10);
                     }
                     
-                    // Fade out content immediately for perceived speed
-                    var main = document.querySelector('main');
-                    if (main) {
-                        main.style.opacity = '0.6';
-                        main.style.transition = 'opacity 0.1s ease';
-                    }
+
                 }
             }, { passive: true });
         })();

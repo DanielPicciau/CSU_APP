@@ -311,7 +311,7 @@
 <div class="app-content">
     
     <!-- Period Toggle -->
-    <div class="text-center mb-5 fade-in">
+    <div class="text-center mb-5">
         <div class="period-toggle">
             <a href="?period=7" class="period-toggle__btn {% if period == 7 %}period-toggle__btn--active{% endif %}">7 days</a>
             <a href="?period=30" class="period-toggle__btn {% if period == 30 %}period-toggle__btn--active{% endif %}">30 days</a>
@@ -320,14 +320,14 @@
     </div>
 
     {% if history_limited %}
-    <div class="history-limit-banner fade-in">
+    <div class="history-limit-banner">
         Free tier insights are limited to the last {{ history_limit_days }} days.
         <a href="{% url 'subscriptions:premium' %}" style="margin-left: 6px; font-weight: 600; text-decoration: underline;">Upgrade</a>
     </div>
     {% endif %}
     
     <!-- Adherence Card -->
-    <div class="insight-card fade-in">
+    <div class="insight-card">
         <div class="insight-card__header">
             <div>
                 <h2 class="insight-card__title">Tracking Adherence</h2>
@@ -378,7 +378,7 @@
     </div>
     
     <!-- Logging Stats Card -->
-    <div class="insight-card slide-up" style="animation-delay: 0.1s;">
+    <div class="insight-card">
         <div class="insight-card__header">
             <h2 class="insight-card__title">Your Logging</h2>
         </div>
@@ -396,7 +396,7 @@
     </div>
     
     <!-- Score Trend Chart -->
-    <div class="insight-card slide-up" style="animation-delay: 0.2s;">
+    <div class="insight-card">
         <div class="insight-card__header">
             <div>
                 <h2 class="insight-card__title">Score Trend</h2>
@@ -451,7 +451,7 @@
     </div>
     
     <!-- Averages Card -->
-    <div class="insight-card slide-up" style="animation-delay: 0.3s;">
+    <div class="insight-card">
         <div class="insight-card__header">
             <div>
                 <h2 class="insight-card__title">Score Averages</h2>
@@ -496,7 +496,7 @@
     </div>
     
     <!-- Weekly UAS7 Comparison -->
-    <div class="insight-card slide-up" style="animation-delay: 0.4s;">
+    <div class="insight-card">
         <div class="insight-card__header">
             <div>
                 <h2 class="insight-card__title">Weekly UAS7</h2>
@@ -527,7 +527,7 @@
     
     <!-- Antihistamine Stats -->
     {% if antihistamine_days > 0 %}
-    <div class="insight-card slide-up" style="animation-delay: 0.5s;">
+    <div class="insight-card">
         <div class="insight-card__header">
             <div>
                 <h2 class="insight-card__title">Antihistamine Usage</h2>
@@ -549,7 +549,7 @@
     {% endif %}
     
     <!-- Export Data Card - Enhanced for NHS -->
-    <div class="insight-card slide-up" style="animation-delay: 0.5s; background: linear-gradient(135deg, #005EB8 0%, #003087 100%); border: none;">
+    <div class="insight-card">
         <div class="insight-card__header" style="border: none;">
             <div>
                 <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; margin-bottom: 8px;">
@@ -605,27 +605,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/components.js' %}"></script>
-<script>
-// Animate progress ring on load
-document.addEventListener('DOMContentLoaded', function() {
-    const progressCircle = document.querySelector('.progress-ring__progress');
-    if (progressCircle) {
-        const offset = progressCircle.getAttribute('stroke-dashoffset');
-        progressCircle.style.strokeDashoffset = '327'; // Start at 0%
-        requestAnimationFrame(() => {
-            progressCircle.style.transition = 'stroke-dashoffset 1s ease-out';
-            progressCircle.style.strokeDashoffset = offset;
-        });
-    }
-    
-    // Animate bars
-    document.querySelectorAll('.average-bar__fill').forEach(bar => {
-        const width = bar.style.width;
-        bar.style.width = '0%';
-        requestAnimationFrame(() => {
-            bar.style.width = width;
-        });
-    });
-});
-</script>
+
 {% endblock %}

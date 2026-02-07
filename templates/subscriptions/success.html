@@ -20,12 +20,6 @@
     align-items: center;
     justify-content: center;
     margin: 0 auto var(--space-6);
-    animation: scaleIn 0.5s ease-out;
-}
-@keyframes scaleIn {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); opacity: 1; }
 }
 .success-icon svg {
     width: 40px;
@@ -113,21 +107,7 @@
     overflow: hidden;
 }
 .confetti-piece {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background: var(--color);
-    animation: confettiFall 3s ease-out forwards;
-}
-@keyframes confettiFall {
-    0% {
-        transform: translateY(-100vh) rotate(0deg);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(100vh) rotate(720deg);
-        opacity: 0;
-    }
+    display: none;
 }
 </style>
 {% endblock %}
@@ -137,7 +117,7 @@
 {% block content %}
 <div class="confetti" id="confetti"></div>
 
-<div class="page-content fade-in">
+<div class="page-content">
     <div class="success-container">
         <div class="success-icon">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,30 +161,5 @@
     </div>
 </div>
 
-<script>
-// Create confetti effect
-function createConfetti() {
-    const confettiContainer = document.getElementById('confetti');
-    const colors = ['#6366F1', '#8B5CF6', '#A855F7', '#22C55E', '#F59E0B', '#EC4899'];
-    
-    for (let i = 0; i < 50; i++) {
-        const piece = document.createElement('div');
-        piece.className = 'confetti-piece';
-        piece.style.setProperty('--color', colors[Math.floor(Math.random() * colors.length)]);
-        piece.style.left = Math.random() * 100 + '%';
-        piece.style.animationDelay = Math.random() * 2 + 's';
-        piece.style.width = Math.random() * 10 + 5 + 'px';
-        piece.style.height = Math.random() * 10 + 5 + 'px';
-        confettiContainer.appendChild(piece);
-    }
-    
-    // Remove confetti after animation
-    setTimeout(() => {
-        confettiContainer.innerHTML = '';
-    }, 5000);
-}
 
-// Run on page load
-createConfetti();
-</script>
 {% endblock %}
