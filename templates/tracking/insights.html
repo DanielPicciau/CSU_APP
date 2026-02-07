@@ -510,7 +510,8 @@
             </div>
         </div>
         
-        <div class="insight-card__body"> class="average-bars">
+        <div class="insight-card__body">
+            <div class="average-bars">
             <div class="average-bar">
                 <span class="average-bar__label">Total Score</span>
                 <div class="average-bar__track">
@@ -564,7 +565,8 @@
             </div>
         </div>
         
-        <div class="insight-card__body"> class="week-comparison">
+        <div class="insight-card__body">
+            <div class="week-comparison">
             {% for week in weekly_scores %}
             <div class="week-block {% if forloop.first %}week-block--current{% endif %}">
                 <div class="week-block__score" style="color: {% if week.uas7 <= 6 %}var(--color-score-0){% elif week.uas7 <= 15 %}var(--color-score-2){% elif week.uas7 <= 27 %}var(--color-score-4){% else %}var(--color-score-6){% endif %};">
