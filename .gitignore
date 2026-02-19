@@ -116,3 +116,6 @@ staticfiles/
 
 # Media files
 media/
+db.sqlite3
+*.pyc
+__pycache__/
