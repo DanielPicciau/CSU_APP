@@ -420,7 +420,7 @@ def handle_subscription_created(stripe_sub):
     customer_id = stripe_sub["customer"]
     
     try:
-        subscription = Subscription.objects.get(stripe_customer_id=customer_id)
+        subscription = Subscription.objects.select_related("user").get(stripe_customer_id=customer_id)
         update_subscription_from_stripe(subscription.user, stripe_sub)
         logger.info(
             "Subscription created for user_id=%s user_hash=%s",
@@ -436,7 +436,7 @@ def handle_subscription_updated(stripe_sub):
     subscription_id = stripe_sub["id"]
     
     try:
-        subscription = Subscription.objects.get(stripe_subscription_id=subscription_id)
+        subscription = Subscription.objects.select_related("user").get(stripe_subscription_id=subscription_id)
         update_subscription_from_stripe(subscription.user, stripe_sub)
         logger.info(
             "Subscription updated for user_id=%s user_hash=%s",
@@ -447,7 +447,7 @@ def handle_subscription_updated(stripe_sub):
         # Try by customer ID
         customer_id = stripe_sub["customer"]
         try:
-            subscription = Subscription.objects.get(stripe_customer_id=customer_id)
+            subscription = Subscription.objects.select_related("user").get(stripe_customer_id=customer_id)
             update_subscription_from_stripe(subscription.user, stripe_sub)
             logger.info(
                 "Subscription updated for user_id=%s user_hash=%s",
@@ -463,7 +463,7 @@ def handle_subscription_deleted(stripe_sub):
     subscription_id = stripe_sub["id"]
     
     try:
-        subscription = Subscription.objects.get(stripe_subscription_id=subscription_id)
+        subscription = Subscription.objects.select_related("user").get(stripe_subscription_id=subscription_id)
         subscription.status = SubscriptionStatus.CANCELED
         subscription.canceled_at = datetime.now()
         subscription.grace_period_end = None
@@ -491,7 +491,7 @@ def handle_payment_succeeded(invoice):
         return
     
     try:
-        subscription = Subscription.objects.get(stripe_subscription_id=subscription_id)
+        subscription = Subscription.objects.select_related("user").get(stripe_subscription_id=subscription_id)
         # Refresh subscription data from Stripe
         init_stripe()
         stripe_sub = stripe.Subscription.retrieve(subscription_id)
@@ -512,7 +512,7 @@ def handle_payment_failed(invoice):
         return
     
     try:
-        subscription = Subscription.objects.get(stripe_subscription_id=subscription_id)
+        subscription = Subscription.objects.select_related("user").get(stripe_subscription_id=subscription_id)
         # Refresh subscription data from Stripe
         init_stripe()
         stripe_sub = stripe.Subscription.retrieve(subscription_id)
