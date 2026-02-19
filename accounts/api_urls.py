@@ -14,4 +14,5 @@ urlpatterns = [
     path("entitlements/", api_views.EntitlementsAPIView.as_view(), name="entitlements"),
     path("profile/", api_views.ProfileUpdateAPIView.as_view(), name="profile"),
     path("password/change/", api_views.PasswordChangeAPIView.as_view(), name="password_change"),
+    path("injection/record/", api_views.RecordInjectionAPIView.as_view(), name="record_injection"),
 ]

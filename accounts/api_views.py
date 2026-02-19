@@ -20,6 +20,7 @@ from .serializers import (
     UserSerializer,
     PasswordChangeSerializer,
     ProfileUpdateSerializer,
+    RecordInjectionSerializer,
 )
 
 logger = logging.getLogger('security')
@@ -174,3 +175,27 @@ class EntitlementsAPIView(APIView):
         }
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+class RecordInjectionAPIView(APIView):
+    """Record the date of a biologic injection."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = RecordInjectionSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        if serializer.is_valid():
+            med = serializer.save()
+            next_date = med.next_injection_date
+            return Response(
+                {
+                    "message": "Injection date recorded.",
+                    "last_injection_date": str(med.last_injection_date),
+                    "next_injection_date": str(next_date) if next_date else None,
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -564,6 +564,139 @@
         background: var(--color-neutral-100);
         transform: translateY(-1px);
     }
+
+    /* ── Injection reminder banner ── */
+    .injection-banner {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-4) var(--space-5);
+        border-radius: var(--radius-xl);
+        margin-bottom: var(--space-5);
+    }
+    .injection-banner--due-soon {
+        background: var(--color-warning-50, #FFFBEB);
+        border: 1px solid var(--color-warning-200, #FDE68A);
+    }
+    .injection-banner--overdue {
+        background: var(--color-error-50, #FEF2F2);
+        border: 1px solid var(--color-error-200, #FECACA);
+    }
+    .injection-banner--today {
+        background: var(--color-success-50, #ECFDF5);
+        border: 1px solid var(--color-success-200, #A7F3D0);
+    }
+    .injection-banner__icon {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .injection-banner--due-soon .injection-banner__icon { background: var(--color-warning-100, #FEF3C7); color: var(--color-warning-600, #D97706); }
+    .injection-banner--overdue .injection-banner__icon { background: var(--color-error-100, #FEE2E2); color: var(--color-error-600, #DC2626); }
+    .injection-banner--today .injection-banner__icon { background: var(--color-success-100, #D1FAE5); color: var(--color-success-600, #059669); }
+    .injection-banner__body { flex: 1; min-width: 0; }
+    .injection-banner__title {
+        font-size: var(--text-sm);
+        font-weight: var(--font-semibold);
+        margin: 0 0 var(--space-0-5);
+    }
+    .injection-banner--due-soon .injection-banner__title { color: var(--color-warning-800, #92400E); }
+    .injection-banner--overdue .injection-banner__title { color: var(--color-error-800, #991B1B); }
+    .injection-banner--today .injection-banner__title { color: var(--color-success-800, #065F46); }
+    .injection-banner__text {
+        font-size: var(--text-xs);
+        margin: 0;
+    }
+    .injection-banner--due-soon .injection-banner__text { color: var(--color-warning-700, #B45309); }
+    .injection-banner--overdue .injection-banner__text { color: var(--color-error-700, #B91C1C); }
+    .injection-banner--today .injection-banner__text { color: var(--color-success-700, #047857); }
+    .injection-banner__action {
+        flex-shrink: 0;
+    }
+    .injection-banner__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-1);
+        font-size: var(--text-xs);
+        font-weight: var(--font-semibold);
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-lg);
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: var(--transition-all);
+    }
+    .injection-banner--due-soon .injection-banner__btn { background: var(--color-warning-600, #D97706); color: white; }
+    .injection-banner--overdue .injection-banner__btn { background: var(--color-error-600, #DC2626); color: white; }
+    .injection-banner--today .injection-banner__btn { background: var(--color-success-600, #059669); color: white; }
+    .injection-banner__btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* Injection modal */
+    .injection-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+    }
+    .injection-modal-overlay.active { display: flex; }
+    .injection-modal {
+        background: var(--surface-primary, #fff);
+        border-radius: var(--radius-2xl);
+        padding: var(--space-6);
+        width: 90%;
+        max-width: 360px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .injection-modal__title {
+        font-size: var(--text-lg);
+        font-weight: var(--font-bold);
+        color: var(--text-primary);
+        margin: 0 0 var(--space-2);
+    }
+    .injection-modal__subtitle {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        margin: 0 0 var(--space-5);
+    }
+    .injection-modal__input {
+        width: 100%;
+        padding: var(--space-3);
+        border: 1px solid var(--border-default, #D1D5DB);
+        border-radius: var(--radius-lg);
+        font-size: var(--text-base);
+        margin-bottom: var(--space-4);
+        box-sizing: border-box;
+    }
+    .injection-modal__actions {
+        display: flex;
+        gap: var(--space-3);
+    }
+    .injection-modal__actions button {
+        flex: 1;
+        padding: var(--space-3);
+        border-radius: var(--radius-lg);
+        font-size: var(--text-sm);
+        font-weight: var(--font-semibold);
+        cursor: pointer;
+        border: none;
+        transition: var(--transition-all);
+    }
+    .injection-modal__cancel {
+        background: var(--surface-secondary, #F3F4F6);
+        color: var(--text-secondary);
+    }
+    .injection-modal__save {
+        background: var(--color-primary-600, #4F46E5);
+        color: white;
+    }
+    .injection-modal__save:hover { opacity: 0.9; }
 </style>
 {% endblock %}
 
@@ -603,6 +736,52 @@
         </h1>
     </div>
     
+    {% if next_injection and next_injection.is_due_soon %}
+    <!-- Injection Reminder Banner -->
+    <div class="injection-banner {% if next_injection.is_overdue %}injection-banner--overdue{% elif next_injection.days_until == 0 %}injection-banner--today{% else %}injection-banner--due-soon{% endif %}">
+        <div class="injection-banner__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 2l-2 2m0 0l-6 6-2 2-4 4-2 2 2 2 2-2 4-4 2-2 6-6m-8 8l2 2"/>
+                <path d="M15 5l4 4"/>
+            </svg>
+        </div>
+        <div class="injection-banner__body">
+            {% if next_injection.is_overdue %}
+            <p class="injection-banner__title">Injection overdue</p>
+            <p class="injection-banner__text">Your {{ next_injection.medication_name }} was due {{ next_injection.date|date:"d M" }}</p>
+            {% elif next_injection.days_until == 0 %}
+            <p class="injection-banner__title">Injection due today</p>
+            <p class="injection-banner__text">{{ next_injection.medication_name }} injection is scheduled for today</p>
+            {% elif next_injection.days_until == 1 %}
+            <p class="injection-banner__title">Injection due tomorrow</p>
+            <p class="injection-banner__text">{{ next_injection.medication_name }} · {{ next_injection.date|date:"l, d M" }}</p>
+            {% else %}
+            <p class="injection-banner__title">Injection in {{ next_injection.days_until }} days</p>
+            <p class="injection-banner__text">{{ next_injection.medication_name }} · {{ next_injection.date|date:"l, d M" }}</p>
+            {% endif %}
+        </div>
+        <div class="injection-banner__action">
+            <button type="button" class="injection-banner__btn" onclick="openInjectionModal()">
+                Log injection
+            </button>
+        </div>
+    </div>
+
+    <!-- Injection date modal -->
+    <div class="injection-modal-overlay" id="injection-modal">
+        <div class="injection-modal">
+            <h3 class="injection-modal__title">Record injection</h3>
+            <p class="injection-modal__subtitle">When did you take your {{ next_injection.medication_name }} injection?</p>
+            <input type="date" class="injection-modal__input" id="injection-date-input"
+                   value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+            <div class="injection-modal__actions">
+                <button type="button" class="injection-modal__cancel" onclick="closeInjectionModal()">Cancel</button>
+                <button type="button" class="injection-modal__save" onclick="saveInjectionDate()">Save</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Today's Entry Card -->
     <div class="hero-card" id="today-card" data-has-entry="{{ today_entry|yesno:'true,false' }}">
         <div class="hero-card__header">
@@ -1038,6 +1217,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+function openInjectionModal() {
+    var overlay = document.getElementById('injection-modal');
+    if (overlay) overlay.classList.add('active');
+}
+function closeInjectionModal() {
+    var overlay = document.getElementById('injection-modal');
+    if (overlay) overlay.classList.remove('active');
+}
+function saveInjectionDate() {
+    var dateInput = document.getElementById('injection-date-input');
+    if (!dateInput || !dateInput.value) return;
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfToken) {
+        // Fallback: get from cookie
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var c = cookies[i].trim();
+            if (c.indexOf('csrftoken=') === 0) {
+                csrfToken = c.substring('csrftoken='.length);
+                break;
+            }
+        }
+    } else {
+        csrfToken = csrfToken.value;
+    }
+    var medId = {{ next_injection.medication_id|default:"0" }};
+    fetch('/api/accounts/injection/record/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+            medication_id: medId,
+            injection_date: dateInput.value
+        })
+    }).then(function(resp) {
+        if (resp.ok) { window.location.reload(); }
+        else { resp.json().then(function(d) { alert(d.detail || d.injection_date || 'Error recording injection.'); }); }
+    }).catch(function() { alert('Network error. Please try again.'); });
+}
 </script>
 {% endblock %}
 {% endblock %}

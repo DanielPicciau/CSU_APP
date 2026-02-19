@@ -116,6 +116,34 @@ def today_view(request):
         if hasattr(request.user, 'reminder_preferences'):
             has_notification_setup = request.user.reminder_preferences.enabled
 
+    with timed_section("today:injection_check", request):
+        # Check for upcoming injection date for biologic users
+        from accounts.models import UserMedication
+        next_injection = None
+        biologic = (
+            UserMedication.objects.filter(
+                user=request.user,
+                medication_type="biologic",
+                is_current=True,
+                last_injection_date__isnull=False,
+            )
+            .exclude(injection_frequency="")
+            .exclude(injection_frequency__in=["as_needed", "other"])
+            .first()
+        )
+        if biologic:
+            next_date = biologic.next_injection_date
+            if next_date is not None:
+                days_until = (next_date - today).days
+                next_injection = {
+                    "date": next_date,
+                    "days_until": days_until,
+                    "medication_id": biologic.pk,
+                    "medication_name": biologic.display_name,
+                    "is_due_soon": days_until <= 7,
+                    "is_overdue": days_until < 0,
+                }
+
     with timed_section("today:template_render", request):
         response = render(request, "tracking/today.html", {
             "today": today,
@@ -126,6 +154,7 @@ def today_view(request):
             "logged_in_30_days": logged_in_30_days,
             "total_entries": total_entries,
             "has_notification_setup": has_notification_setup,
+            "next_injection": next_injection,
         })
 
     return response

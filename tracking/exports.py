@@ -2740,9 +2740,10 @@ def export_my_data_csv(user):
         writer.writerow([
             "Medication Name", "Type", "Dose", "Unit",
             "Frequency/Day", "Last Injection Date", "Injection Frequency",
-            "Currently Taking", "Added On",
+            "Next Estimated Injection Date", "Currently Taking", "Added On",
         ])
         for med in medications:
+            next_inj = med.next_injection_date
             writer.writerow([
                 med.display_name,
                 med.get_medication_type_display(),
@@ -2751,6 +2752,7 @@ def export_my_data_csv(user):
                 med.frequency_per_day or "",
                 med.last_injection_date.strftime("%Y-%m-%d") if med.last_injection_date else "",
                 med.get_injection_frequency_display() if med.injection_frequency else "",
+                next_inj.strftime("%Y-%m-%d") if next_inj else "",
                 "Yes" if med.is_current else "No",
                 med.created_at.strftime("%Y-%m-%d") if med.created_at else "",
             ])
