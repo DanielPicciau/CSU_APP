@@ -171,19 +171,32 @@ class WeeklyStatsView(APIView):
             weeks = min(weeks, max_weeks)
         today = get_user_today(request.user)
         
-        results = []
-        for week_num in range(weeks):
-            w_start, w_end = get_aligned_week_bounds(request.user, today, week_num)
-            
-            entries = DailyEntry.objects.filter(
+        # Compute all week bounds first, then fetch entries in a single query.
+        week_bounds = [
+            get_aligned_week_bounds(request.user, today, wn) for wn in range(weeks)
+        ]
+        overall_start = min(ws for ws, _ in week_bounds)
+        overall_end = max(we for _, we in week_bounds)
+
+        all_entries = {
+            e["date"]: e["score"]
+            for e in DailyEntry.objects.filter(
                 user=request.user,
-                date__gte=w_start,
-                date__lte=w_end,
-            )
-            
-            entries_count = entries.count()
-            uas7 = sum(e.score for e in entries)
-            
+                date__gte=overall_start,
+                date__lte=overall_end,
+            ).values("date", "score")
+        }
+
+        results = []
+        for w_start, w_end in week_bounds:
+            uas7 = 0
+            entries_count = 0
+            for day_offset in range(7):
+                day = w_start + timedelta(days=day_offset)
+                if day in all_entries:
+                    uas7 += all_entries[day]
+                    entries_count += 1
+
             results.append({
                 "week_start": w_start,
                 "week_end": w_end,

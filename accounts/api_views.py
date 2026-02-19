@@ -6,7 +6,6 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, update_session_auth_hash
-from django.contrib.sessions.models import Session
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -88,28 +87,16 @@ class PasswordChangeAPIView(APIView):
             user.set_password(serializer.validated_data["new_password"])
             user.save()
             
-            # Invalidate all other sessions for this user (security best practice)
-            sessions_invalidated = 0
-            if hasattr(request, 'session') and request.session.session_key:
-                current_session_key = request.session.session_key
-                # Delete all sessions for this user except current one
-                # We need to decode sessions to find those belonging to this user
-                try:
-                    from django.contrib.sessions.backends.db import SessionStore
-                    all_sessions = Session.objects.filter(expire_date__gte=timezone.now())
-                    for session in all_sessions:
-                        if session.session_key == current_session_key:
-                            continue
-                        try:
-                            session_data = session.get_decoded()
-                            if session_data.get('_auth_user_id') == str(user.pk):
-                                session.delete()
-                                sessions_invalidated += 1
-                        except Exception:
-                            continue
-                except Exception as e:
-                    logger.warning(f"Failed to invalidate other sessions: {e}")
-                
+            # Invalidate all other sessions using the shared helper
+            from .views import _invalidate_user_sessions
+            current_key = (
+                request.session.session_key
+                if hasattr(request, "session") and request.session.session_key
+                else None
+            )
+            sessions_invalidated = _invalidate_user_sessions(user, current_key)
+            
+            if current_key:
                 # Update current session to stay logged in
                 update_session_auth_hash(request, user)
                 request.session.cycle_key()
