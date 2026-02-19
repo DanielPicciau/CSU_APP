@@ -7,8 +7,9 @@ from datetime import date, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Sum, Count
-from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 
 from .models import DailyEntry
 from .forms import DailyEntryForm, ITCH_CHOICES, HIVE_CHOICES
@@ -810,7 +811,9 @@ def chart_data_view(request):
             "score": score,
         })
     
-    return JsonResponse({"data": data})
+    response = JsonResponse({"data": data})
+    response["Cache-Control"] = "private, max-age=60"
+    return response
 
 
 # Export views
@@ -892,9 +895,13 @@ def export_csv_view(request):
 
 @login_required
 def export_pdf_view(request):
-    """Generate and download PDF export.
+    """Generate and return a PDF export.
     
     PDF exports are a Premium feature. Free users are redirected to upgrade.
+    
+    Query parameters:
+        action: 'view' returns the PDF with Content-Disposition: inline
+                (default) returns as attachment for download
     """
     from .exports import CSUExporter
     
@@ -934,15 +941,51 @@ def export_pdf_view(request):
         "report_type": report_type,
     }
     
+    inline = request.GET.get("action") == "view"
+    
     try:
         exporter = CSUExporter(request.user, start_date, end_date, options)
-        return exporter.export_pdf()
+        return exporter.export_pdf(inline=inline)
     except Exception as e:
         # Log the error for debugging but don't expose details to user
         import logging
         logging.error(f"PDF export failed for user {request.user.id}: {e}")
         messages.error(request, "Export failed. Please try again or contact support if the problem persists.")
         return redirect("tracking:export")
+
+
+@login_required
+def export_pdf_preview_view(request):
+    """Render an in-app page that embeds the PDF in an object element.
+    
+    Users can view the PDF inline and download it without leaving the app.
+    """
+    if not has_entitlement(request.user, "premium_access"):
+        messages.info(
+            request,
+            "PDF reports are a Cura Premium feature. You can always download your data as a CSV file.",
+        )
+        return redirect("subscriptions:premium")
+    
+    # Build the query string for the PDF iframe src and download link.
+    # Forward all GET params (dates, options, report_type) to the PDF endpoint.
+    params = request.GET.copy()
+    
+    # Inline view URL (Content-Disposition: inline)
+    view_params = params.copy()
+    view_params["action"] = "view"
+    
+    # Download URL (Content-Disposition: attachment) — no action param
+    download_params = params.copy()
+    download_params.pop("action", None)
+    
+    report_type = params.get("report_type", "quick")
+    
+    return render(request, "tracking/export_pdf_preview.html", {
+        "pdf_view_url": f"{reverse('tracking:export_pdf')}?{view_params.urlencode()}",
+        "pdf_download_url": f"{reverse('tracking:export_pdf')}?{download_params.urlencode()}",
+        "report_type": report_type,
+    })
 
 
 @login_required

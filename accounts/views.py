@@ -839,28 +839,28 @@ def onboarding_medication_select(request):
                 key for key, _, _ in COMMON_MEDICATIONS
             ]).delete()
             
-            # Create medications for selected items
+            # Build medication objects for bulk creation
+            med_lookup = {key: mtype for key, _, mtype in COMMON_MEDICATIONS}
+            medications_to_create = []
             has_antihistamine = False
             has_biologic = False
             
             for med_key in selected:
-                # Find medication type from COMMON_MEDICATIONS
-                med_type = "other"
-                for key, label, mtype in COMMON_MEDICATIONS:
-                    if key == med_key:
-                        med_type = mtype
-                        break
-                
-                UserMedication.objects.create(
-                    user=request.user,
-                    medication_key=med_key,
-                    medication_type=med_type,
+                med_type = med_lookup.get(med_key, "other")
+                medications_to_create.append(
+                    UserMedication(
+                        user=request.user,
+                        medication_key=med_key,
+                        medication_type=med_type,
+                    )
                 )
-                
                 if med_type == "antihistamine":
                     has_antihistamine = True
                 elif med_type == "biologic":
                     has_biologic = True
+            
+            if medications_to_create:
+                UserMedication.objects.bulk_create(medications_to_create)
             
             # Handle custom medication
             if custom:
@@ -915,9 +915,11 @@ def onboarding_medication_details(request):
     
     # Or check from database
     if not has_antihistamine and not has_biologic:
-        user_meds = request.user.medications.all()
-        has_antihistamine = user_meds.filter(medication_type="antihistamine").exists()
-        has_biologic = user_meds.filter(medication_type="biologic").exists()
+        user_med_types = set(
+            request.user.medications.values_list("medication_type", flat=True).distinct()
+        )
+        has_antihistamine = "antihistamine" in user_med_types
+        has_biologic = "biologic" in user_med_types
     
     if request.method == "POST":
         action = request.POST.get("action", "next")
@@ -1070,16 +1072,15 @@ def onboarding_summary(request):
     # Get medications
     medications = list(request.user.medications.all())
     if medications:
+        med_label_lookup = {key: label for key, label, _ in COMMON_MEDICATIONS}
         med_names = []
         for med in medications:
             if med.custom_name:
                 med_names.append(med.custom_name)
             elif med.medication_key:
-                # Find display name from COMMON_MEDICATIONS
-                for key, label, _ in COMMON_MEDICATIONS:
-                    if key == med.medication_key:
-                        med_names.append(label)
-                        break
+                label = med_label_lookup.get(med.medication_key)
+                if label:
+                    med_names.append(label)
         if med_names:
             summary_items.append({
                 "label": "Medications",

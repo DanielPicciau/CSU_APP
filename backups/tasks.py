@@ -45,7 +45,7 @@ def create_backup_snapshot(user_id: int) -> str:
                 "qol_mood",
                 "created_at",
                 "updated_at",
-            )
+            ).iterator(chunk_size=500)
         )
         profile = Profile.objects.filter(user_id=user_id).values(
             "display_name",
@@ -96,7 +96,7 @@ def enqueue_nightly_backups() -> int:
     User = get_user_model()
     processed = 0
 
-    for user in User.objects.filter(is_active=True):
+    for user in User.objects.filter(is_active=True).only("id"):
         if not has_entitlement(user, "cloud_backup"):
             continue
         create_backup_snapshot.delay(user.id)

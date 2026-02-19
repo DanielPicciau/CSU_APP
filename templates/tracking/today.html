@@ -995,7 +995,7 @@
                 </div>
                 
                 <!-- Total Score Display -->
-                <div class="quick-total" id="quick-total" style="display: none;">
+                <div class="quick-total" id="quick-total" style="display: none;" aria-live="polite" aria-atomic="true">
                     <span class="quick-total__label">Today's Score</span>
                     <span class="quick-total__value" id="quick-total-value">0</span>
                     <span class="quick-total__max">/6</span>
@@ -1057,10 +1057,10 @@
         </div>
         {% if uas7_complete %}
         <div class="week-chart__severity {% if uas7_score <= 6 %}week-chart__severity--good{% elif uas7_score <= 15 %}week-chart__severity--mild{% elif uas7_score <= 27 %}week-chart__severity--moderate{% else %}week-chart__severity--severe{% endif %}">
-            {% if uas7_score <= 6 %}✓ Well controlled
-            {% elif uas7_score <= 15 %}Mild activity
-            {% elif uas7_score <= 27 %}Moderate activity
-            {% else %}Severe activity — consider consulting your doctor
+            {% if uas7_score <= 6 %}✓ Well controlled this week
+            {% elif uas7_score <= 15 %}Mild activity this week
+            {% elif uas7_score <= 27 %}Moderate activity — tracking helps you and your doctor
+            {% else %}High activity — sharing this with your doctor can help find relief
             {% endif %}
         </div>
         {% else %}

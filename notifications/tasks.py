@@ -42,6 +42,23 @@ def process_daily_reminders():
         user__push_subscriptions__is_active=True,
     ).select_related("user").distinct()
     
+    # Bulk-fetch guard data to avoid per-user queries.
+    # Fetch (user_id, date) pairs for recent dates since each user may have
+    # a different "today" depending on their timezone.
+    pref_user_ids = [p.user_id for p in preferences]
+    recent_entry_pairs = set(
+        DailyEntry.objects.filter(
+            user_id__in=pref_user_ids,
+            date__gte=date.today() - timedelta(days=1),
+        ).values_list("user_id", "date")
+    ) if pref_user_ids else set()
+    recent_reminder_pairs = set(
+        ReminderLog.objects.filter(
+            user_id__in=pref_user_ids,
+            date__gte=date.today() - timedelta(days=1),
+        ).values_list("user_id", "date")
+    ) if pref_user_ids else set()
+    
     reminders_sent = 0
     
     for pref in preferences:
@@ -70,12 +87,12 @@ def process_daily_reminders():
             if user_now < reminder_time:
                 continue
             
-            # Check if entry exists for today
-            if DailyEntry.objects.filter(user=user, date=user_today).exists():
+            # Check if entry exists for today (using pre-fetched pairs)
+            if (user.id, user_today) in recent_entry_pairs:
                 continue
             
-            # Check if reminder already sent today
-            if ReminderLog.objects.filter(user=user, date=user_today).exists():
+            # Check if reminder already sent today (using pre-fetched pairs)
+            if (user.id, user_today) in recent_reminder_pairs:
                 continue
             
             # Send reminder
