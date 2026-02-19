@@ -2,6 +2,8 @@
 Custom User model and Profile for CSU Tracker.
 """
 
+from datetime import timedelta
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.contrib.sessions.models import Session
 from django.db import models
@@ -529,6 +531,28 @@ class UserMedication(models.Model):
                 return label
         return self.medication_key or "Unknown"
     
+    # Mapping from injection_frequency choice to timedelta days
+    INJECTION_FREQUENCY_DAYS = {
+        "every_2_weeks": 14,
+        "every_4_weeks": 28,
+        "every_6_weeks": 42,
+        "every_8_weeks": 56,
+    }
+
+    @property
+    def next_injection_date(self):
+        """
+        Estimate the next injection date based on last_injection_date and
+        injection_frequency.  Returns None when either field is missing or
+        when the frequency is non-periodic (as_needed / other).
+        """
+        if not self.last_injection_date or not self.injection_frequency:
+            return None
+        days = self.INJECTION_FREQUENCY_DAYS.get(self.injection_frequency)
+        if days is None:
+            return None
+        return self.last_injection_date + timedelta(days=days)
+
     @property
     def is_antihistamine(self) -> bool:
         return self.medication_type == "antihistamine"

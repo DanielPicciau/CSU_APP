@@ -182,3 +182,79 @@ def send_test_notification(user_id: int):
         return f"Sent to {count} subscriptions"
     except User.DoesNotExist:
         return "User not found"
+
+
+@shared_task(name="notifications.tasks.send_injection_reminders")
+def send_injection_reminders():
+    """
+    Send push notifications to users whose next estimated injection date
+    is within the next 7 days.
+
+    Runs once daily.  Each user receives at most one injection reminder
+    per calendar day (guarded by ReminderLog with a tag prefix).
+    """
+    from accounts.models import UserMedication
+
+    today = date.today()
+    window_end = today + timedelta(days=7)
+
+    # Current biologics with a calculable next injection date
+    biologics = (
+        UserMedication.objects.filter(
+            medication_type="biologic",
+            is_current=True,
+            last_injection_date__isnull=False,
+        )
+        .exclude(injection_frequency="")
+        .exclude(injection_frequency__in=["as_needed", "other"])
+        .select_related("user")
+    )
+
+    sent = 0
+    seen_users = set()
+    for med in biologics:
+        next_date = med.next_injection_date
+        if next_date is None:
+            continue
+        if not (today <= next_date <= window_end):
+            continue
+
+        user = med.user
+
+        # Only one injection reminder per user per day
+        if user.pk in seen_users:
+            continue
+        seen_users.add(user.pk)
+
+        # Check if user has active push subscriptions
+        if not user.push_subscriptions.filter(is_active=True).exists():
+            continue
+
+        tag = f"injection-reminder-{today.isoformat()}"
+        days_until = (next_date - today).days
+        if days_until == 0:
+            body = "Your injection is due today."
+        elif days_until == 1:
+            body = "Your injection is due tomorrow."
+        else:
+            body = f"Your injection is due in {days_until} days ({next_date.strftime('%A, %d %b')})."
+
+        success_count = send_push_to_user(
+            user=user,
+            title="Injection Reminder",
+            body=body,
+            url="/tracking/",
+            tag=tag,
+        )
+
+        if success_count > 0:
+            sent += 1
+            logger.info(
+                "Injection reminder sent to user_id=%s user_hash=%s (due %s)",
+                user.id,
+                hash_sensitive_data(user.email),
+                next_date.isoformat(),
+            )
+
+    logger.info("Injection reminder processing complete. Sent %d reminders.", sent)
+    return sent

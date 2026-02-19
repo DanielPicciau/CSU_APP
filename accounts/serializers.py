@@ -108,3 +108,36 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ["date_format", "default_timezone"]
+
+
+class RecordInjectionSerializer(serializers.Serializer):
+    """Serializer for recording an injection date on a biologic medication."""
+
+    medication_id = serializers.IntegerField()
+    injection_date = serializers.DateField()
+
+    def validate_medication_id(self, value):
+        from .models import UserMedication
+
+        user = self.context["request"].user
+        try:
+            med = UserMedication.objects.get(pk=value, user=user)
+        except UserMedication.DoesNotExist:
+            raise serializers.ValidationError("Medication not found.")
+        if med.medication_type != "biologic":
+            raise serializers.ValidationError("Only biologic medications support injection tracking.")
+        self._medication = med
+        return value
+
+    def validate_injection_date(self, value):
+        from django.utils import timezone as tz
+
+        if value > tz.now().date():
+            raise serializers.ValidationError("Injection date cannot be in the future.")
+        return value
+
+    def save(self):
+        med = self._medication
+        med.last_injection_date = self.validated_data["injection_date"]
+        med.save(update_fields=["last_injection_date", "updated_at"])
+        return med
