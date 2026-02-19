@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Sum, Count
+from django.db.models import Avg, Count, Max, Min, Sum
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 
@@ -520,11 +520,13 @@ def insights_view(request):
         ).count()
 
     with timed_section("insights:avg_stats_calc", request):
-        # Calculate averages
+        # Calculate averages (itch_score and hive_count_score can be None)
         if entries:
             avg_score = sum(e.score for e in entries) / len(entries)
-            avg_itch = sum(e.itch_score for e in entries) / len(entries)
-            avg_hives = sum(e.hive_count_score for e in entries) / len(entries)
+            itch_vals = [e.itch_score for e in entries if e.itch_score is not None]
+            hive_vals = [e.hive_count_score for e in entries if e.hive_count_score is not None]
+            avg_itch = sum(itch_vals) / len(itch_vals) if itch_vals else 0
+            avg_hives = sum(hive_vals) / len(hive_vals) if hive_vals else 0
             best_score = min(e.score for e in entries)
             worst_score = max(e.score for e in entries)
         else:
@@ -792,15 +794,18 @@ def export_page_view(request):
     is_premium = has_entitlement(request.user, "premium_access")
     
     # For CSV, all users can access all data — no history restriction
-    all_entries = DailyEntry.objects.filter(user=request.user)
-    first_entry_all = all_entries.only("date").order_by("date").first()
-    last_entry_all = all_entries.only("date").order_by("-date").first()
-    total_entries_all = all_entries.count()
+    # Single aggregate query instead of 3 separate queries.
+    stats = DailyEntry.objects.filter(user=request.user).aggregate(
+        first_date=Min("date"),
+        last_date=Max("date"),
+        total=Count("id"),
+    )
+    total_entries_all = stats["total"]
     
     return render(request, "tracking/export.html", {
         "today": today,
-        "first_entry_date": first_entry_all.date if first_entry_all else today,
-        "last_entry_date": last_entry_all.date if last_entry_all else today,
+        "first_entry_date": stats["first_date"] or today,
+        "last_entry_date": stats["last_date"] or today,
         "total_entries": total_entries_all,
         "has_entries": total_entries_all > 0,
         "is_premium": is_premium,

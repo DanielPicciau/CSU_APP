@@ -180,7 +180,28 @@ def cron_send_reminders(request):
     preferences = ReminderPreferences.objects.filter(
         enabled=True,
     ).select_related('user')
-    
+
+    # Prefetch per-user data in bulk to avoid N+1 queries inside the loop.
+    pref_user_ids = [p.user_id for p in preferences]
+
+    already_reminded_ids = set(
+        ReminderLog.objects.filter(
+            user_id__in=pref_user_ids, date=uk_today,
+        ).values_list("user_id", flat=True)
+    ) if not force else set()
+
+    already_logged_ids = set(
+        DailyEntry.objects.filter(
+            user_id__in=pref_user_ids, date=uk_today,
+        ).values_list("user_id", flat=True)
+    ) if not force else set()
+
+    # Map user_id -> list of active PushSubscription objects
+    from collections import defaultdict
+    subscriptions_by_user = defaultdict(list)
+    for sub in PushSubscription.objects.filter(user_id__in=pref_user_ids, is_active=True):
+        subscriptions_by_user[sub.user_id].append(sub)
+
     for pref in preferences:
         user = pref.user
         checked_count += 1
@@ -206,8 +227,8 @@ def cron_send_reminders(request):
                 })
             
             if not force:
-                # Check if already reminded today (ReminderLog is the source of truth)
-                if ReminderLog.objects.filter(user=user, date=uk_today).exists():
+                # Check if already reminded today (prefetched)
+                if user.id in already_reminded_ids:
                     skipped_reasons["already_reminded"] = skipped_reasons.get("already_reminded", 0) + 1
                     if debug:
                         debug_info[-1]["status"] = "already_reminded"
@@ -223,20 +244,17 @@ def cron_send_reminders(request):
                         debug_info[-1]["status"] = "not_time_yet"
                     continue
                 
-                # Check if already logged today
-                if DailyEntry.objects.filter(user=user, date=uk_today).exists():
+                # Check if already logged today (prefetched)
+                if user.id in already_logged_ids:
                     skipped_reasons["already_logged_entry"] = skipped_reasons.get("already_logged_entry", 0) + 1
                     if debug:
                         debug_info[-1]["status"] = "already_logged"
                     continue
             
-            # Get active subscriptions
-            subscriptions = PushSubscription.objects.filter(
-                user=user,
-                is_active=True
-            )
+            # Get active subscriptions (prefetched)
+            user_subscriptions = subscriptions_by_user.get(user.id, [])
             
-            if not subscriptions.exists():
+            if not user_subscriptions:
                 skipped_reasons["no_subscriptions"] = skipped_reasons.get("no_subscriptions", 0) + 1
                 if debug:
                     debug_info[-1]["status"] = "no_subscriptions"
@@ -244,7 +262,7 @@ def cron_send_reminders(request):
             
             # Send notifications
             success_count = 0
-            for subscription in subscriptions:
+            for subscription in user_subscriptions:
                 try:
                     if send_push_notification(
                         subscription=subscription,

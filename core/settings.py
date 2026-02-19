@@ -75,9 +75,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    # TEMP: Performance profiling — must be FIRST to capture total request time
-    "core.middleware.PerfMiddleware",
-    "tracking.diagnostics.RequestTimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",

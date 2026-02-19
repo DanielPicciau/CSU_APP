@@ -37,11 +37,33 @@ def process_daily_reminders():
     logger.info("Starting daily reminder processing")
     
     # Get all users with reminders enabled
-    preferences = ReminderPreferences.objects.filter(
+    preferences = list(ReminderPreferences.objects.filter(
         enabled=True,
         user__push_subscriptions__is_active=True,
-    ).select_related("user").distinct()
-    
+    ).select_related("user").distinct())
+
+    # Prefetch per-user data in bulk to avoid N+1 queries.
+    # Because users may span multiple timezones we collect dates first then
+    # do bulk lookups.  For simplicity we use today in UTC ± 1 day which
+    # covers all timezone offsets.
+    pref_user_ids = [p.user_id for p in preferences]
+    utc_today = timezone.now().date()
+    date_range = [utc_today - timedelta(days=1), utc_today, utc_today + timedelta(days=1)]
+
+    entries_user_date = set(
+        DailyEntry.objects.filter(
+            user_id__in=pref_user_ids,
+            date__in=date_range,
+        ).values_list("user_id", "date")
+    )
+
+    reminded_user_date = set(
+        ReminderLog.objects.filter(
+            user_id__in=pref_user_ids,
+            date__in=date_range,
+        ).values_list("user_id", "date")
+    )
+
     reminders_sent = 0
     
     for pref in preferences:
@@ -70,12 +92,12 @@ def process_daily_reminders():
             if user_now < reminder_time:
                 continue
             
-            # Check if entry exists for today
-            if DailyEntry.objects.filter(user=user, date=user_today).exists():
+            # Check if entry exists for today (prefetched)
+            if (user.id, user_today) in entries_user_date:
                 continue
             
-            # Check if reminder already sent today
-            if ReminderLog.objects.filter(user=user, date=user_today).exists():
+            # Check if reminder already sent today (prefetched)
+            if (user.id, user_today) in reminded_user_date:
                 continue
             
             # Send reminder
