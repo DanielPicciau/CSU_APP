@@ -881,7 +881,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateScorePreview();
     
     // Handle antihistamine - convert to boolean for form submission
-    var originalBtnText = form.querySelector('.submit-btn') ? form.querySelector('.submit-btn').textContent : '';
+    var submitBtnEl = form.querySelector('.submit-btn');
+    var originalBtnText = submitBtnEl ? submitBtnEl.textContent : '';
     form.addEventListener('submit', function(e) {
         var submitBtn = form.querySelector('.submit-btn');
         if (submitBtn) {
