@@ -116,3 +116,4 @@ staticfiles/
 
 # Media files
 media/
+src/csu-tracker/
