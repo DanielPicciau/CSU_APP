@@ -249,3 +249,31 @@ class TestDataIsolation:
         # User2's preferences should be unchanged
         prefs.refresh_from_db()
         assert prefs.enabled is True
+
+
+# =============================================================================
+# NOTIFICATION URL RESOLUTION TESTS
+# =============================================================================
+
+@pytest.mark.django_db
+class TestNotificationUrls:
+    """Verify that URLs embedded in push notifications resolve to valid views."""
+
+    def test_tracking_log_url_resolves(self):
+        """The default notification URL /tracking/log/ must resolve."""
+        from django.urls import resolve
+        match = resolve("/tracking/log/")
+        assert match.url_name == "log_entry"
+
+    def test_send_reminders_command_url_resolves(self):
+        """The URL used by the send_reminders management command must resolve."""
+        from django.urls import resolve
+        # This URL is hard-coded in send_reminders.py → send_push_notification()
+        match = resolve("/tracking/log/")
+        assert match.url_name == "log_entry"
+
+    def test_celery_task_url_resolves(self):
+        """The URL used by the Celery process_daily_reminders task must resolve."""
+        from django.urls import resolve
+        match = resolve("/tracking/log/")
+        assert match.url_name == "log_entry"

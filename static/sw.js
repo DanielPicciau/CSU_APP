@@ -1,5 +1,5 @@
 // CSU Tracker Service Worker - Safari Compatible
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const STATIC_CACHE = `csu-static-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline/';
 
@@ -159,21 +159,31 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
     const action = event.action;
-    let url = '/tracking/log/';
     
-    if (action === 'log' || !action) {
-        url = event.notification.data?.url || '/tracking/log/';
+    // "Later" / dismiss — close notification, do not navigate
+    if (action === 'dismiss') {
+        return;
     }
+    
+    const url = event.notification.data?.url || '/tracking/log/';
     
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((clientList) => {
+                // Try to reuse an existing app window
                 for (const client of clientList) {
                     if (client.url.includes(self.location.origin) && 'focus' in client) {
-                        client.navigate(url);
-                        return client.focus();
+                        return client.navigate(url).then((c) => c && c.focus());
                     }
                 }
+                // No existing window — open a new one
+                if (clients.openWindow) {
+                    return clients.openWindow(url);
+                }
+            })
+            .catch((err) => {
+                console.error('[SW] Notification click navigation failed:', err);
+                // Fallback: open a fresh window
                 if (clients.openWindow) {
                     return clients.openWindow(url);
                 }

@@ -119,7 +119,7 @@ class Command(BaseCommand):
                             subscription=subscription,
                             title="CSU Tracker Reminder",
                             body="Time to log your CSU score for today!",
-                            url="/tracking/today/",
+                            url="/tracking/log/",
                             tag=f"reminder-{user_today.isoformat()}"
                         )
                         if result:
