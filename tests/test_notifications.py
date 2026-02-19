@@ -259,21 +259,11 @@ class TestDataIsolation:
 class TestNotificationUrls:
     """Verify that URLs embedded in push notifications resolve to valid views."""
 
-    def test_tracking_log_url_resolves(self):
-        """The default notification URL /tracking/log/ must resolve."""
+    @pytest.mark.parametrize("url,expected_view_name", [
+        ("/tracking/log/", "log_entry"),
+    ])
+    def test_notification_url_resolves(self, url, expected_view_name):
+        """All notification URLs used by sw.js, Celery task, and send_reminders must resolve."""
         from django.urls import resolve
-        match = resolve("/tracking/log/")
-        assert match.url_name == "log_entry"
-
-    def test_send_reminders_command_url_resolves(self):
-        """The URL used by the send_reminders management command must resolve."""
-        from django.urls import resolve
-        # This URL is hard-coded in send_reminders.py → send_push_notification()
-        match = resolve("/tracking/log/")
-        assert match.url_name == "log_entry"
-
-    def test_celery_task_url_resolves(self):
-        """The URL used by the Celery process_daily_reminders task must resolve."""
-        from django.urls import resolve
-        match = resolve("/tracking/log/")
-        assert match.url_name == "log_entry"
+        match = resolve(url)
+        assert match.url_name == expected_view_name
