@@ -925,7 +925,7 @@ def export_pdf_view(request):
 
 @login_required
 def export_pdf_preview_view(request):
-    """Render an in-app page that embeds the PDF in an iframe.
+    """Render an in-app page that embeds the PDF in an object element.
     
     Users can view the PDF inline and download it without leaving the app.
     """
