@@ -120,6 +120,9 @@ class ReminderPreferences(models.Model):
     class Meta:
         verbose_name = "reminder preferences"
         verbose_name_plural = "reminder preferences"
+        indexes = [
+            models.Index(fields=["enabled"]),
+        ]
 
     def __str__(self) -> str:
         status = "enabled" if self.enabled else "disabled"
@@ -165,6 +168,10 @@ class ReminderLog(models.Model):
                 fields=["user", "date"],
                 name="unique_user_date_reminder",
             )
+        ]
+        indexes = [
+            models.Index(fields=["user", "date"]),
+            models.Index(fields=["sent_at"]),
         ]
 
     def __str__(self) -> str:

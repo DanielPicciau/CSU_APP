@@ -69,7 +69,7 @@ def enqueue_scheduled_reports() -> int:
     now = timezone.now()
     scheduled = 0
 
-    schedules = ReportSchedule.objects.select_related("user").filter(is_active=True)
+    schedules = ReportSchedule.objects.select_related("user", "user__subscription", "user__subscription__plan").filter(is_active=True)
     for schedule in schedules:
         user = schedule.user
 

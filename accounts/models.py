@@ -507,6 +507,10 @@ class UserMedication(models.Model):
         verbose_name = "user medication"
         verbose_name_plural = "user medications"
         ordering = ["-is_current", "-updated_at"]
+        indexes = [
+            models.Index(fields=["user", "is_current"]),
+            models.Index(fields=["user", "medication_type"]),
+        ]
     
     def __str__(self) -> str:
         """Privacy-safe string representation - NO medication details exposed."""

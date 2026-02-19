@@ -781,7 +781,9 @@ def chart_data_view(request):
             "score": score,
         })
     
-    return JsonResponse({"data": data})
+    response = JsonResponse({"data": data})
+    response["Cache-Control"] = "private, max-age=60"
+    return response
 
 
 # Export views

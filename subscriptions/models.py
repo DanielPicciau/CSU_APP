@@ -204,6 +204,11 @@ class Subscription(models.Model):
     class Meta:
         verbose_name = "subscription"
         verbose_name_plural = "subscriptions"
+        indexes = [
+            models.Index(fields=["status", "current_period_end"]),
+            models.Index(fields=["stripe_customer_id"]),
+            models.Index(fields=["stripe_subscription_id"]),
+        ]
     
     def __str__(self) -> str:
         return f"Subscription for {self.user.email} ({self.status})"
