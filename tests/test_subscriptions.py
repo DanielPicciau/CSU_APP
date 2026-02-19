@@ -187,6 +187,61 @@ class TestExportPremiumGate:
         assert "premium" not in response.get("Location", "")
 
 
+@pytest.mark.django_db
+class TestPdfPreview:
+    """Test the in-app PDF preview page."""
+
+    def test_pdf_preview_blocked_for_free_user(self, client_logged_in):
+        """Free user should be redirected to premium for PDF preview."""
+        response = client_logged_in.get(reverse("tracking:export_pdf_preview") + "?report_type=quick")
+        assert response.status_code == 302
+        assert "premium" in response.url
+
+    def test_pdf_preview_requires_login(self, client):
+        """Unauthenticated user should be redirected to login."""
+        response = client.get(reverse("tracking:export_pdf_preview"))
+        assert response.status_code == 302
+        assert "login" in response.url
+
+    def test_pdf_preview_renders_for_premium_user(self, premium_client_logged_in):
+        """Premium user should see the preview page with PDF viewer."""
+        response = premium_client_logged_in.get(
+            reverse("tracking:export_pdf_preview") + "?report_type=quick"
+        )
+        assert response.status_code == 200
+        assert b"pdf-preview" in response.content
+        assert b"pdf-object" in response.content
+
+    def test_pdf_preview_contains_download_link(self, premium_client_logged_in):
+        """Preview page should include a download link."""
+        response = premium_client_logged_in.get(
+            reverse("tracking:export_pdf_preview") + "?report_type=quick"
+        )
+        assert response.status_code == 200
+        assert b"Download" in response.content
+        # The download URL should point to export_pdf without action=view
+        content = response.content.decode()
+        assert "export/pdf/" in content
+
+    def test_pdf_inline_returns_inline_disposition(self, premium_client_logged_in):
+        """PDF export with action=view should return Content-Disposition: inline."""
+        response = premium_client_logged_in.get(
+            reverse("tracking:export_pdf") + "?report_type=quick&action=view"
+        )
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response["Content-Disposition"].startswith("inline;")
+
+    def test_pdf_download_returns_attachment_disposition(self, premium_client_logged_in):
+        """PDF export without action=view should return Content-Disposition: attachment."""
+        response = premium_client_logged_in.get(
+            reverse("tracking:export_pdf") + "?report_type=quick"
+        )
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response["Content-Disposition"].startswith("attachment;")
+
+
 class TestCheckoutFlow:
     """Test the checkout flow views."""
     

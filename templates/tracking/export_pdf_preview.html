@@ -1,0 +1,259 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}View PDF Report - CSU Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+.pdf-preview {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 140px);
+    height: calc(100dvh - 140px);
+    padding: 0;
+}
+.pdf-preview__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+.pdf-preview__toolbar-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+}
+.pdf-preview__toolbar-info svg {
+    flex-shrink: 0;
+    color: #005EB8;
+}
+.pdf-preview__toolbar-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+.pdf-preview__frame-wrap {
+    flex: 1;
+    position: relative;
+    background: var(--bg-secondary);
+    overflow: hidden;
+}
+.pdf-preview__frame-wrap iframe,
+.pdf-preview__frame-wrap object {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+.pdf-preview__fallback {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-8) var(--space-4);
+    gap: var(--space-4);
+    height: 100%;
+}
+.pdf-preview__fallback-icon {
+    width: 64px;
+    height: 64px;
+    color: var(--text-tertiary);
+}
+.pdf-preview__fallback-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.pdf-preview__fallback-text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    max-width: 320px;
+    line-height: 1.6;
+}
+
+.btn--pdf-download {
+    background: #005EB8;
+    color: white;
+    border: none;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+}
+.btn--pdf-download:hover {
+    background: #003087;
+}
+.btn--pdf-back {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+}
+.btn--pdf-back:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Mobile: make sure the toolbar stacks nicely on small screens */
+@media (max-width: 400px) {
+    .pdf-preview__toolbar {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+    .pdf-preview__toolbar-info {
+        width: 100%;
+    }
+    .pdf-preview__toolbar-actions {
+        width: 100%;
+    }
+    .pdf-preview__toolbar-actions a {
+        flex: 1;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block header_left %}
+<a href="{% url 'tracking:export' %}" class="btn btn--icon btn--ghost" aria-label="Back to export options">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+</a>
+{% endblock %}
+
+{% block header_title %}PDF Report{% endblock %}
+
+{% block content %}
+<div class="pdf-preview">
+    <!-- Toolbar with download + back buttons -->
+    <div class="pdf-preview__toolbar">
+        <div class="pdf-preview__toolbar-info">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span>{{ report_type|title }} Report</span>
+        </div>
+        <div class="pdf-preview__toolbar-actions">
+            <a href="{% url 'tracking:export' %}" class="btn--pdf-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back
+            </a>
+            <a href="{{ pdf_download_url }}" class="btn--pdf-download" download>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download
+            </a>
+        </div>
+    </div>
+
+    <!-- PDF Viewer (iframe with object fallback) -->
+    <div class="pdf-preview__frame-wrap" id="pdf-viewer">
+        <object
+            id="pdf-object"
+            data="{{ pdf_view_url }}"
+            type="application/pdf"
+            width="100%"
+            height="100%"
+        >
+            <!-- Fallback: if <object> can't render PDF inline -->
+            <div class="pdf-preview__fallback" style="display: flex;">
+                <svg class="pdf-preview__fallback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <div class="pdf-preview__fallback-title">PDF Preview Unavailable</div>
+                <div class="pdf-preview__fallback-text">
+                    Your browser or device doesn't support inline PDF viewing.
+                    You can still download the report using the button below.
+                </div>
+                <a href="{{ pdf_download_url }}" class="btn--pdf-download" download>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download PDF Report
+                </a>
+            </div>
+        </object>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // On mobile browsers (especially iOS/Android PWAs), inline PDF rendering
+    // inside <object> may silently fail. After a short delay, check if the
+    // element rendered to a usable height. If not, replace with the fallback.
+    var pdfObject = document.getElementById('pdf-object');
+    if (!pdfObject) return;
+
+    var downloadUrl = document.querySelector('.btn--pdf-download');
+    var downloadHref = downloadUrl ? downloadUrl.getAttribute('href') : '';
+
+    setTimeout(function() {
+        try {
+            var rect = pdfObject.getBoundingClientRect();
+            if (rect.height < 50) {
+                replaceFallback(downloadHref);
+            }
+        } catch(e) {
+            replaceFallback(downloadHref);
+        }
+    }, 2500);
+
+    function replaceFallback(href) {
+        var viewer = document.getElementById('pdf-viewer');
+        if (!viewer) return;
+        viewer.innerHTML =
+            '<div class="pdf-preview__fallback" style="display:flex;">' +
+            '<svg class="pdf-preview__fallback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+            '<polyline points="14 2 14 8 20 8"/></svg>' +
+            '<div class="pdf-preview__fallback-title">PDF Preview Unavailable</div>' +
+            '<div class="pdf-preview__fallback-text">' +
+            'Your browser or device does not support inline PDF viewing. ' +
+            'You can still download the report using the button below.</div>' +
+            '<a href="' + href + '" class="btn--pdf-download" download>' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+            '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+            '<polyline points="7 10 12 15 17 10"/>' +
+            '<line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+            'Download PDF Report</a></div>';
+    }
+});
+</script>
+{% endblock %}
