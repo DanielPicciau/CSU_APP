@@ -1243,7 +1243,7 @@ function saveInjectionDate() {
     } else {
         csrfToken = csrfToken.value;
     }
-    var medId = {{ next_injection.medication_id|default:"0" }};
+    var medId = {{ next_injection.medication_id|default:"0"|escapejs }};
     fetch('/api/accounts/injection/record/', {
         method: 'POST',
         headers: {

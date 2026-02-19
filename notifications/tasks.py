@@ -194,6 +194,7 @@ def send_injection_reminders():
     )
 
     sent = 0
+    seen_users = set()
     for med in biologics:
         next_date = med.next_injection_date
         if next_date is None:
@@ -203,26 +204,16 @@ def send_injection_reminders():
 
         user = med.user
 
-        # Prevent duplicate injection reminders for this user today
-        tag = f"injection-reminder-{today.isoformat()}"
-        if ReminderLog.objects.filter(
-            user=user,
-            date=today,
-        ).filter(
-            # Re-use ReminderLog; check via the log's existence for today
-            # with the injection-specific tag stored in the preferences guard
-        ).exists():
-            # Check the guard field to avoid double-sending
-            pref = ReminderPreferences.objects.filter(user=user).first()
-            if pref and pref.last_reminder_date == today:
-                # Already got some kind of reminder today; skip injection one
-                # unless we want to send both.  For simplicity we allow both.
-                pass
+        # Only one injection reminder per user per day
+        if user.pk in seen_users:
+            continue
+        seen_users.add(user.pk)
 
         # Check if user has active push subscriptions
         if not user.push_subscriptions.filter(is_active=True).exists():
             continue
 
+        tag = f"injection-reminder-{today.isoformat()}"
         days_until = (next_date - today).days
         if days_until == 0:
             body = "Your injection is due today."
