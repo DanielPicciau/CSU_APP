@@ -483,6 +483,13 @@
     transform: scale(0.98);
 }
 
+.submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: var(--shadow-sm);
+}
+
 /* Delete Link */
 .delete-link {
     display: block;
@@ -868,6 +875,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle antihistamine - convert to boolean for form submission
     form.addEventListener('submit', function(e) {
+        var submitBtn = form.querySelector('.submit-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner spinner--sm" style="border-top-color:white;display:inline-block;vertical-align:middle;margin-right:8px;"></span> Saving…';
+        }
+        
         const antihistamineYes = document.querySelector('input[name="took_antihistamine"][value="yes"]');
         const hiddenInput = document.createElement('input');
         hiddenInput.type = 'hidden';

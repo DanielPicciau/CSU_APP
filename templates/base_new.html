@@ -343,6 +343,23 @@
     <!-- Design System JavaScript -->
     <script src="{% static 'js/components.js' %}"></script>
     
+    <!-- Auto-dismiss flash messages -->
+    <script>
+    (function() {
+        var banners = document.querySelectorAll('.feedback-banner');
+        banners.forEach(function(banner) {
+            var isError = banner.classList.contains('feedback-banner--error');
+            var delay = isError ? 8000 : 4000;
+            setTimeout(function() {
+                banner.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                banner.style.opacity = '0';
+                banner.style.transform = 'translateY(-8px)';
+                setTimeout(function() { banner.remove(); }, 300);
+            }, delay);
+        });
+    })();
+    </script>
+    
     <!-- Desktop Layout JavaScript -->
     <script>
     (function() {

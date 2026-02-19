@@ -404,9 +404,9 @@
 
 /* Score color variants */
 .score-bg-0 { background-color: var(--color-score-0); }
-.score-bg-1 { background-color: var(--color-score-1); }
+.score-bg-1 { background-color: var(--color-score-1); color: var(--color-neutral-900); }
 .score-bg-2 { background-color: var(--color-score-2); color: var(--color-neutral-900); }
-.score-bg-3 { background-color: var(--color-score-3); }
+.score-bg-3 { background-color: var(--color-score-3); color: var(--color-neutral-900); }
 .score-bg-4 { background-color: var(--color-score-4); }
 .score-bg-5 { background-color: var(--color-score-5); }
 .score-bg-6 { background-color: var(--color-score-6); }
