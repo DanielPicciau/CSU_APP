@@ -850,19 +850,26 @@ class CSUExporter:
         
         return response
     
-    def export_pdf(self) -> HttpResponse:
-        """Generate clinical PDF report for NHS/healthcare providers."""
+    def export_pdf(self, inline: bool = False) -> HttpResponse:
+        """Generate clinical PDF report for NHS/healthcare providers.
+        
+        Args:
+            inline: If True, sets Content-Disposition to 'inline' so the
+                    browser renders the PDF in-page (e.g. inside an iframe).
+                    If False (default), uses 'attachment' to trigger a download.
+        """
         if self.report_type == "detailed":
-            return self._export_detailed_pdf()
+            return self._export_detailed_pdf(inline=inline)
         else:
-            return self._export_quick_pdf()
+            return self._export_quick_pdf(inline=inline)
     
-    def _export_quick_pdf(self) -> HttpResponse:
+    def _export_quick_pdf(self, inline: bool = False) -> HttpResponse:
         """Generate quick summary PDF - 1-page overview for routine check-ups."""
         response = HttpResponse(content_type="application/pdf")
         
         filename = self._generate_filename("pdf").replace("data_export", "quick_summary")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        disposition = "inline" if inline else "attachment"
+        response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
         
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
@@ -1231,12 +1238,13 @@ class CSUExporter:
         
         return drawing
     
-    def _export_detailed_pdf(self) -> HttpResponse:
+    def _export_detailed_pdf(self, inline: bool = False) -> HttpResponse:
         """Generate comprehensive in-depth clinical PDF report for NHS/healthcare providers."""
         response = HttpResponse(content_type="application/pdf")
         
         filename = self._generate_filename("pdf").replace("data_export", "detailed_report")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        disposition = "inline" if inline else "attachment"
+        response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
         
         # Create PDF document
         buffer = io.BytesIO()
