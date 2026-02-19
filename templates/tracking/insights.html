@@ -722,7 +722,7 @@
             </div>
             <div>
                 <h2 class="insight-card__title">Weekly UAS7</h2>
-                <p class="insight-card__subtitle">Last 4 weeks comparison</p>
+                <p class="insight-card__subtitle">{% if treatment_cycle %}Treatment cycle · Week {{ treatment_cycle.week_number }}{% if treatment_cycle.is_overflow %} (overflow){% endif %}{% else %}Last {{ weekly_scores|length }} weeks comparison{% endif %}</p>
             </div>
         </div>
         
@@ -738,6 +738,7 @@
                 </div>
                 <div class="week-block__label">
                     {% if forloop.first %}This week{% else %}{{ week.label }}{% endif %}
+                    {% if week.is_overflow %}<span style="color: var(--color-warning, #f59e0b); font-size: var(--text-xs);" title="Overflow: past expected injection cycle">⚠</span>{% endif %}
                 </div>
                 {% if not forloop.first and week.change is not None %}
                 <div class="week-block__change {% if week.change > 0 %}week-block__change--up{% elif week.change < 0 %}week-block__change--down{% else %}week-block__change--same{% endif %}">

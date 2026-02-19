@@ -181,13 +181,16 @@ class TestRecordInjectionAPI:
         med.refresh_from_db()
         assert med.last_injection_date == new_date
 
-    def test_record_injection_rejects_future_date(self, api_client, user_with_biologic):
+    def test_record_injection_accepts_future_date(self, api_client, user_with_biologic):
         user, med = user_with_biologic
         api_client.force_authenticate(user=user)
         url = reverse("accounts_api:record_injection")
-        data = {"medication_id": med.pk, "injection_date": str(date.today() + timedelta(days=1))}
+        future_date = date.today() + timedelta(days=7)
+        data = {"medication_id": med.pk, "injection_date": str(future_date)}
         response = api_client.post(url, data, format="json")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_200_OK
+        med.refresh_from_db()
+        assert med.last_injection_date == future_date
 
     def test_record_injection_wrong_user(self, api_client, user_with_biologic, create_user):
         _, med = user_with_biologic
@@ -359,3 +362,188 @@ class TestTodayViewInjectionContext:
         # next_injection should be present but is_due_soon should be False
         if ctx_inj is not None:
             assert ctx_inj["is_due_soon"] is False
+
+
+# =============================================================================
+# TREATMENT WEEK CALCULATION
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestTreatmentWeekNumber:
+    """Tests for get_treatment_week_number and get_treatment_cycle_info."""
+
+    def test_week_1_on_injection_day(self, create_user):
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today,
+            is_current=True,
+        )
+        assert get_treatment_week_number(user, today) == 1
+
+    def test_week_1_day_6(self, create_user):
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today - timedelta(days=6),
+            is_current=True,
+        )
+        assert get_treatment_week_number(user, today) == 1
+
+    def test_week_2_day_7(self, create_user):
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today - timedelta(days=7),
+            is_current=True,
+        )
+        assert get_treatment_week_number(user, today) == 2
+
+    def test_week_4_last_day(self, create_user):
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today - timedelta(days=27),
+            is_current=True,
+        )
+        assert get_treatment_week_number(user, today) == 4
+
+    def test_overflow_week_5(self, create_user):
+        """Week 5 when user delays injection past 4-week cycle."""
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today - timedelta(days=30),
+            is_current=True,
+        )
+        assert get_treatment_week_number(user, today) == 5
+
+    def test_returns_none_for_future_injection(self, create_user):
+        """Future injection date means treatment hasn't started."""
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today + timedelta(days=3),
+            is_current=True,
+        )
+        assert get_treatment_week_number(user, today) is None
+
+    def test_returns_none_no_biologic(self, create_user):
+        from tracking.utils import get_treatment_week_number
+        user = create_user()
+        assert get_treatment_week_number(user, date.today()) is None
+
+
+@pytest.mark.django_db
+class TestTreatmentCycleInfo:
+    """Tests for get_treatment_cycle_info."""
+
+    def test_cycle_info_normal(self, create_user):
+        from tracking.utils import get_treatment_cycle_info
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today - timedelta(days=14),
+            is_current=True,
+        )
+        info = get_treatment_cycle_info(user, today)
+        assert info is not None
+        assert info["week_number"] == 3
+        assert info["day_in_cycle"] == 15
+        assert info["expected_weeks"] == 4
+        assert info["is_overflow"] is False
+
+    def test_cycle_info_overflow(self, create_user):
+        from tracking.utils import get_treatment_cycle_info
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today - timedelta(days=35),
+            is_current=True,
+        )
+        info = get_treatment_cycle_info(user, today)
+        assert info is not None
+        assert info["week_number"] == 6
+        assert info["is_overflow"] is True
+
+    def test_cycle_info_future_injection_returns_none(self, create_user):
+        from tracking.utils import get_treatment_cycle_info
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today + timedelta(days=5),
+            is_current=True,
+        )
+        assert get_treatment_cycle_info(user, today) is None
+
+
+@pytest.mark.django_db
+class TestWeekBoundsWithFutureInjection:
+    """Tests that week bounds fall back to rolling window for future injections."""
+
+    def test_future_injection_uses_rolling_window(self, create_user):
+        from tracking.utils import get_user_week_bounds
+        user = create_user()
+        today = date.today()
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=today + timedelta(days=7),
+            is_current=True,
+        )
+        week_start, week_end = get_user_week_bounds(user, today)
+        # Should be rolling 7-day window ending today
+        assert week_end == today
+        assert week_start == today - timedelta(days=6)
+
+    def test_past_injection_uses_aligned_window(self, create_user):
+        from tracking.utils import get_user_week_bounds
+        user = create_user()
+        today = date.today()
+        injection_date = today - timedelta(days=10)
+        UserMedication.objects.create(
+            user=user,
+            medication_type="biologic",
+            injection_frequency="every_4_weeks",
+            last_injection_date=injection_date,
+            is_current=True,
+        )
+        week_start, week_end = get_user_week_bounds(user, today)
+        # Should be aligned to injection weekday
+        assert week_start.weekday() == injection_date.weekday()
+        assert week_end == week_start + timedelta(days=6)

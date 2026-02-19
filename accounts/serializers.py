@@ -130,10 +130,7 @@ class RecordInjectionSerializer(serializers.Serializer):
         return value
 
     def validate_injection_date(self, value):
-        from django.utils import timezone as tz
-
-        if value > tz.now().date():
-            raise serializers.ValidationError("Injection date cannot be in the future.")
+        # Future injection dates are allowed (scheduled injections)
         return value
 
     def save(self):

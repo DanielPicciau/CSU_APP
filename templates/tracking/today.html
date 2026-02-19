@@ -771,9 +771,9 @@
     <div class="injection-modal-overlay" id="injection-modal">
         <div class="injection-modal">
             <h3 class="injection-modal__title">Record injection</h3>
-            <p class="injection-modal__subtitle">When did you take your {{ next_injection.medication_name }} injection?</p>
+            <p class="injection-modal__subtitle">When did you take (or plan to take) your {{ next_injection.medication_name }} injection?</p>
             <input type="date" class="injection-modal__input" id="injection-date-input"
-                   value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                   value="{{ today|date:'Y-m-d' }}">
             <div class="injection-modal__actions">
                 <button type="button" class="injection-modal__cancel" onclick="closeInjectionModal()">Cancel</button>
                 <button type="button" class="injection-modal__save" onclick="saveInjectionDate()">Save</button>
@@ -1012,7 +1012,7 @@
     <!-- Week Overview -->
     <div class="week-section">
         <div class="week-section__header">
-            <h3 class="week-section__title">This Week</h3>
+            <h3 class="week-section__title">{% if treatment_cycle %}Week {{ treatment_cycle.week_number }}{% if treatment_cycle.is_overflow %} <span style="color: var(--color-warning, #f59e0b); font-size: var(--text-xs);" title="Past expected injection cycle">⚠ overflow</span>{% endif %}{% else %}This Week{% endif %}</h3>
             <div class="week-section__uas7">
                 <div class="week-section__uas7-value {% if uas7_complete %}text-brand{% else %}text-tertiary{% endif %}">{{ uas7_score }}</div>
                 <div class="week-section__uas7-label">UAS7{% if not uas7_complete %} (partial){% endif %}</div>

@@ -19,6 +19,7 @@ from .utils import (
     get_aligned_week_bounds,
     get_history_limit_days,
     get_history_start_date,
+    get_treatment_cycle_info,
     get_user_today,
     get_user_week_bounds,
 )
@@ -145,6 +146,9 @@ def today_view(request):
                     "is_overdue": days_until < 0,
                 }
 
+    with timed_section("today:treatment_cycle", request):
+        treatment_cycle = get_treatment_cycle_info(request.user, today)
+
     with timed_section("today:template_render", request):
         response = render(request, "tracking/today.html", {
             "today": today,
@@ -156,6 +160,7 @@ def today_view(request):
             "total_entries": total_entries,
             "has_notification_setup": has_notification_setup,
             "next_injection": next_injection,
+            "treatment_cycle": treatment_cycle,
         })
 
     return response
@@ -570,11 +575,19 @@ def insights_view(request):
         antihistamine_pct = (antihistamine_days / logged_days * 100) if logged_days > 0 else 0
 
     with timed_section("insights:weekly_uas7_query", request):
-        # Weekly UAS7 comparison (last 4 weeks) - Optimized: single query
-        four_weeks_ago = today - timedelta(days=27)
+        # Weekly UAS7 comparison - dynamic week count based on treatment cycle
+        treatment_cycle = get_treatment_cycle_info(request.user, today)
+        if treatment_cycle:
+            # Show all weeks since injection (including overflow)
+            num_weeks = max(4, treatment_cycle["week_number"])
+        else:
+            num_weeks = 4
+
+        weeks_ago_days = (num_weeks * 7) - 1
+        weekly_start_date = today - timedelta(days=weeks_ago_days)
         weekly_query = DailyEntry.objects.filter(
             user=request.user,
-            date__gte=four_weeks_ago,
+            date__gte=weekly_start_date,
             date__lte=today,
         )
         all_weekly_entries = list(
@@ -586,7 +599,7 @@ def insights_view(request):
         entries_by_date = {e['date']: e['score'] for e in all_weekly_entries}
         
         weekly_scores = []
-        for week_num in range(4):
+        for week_num in range(num_weeks):
             w_start, w_end = get_aligned_week_bounds(request.user, today, week_num)
             
             # Calculate from in-memory data instead of DB query
@@ -606,14 +619,23 @@ def insights_view(request):
             if week_num > 0 and weekly_scores:
                 prev_uas7 = weekly_scores[-1]["uas7"]
                 change = uas7 - prev_uas7
-            
+
+            # Label: use treatment week number if available
+            if treatment_cycle:
+                treatment_week = treatment_cycle["week_number"] - week_num
+                is_overflow = treatment_cycle["expected_weeks"] and treatment_week > treatment_cycle["expected_weeks"]
+                label = f"Week {treatment_week}" + (" ⚠" if is_overflow else "")
+            else:
+                label = f"{week_num + 1}w ago"
+
             weekly_scores.append({
                 "week_start": w_start,
                 "week_end": w_end,
                 "uas7": uas7,
                 "complete": complete,
                 "change": change,
-                "label": f"{week_num + 1}w ago",
+                "label": label,
+                "is_overflow": treatment_cycle["is_overflow"] if treatment_cycle and week_num == 0 else False,
             })
 
     with timed_section("insights:chart_building", request):
@@ -705,6 +727,7 @@ def insights_view(request):
         "avg_score_y": avg_score_y,
         "history_limit_days": limit_days,
         "history_limited": limit_days is not None,
+        "treatment_cycle": treatment_cycle,
     })
 
     return rendered
