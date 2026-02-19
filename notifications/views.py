@@ -5,6 +5,7 @@ Views for the notifications app (Django templates).
 import hashlib
 import hmac
 import secrets
+from collections import defaultdict
 from datetime import datetime
 
 import pytz
@@ -197,7 +198,6 @@ def cron_send_reminders(request):
     ) if not force else set()
 
     # Map user_id -> list of active PushSubscription objects
-    from collections import defaultdict
     subscriptions_by_user = defaultdict(list)
     for sub in PushSubscription.objects.filter(user_id__in=pref_user_ids, is_active=True):
         subscriptions_by_user[sub.user_id].append(sub)

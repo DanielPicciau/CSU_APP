@@ -44,8 +44,8 @@ def process_daily_reminders():
 
     # Prefetch per-user data in bulk to avoid N+1 queries.
     # Because users may span multiple timezones we collect dates first then
-    # do bulk lookups.  For simplicity we use today in UTC ± 1 day which
-    # covers all timezone offsets.
+    # do bulk lookups.  We use today in UTC ± 1 day which covers every
+    # IANA timezone offset (max UTC+14 / UTC-12).
     pref_user_ids = [p.user_id for p in preferences]
     utc_today = timezone.now().date()
     date_range = [utc_today - timedelta(days=1), utc_today, utc_today + timedelta(days=1)]
